@@ -10,3 +10,16 @@
 /home/dumas/Desktop/Final-proj/ChatApp.Domain/obj/Debug/net9.0/refint/ChatApp.Domain.dll
 /home/dumas/Desktop/Final-proj/ChatApp.Domain/obj/Debug/net9.0/ChatApp.Domain.pdb
 /home/dumas/Desktop/Final-proj/ChatApp.Domain/obj/Debug/net9.0/ref/ChatApp.Domain.dll
+d:\Duma\appointment-app\ChatApp\ChatApp.Domain\bin\Debug\net9.0\ChatApp.Domain.deps.json
+d:\Duma\appointment-app\ChatApp\ChatApp.Domain\bin\Debug\net9.0\ChatApp.Domain.dll
+d:\Duma\appointment-app\ChatApp\ChatApp.Domain\bin\Debug\net9.0\ChatApp.Domain.pdb
+d:\Duma\appointment-app\ChatApp\ChatApp.Domain\obj\Debug\net9.0\ChatApp.Domain.csproj.AssemblyReference.cache
+d:\Duma\appointment-app\ChatApp\ChatApp.Domain\obj\Debug\net9.0\ChatApp.Domain.GeneratedMSBuildEditorConfig.editorconfig
+d:\Duma\appointment-app\ChatApp\ChatApp.Domain\obj\Debug\net9.0\ChatApp.Domain.AssemblyInfoInputs.cache
+d:\Duma\appointment-app\ChatApp\ChatApp.Domain\obj\Debug\net9.0\ChatApp.Domain.AssemblyInfo.cs
+d:\Duma\appointment-app\ChatApp\ChatApp.Domain\obj\Debug\net9.0\ChatApp.Domain.csproj.CoreCompileInputs.cache
+d:\Duma\appointment-app\ChatApp\ChatApp.Domain\obj\Debug\net9.0\ChatApp.Domain.sourcelink.json
+d:\Duma\appointment-app\ChatApp\ChatApp.Domain\obj\Debug\net9.0\ChatApp.Domain.dll
+d:\Duma\appointment-app\ChatApp\ChatApp.Domain\obj\Debug\net9.0\refint\ChatApp.Domain.dll
+d:\Duma\appointment-app\ChatApp\ChatApp.Domain\obj\Debug\net9.0\ChatApp.Domain.pdb
+d:\Duma\appointment-app\ChatApp\ChatApp.Domain\obj\Debug\net9.0\ref\ChatApp.Domain.dll

@@ -9,6 +9,8 @@ using ChatApp.Postgres.Repositories;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +20,7 @@ builder.Services.AddOpenApi();
 
 // Configure PostgreSQL Database
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), 
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
         b => b.MigrationsAssembly("ChatApp.Postgres"))
     .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
@@ -98,13 +100,21 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+if (app.Environment.IsDevelopment())
+{
+    await EnsureDatabaseCreatedAndMigratedAsync(app.Services, app.Configuration);
+}
+
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseCors("AllowAll");
 
@@ -119,3 +129,53 @@ app.MapChatEndpoints();
 app.MapHub<ChatHub>("/chathub");
 
 app.Run();
+
+static async Task EnsureDatabaseCreatedAndMigratedAsync(IServiceProvider services, IConfiguration configuration)
+{
+    var connectionString = configuration.GetConnectionString("DefaultConnection");
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException("Connection string 'DefaultConnection' is missing.");
+    }
+
+    var csb = new NpgsqlConnectionStringBuilder(connectionString);
+    var databaseName = csb.Database;
+    if (string.IsNullOrWhiteSpace(databaseName))
+    {
+        throw new InvalidOperationException("Database name is missing in 'DefaultConnection'.");
+    }
+
+    if (!Regex.IsMatch(databaseName, "^[A-Za-z0-9_]+$"))
+    {
+        throw new InvalidOperationException(
+            $"Unsafe database name '{databaseName}'. Only letters, digits, and '_' are allowed.");
+    }
+
+    var adminCsb = new NpgsqlConnectionStringBuilder(connectionString)
+    {
+        Database = "postgres"
+    };
+
+    await using (var adminConnection = new NpgsqlConnection(adminCsb.ConnectionString))
+    {
+        await adminConnection.OpenAsync();
+
+        await using (var existsCmd = new NpgsqlCommand(
+                         "SELECT 1 FROM pg_database WHERE datname = @name;",
+                         adminConnection))
+        {
+            existsCmd.Parameters.AddWithValue("name", databaseName);
+            var exists = await existsCmd.ExecuteScalarAsync() != null;
+            if (!exists)
+            {
+                await using var createCmd =
+                    new NpgsqlCommand($"CREATE DATABASE \"{databaseName}\";", adminConnection);
+                await createCmd.ExecuteNonQueryAsync();
+            }
+        }
+    }
+
+    using var scope = services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await dbContext.Database.MigrateAsync();
+}

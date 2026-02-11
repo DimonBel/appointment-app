@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ChatApp.Postgres")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+45081ec9eed4f87be43b14c4708aad949b8097ab")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+62add994b062750ac1a4526d11c99e9e1c525855")]
 [assembly: System.Reflection.AssemblyProductAttribute("ChatApp.Postgres")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ChatApp.Postgres")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

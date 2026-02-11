@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "z7QPWSw33w8=",
+  "dgSpecHash": "b9g6AyvTp4s=",
   "success": true,
-  "projectFilePath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj",
+  "projectFilePath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Duma\\.nuget\\packages\\microsoft.aspnetcore.cryptography.internal\\9.0.0\\microsoft.aspnetcore.cryptography.internal.9.0.0.nupkg.sha512",
     "C:\\Users\\Duma\\.nuget\\packages\\microsoft.aspnetcore.cryptography.keyderivation\\9.0.0\\microsoft.aspnetcore.cryptography.keyderivation.9.0.0.nupkg.sha512",
