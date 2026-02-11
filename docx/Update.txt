@@ -1,0 +1,13 @@
+CRUD medicul + configurare registrarea si cinfigurarea notificari ( ca eu pot setezi care notificari vin ori nu)
+
+Configurarea ce el face order ( ca nu numai medic dar si Jurist alti domeni ( ca sa fie scalabil))
+
+Notification Schedule ( si configurarea ei configurarea ei castom)
+
+Chat automatization ( tot booking el poate sa face cu LLM)
+
+Document change (FIle sharing ) ca tremite document ca cerere ( si automat in UI filduri poate sa genereze automat documentul)
+
+отправить предварительные данные в чат попросить у клиента их 
+
+La security Microsoft Identity use.

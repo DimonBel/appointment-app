@@ -1,0 +1,15 @@
+/home/dumas/Desktop/Final-proj/ChatApp.Repository/bin/Debug/net9.0/ChatApp.Repository.deps.json
+/home/dumas/Desktop/Final-proj/ChatApp.Repository/bin/Debug/net9.0/ChatApp.Repository.dll
+/home/dumas/Desktop/Final-proj/ChatApp.Repository/bin/Debug/net9.0/ChatApp.Repository.pdb
+/home/dumas/Desktop/Final-proj/ChatApp.Repository/bin/Debug/net9.0/ChatApp.Domain.dll
+/home/dumas/Desktop/Final-proj/ChatApp.Repository/bin/Debug/net9.0/ChatApp.Domain.pdb
+/home/dumas/Desktop/Final-proj/ChatApp.Repository/obj/Debug/net9.0/ChatApp.Repository.csproj.AssemblyReference.cache
+/home/dumas/Desktop/Final-proj/ChatApp.Repository/obj/Debug/net9.0/ChatApp.Repository.GeneratedMSBuildEditorConfig.editorconfig
+/home/dumas/Desktop/Final-proj/ChatApp.Repository/obj/Debug/net9.0/ChatApp.Repository.AssemblyInfoInputs.cache
+/home/dumas/Desktop/Final-proj/ChatApp.Repository/obj/Debug/net9.0/ChatApp.Repository.AssemblyInfo.cs
+/home/dumas/Desktop/Final-proj/ChatApp.Repository/obj/Debug/net9.0/ChatApp.Repository.csproj.CoreCompileInputs.cache
+/home/dumas/Desktop/Final-proj/ChatApp.Repository/obj/Debug/net9.0/ChatApp..D5FB49EE.Up2Date
+/home/dumas/Desktop/Final-proj/ChatApp.Repository/obj/Debug/net9.0/ChatApp.Repository.dll
+/home/dumas/Desktop/Final-proj/ChatApp.Repository/obj/Debug/net9.0/refint/ChatApp.Repository.dll
+/home/dumas/Desktop/Final-proj/ChatApp.Repository/obj/Debug/net9.0/ChatApp.Repository.pdb
+/home/dumas/Desktop/Final-proj/ChatApp.Repository/obj/Debug/net9.0/ref/ChatApp.Repository.dll
