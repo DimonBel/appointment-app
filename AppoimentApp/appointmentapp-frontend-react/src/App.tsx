@@ -1,35 +1,95 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ToastProvider } from './components/shared/ToastContext';
+import LoginPage from './pages/LoginPage';
+import PatientDashboard from './pages/PatientDashboard';
+import DoctorDashboard from './pages/DoctorDashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import AppointmentBookingLayout from './pages/AppointmentBookingLayout';
+import './App.css';
+import './index.css';
 
-function App() {
-  const [count, setCount] = useState(0)
+// Protected Route Component
+const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) => {
+  const { user, isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (user && !allowedRoles.includes(user.role)) {
+    // Redirect to their appropriate dashboard
+    const redirectPath = user.role === 'patient' ? '/patient' : user.role === 'doctor' ? '/doctor' : '/admin';
+    return <Navigate to={redirectPath} replace />;
+  }
+
+  return <>{children}</>;
+};
+
+function AppRoutes() {
+  const { isAuthenticated, user } = useAuth();
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <Routes>
+      {/* Public Routes */}
+      <Route 
+        path="/" 
+        element={
+          isAuthenticated ? (
+            <Navigate to={user?.role === 'patient' ? '/patient' : user?.role === 'doctor' ? '/doctor' : '/admin'} replace />
+          ) : (
+            <LoginPage />
+          )
+        } 
+      />
+
+      {/* Demo Layout Route */}
+      <Route path="/layout-demo" element={<AppointmentBookingLayout />} />
+
+      {/* Protected Routes */}
+      <Route
+        path="/patient"
+        element={
+          <ProtectedRoute allowedRoles={['patient']}>
+            <PatientDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/doctor"
+        element={
+          <ProtectedRoute allowedRoles={['doctor']}>
+            <DoctorDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Catch all - redirect to home */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }
 
-export default App
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <ToastProvider>
+          <AppRoutes />
+        </ToastProvider>
+      </AuthProvider>
+    </Router>
+  );
+}
+
+export default App;
