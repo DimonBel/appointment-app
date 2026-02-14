@@ -1,0 +1,16 @@
+/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/bin/Debug/net9.0/AppointmentApp.Repository.deps.json
+/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/bin/Debug/net9.0/AppointmentApp.Repository.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/bin/Debug/net9.0/AppointmentApp.Repository.pdb
+/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/bin/Debug/net9.0/AppointmentApp.Domain.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/bin/Debug/net9.0/AppointmentApp.Domain.pdb
+/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/obj/Debug/net9.0/AppointmentApp.Repository.csproj.AssemblyReference.cache
+/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/obj/Debug/net9.0/AppointmentApp.Repository.GeneratedMSBuildEditorConfig.editorconfig
+/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/obj/Debug/net9.0/AppointmentApp.Repository.AssemblyInfoInputs.cache
+/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/obj/Debug/net9.0/AppointmentApp.Repository.AssemblyInfo.cs
+/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/obj/Debug/net9.0/AppointmentApp.Repository.csproj.CoreCompileInputs.cache
+/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/obj/Debug/net9.0/AppointmentApp.Repository.sourcelink.json
+/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/obj/Debug/net9.0/Appointm.85428CB6.Up2Date
+/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/obj/Debug/net9.0/AppointmentApp.Repository.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/obj/Debug/net9.0/refint/AppointmentApp.Repository.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/obj/Debug/net9.0/AppointmentApp.Repository.pdb
+/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/obj/Debug/net9.0/ref/AppointmentApp.Repository.dll
