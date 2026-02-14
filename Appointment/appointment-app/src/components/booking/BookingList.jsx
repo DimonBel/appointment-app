@@ -2,7 +2,7 @@ import React from 'react'
 import { BookingCard, BookingCardSkeleton } from './BookingCard'
 import { Icon } from '../ui/Icon'
 
-export const BookingList = ({ appointments, loading, onViewDetails, onReschedule, onCancel }) => {
+export const BookingList = ({ appointments, loading, onViewDetails, onReschedule, onCancel, onComplete }) => {
   if (loading) {
     return (
       <div className="space-y-4">
@@ -38,6 +38,7 @@ export const BookingList = ({ appointments, loading, onViewDetails, onReschedule
           avatar={appointment.avatar}
           onReschedule={() => onViewDetails?.(appointment)}
           onCancel={() => onCancel?.(appointment)}
+          onComplete={() => onComplete?.(appointment)}
         />
       ))}
     </div>

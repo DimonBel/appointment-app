@@ -34,17 +34,21 @@ public class OrderService : IOrderService
             throw new InvalidOperationException("Professional is not available for booking");
         }
 
+        // TODO: For now, we'll skip slot availability check until we implement slot generation
+        // The availability checking requires AvailabilitySlots to be generated from Availability schedules
+        /*
         var isAvailable = await _availabilitySlotRepository.IsSlotAvailableAsync(professionalId, scheduledDateTime, durationMinutes);
         if (!isAvailable)
         {
             throw new InvalidOperationException("Requested time slot is not available");
         }
+        */
 
         var order = new Order
         {
             Id = Guid.NewGuid(),
             ClientId = clientId,
-            ProfessionalId = professionalId,
+            ProfessionalId = professional.UserId, // Use the professional's UserId, not the Professional entity Id
             ScheduledDateTime = scheduledDateTime,
             DurationMinutes = durationMinutes,
             Title = title,
@@ -54,7 +58,10 @@ public class OrderService : IOrderService
             CreatedAt = DateTime.UtcNow
         };
 
-        return await _orderRepository.CreateAsync(order);
+        await _orderRepository.CreateAsync(order);
+        
+        // Reload with navigation properties populated
+        return await _orderRepository.GetByIdAsync(order.Id) ?? order;
     }
 
     public async Task<Order?> GetOrderByIdAsync(Guid orderId)
@@ -102,6 +109,34 @@ public class OrderService : IOrderService
 
         order.Status = OrderStatus.Cancelled;
         order.Notes = reason;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        return await _orderRepository.UpdateAsync(order);
+    }
+
+    public async Task<Order> RescheduleOrderAsync(Guid orderId, DateTime newScheduledDateTime, string? notes = null)
+    {
+        var order = await _orderRepository.GetByIdAsync(orderId);
+        if (order == null)
+        {
+            throw new ArgumentException("Order not found", nameof(orderId));
+        }
+
+        if (order.Status != OrderStatus.Requested && order.Status != OrderStatus.Approved)
+        {
+            throw new InvalidOperationException($"Cannot reschedule order with status {order.Status}");
+        }
+
+        if (newScheduledDateTime <= DateTime.UtcNow)
+        {
+            throw new ArgumentException("Scheduled date and time must be in the future", nameof(newScheduledDateTime));
+        }
+
+        order.ScheduledDateTime = newScheduledDateTime;
+        if (!string.IsNullOrWhiteSpace(notes))
+        {
+            order.Notes = notes;
+        }
         order.UpdatedAt = DateTime.UtcNow;
 
         return await _orderRepository.UpdateAsync(order);

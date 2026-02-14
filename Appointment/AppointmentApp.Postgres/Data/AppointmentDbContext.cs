@@ -40,7 +40,7 @@ public class AppointmentDbContext : IdentityDbContext<AppIdentityUser, AppIdenti
                 .HasForeignKey(o => o.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasOne<AppIdentityUser>()
+            entity.HasOne(o => o.Professional)
                 .WithMany()
                 .HasForeignKey(o => o.ProfessionalId)
                 .OnDelete(DeleteBehavior.Restrict);

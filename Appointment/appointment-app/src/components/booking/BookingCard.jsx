@@ -15,7 +15,8 @@ export const BookingCard = ({
   status,
   avatar,
   onReschedule,
-  onCancel
+  onCancel,
+  onComplete
 }) => {
   const getStatusColor = (status) => {
     switch (status) {
@@ -77,6 +78,14 @@ export const BookingCard = ({
           {status === BOOKING_STATUS.UPCOMING && (
             <div className="mt-4 pt-4 border-t border-[#EAEAEA]">
               <ButtonGroup>
+                <Button 
+                  variant="primary" 
+                  size="medium" 
+                  onClick={onComplete}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Complete
+                </Button>
                 <Button variant="primary" size="medium" onClick={onReschedule}>
                   Reschedule
                 </Button>

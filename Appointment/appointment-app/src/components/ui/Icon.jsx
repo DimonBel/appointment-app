@@ -1,23 +1,6 @@
 import * as Icons from 'lucide-react'
 
-export const Icon = ({ name, size = 20, className = '', color = null }) => {
-  const IconComponent = Icons[name]
-  if (!IconComponent) {
-    return null
-  }
-
-  const colorStyle = color ? { color } : {}
-  
-  return (
-    <IconComponent 
-      size={size} 
-      className={className}
-      {...colorStyle}
-    />
-  )
-}
-
-export const iconNames = {
+const iconMap = {
   edit: 'Edit',
   heart: 'Heart',
   bell: 'Bell',
@@ -37,5 +20,30 @@ export const iconNames = {
   plus: 'Plus',
   edit3: 'Edit3',
   messageSquare: 'MessageSquare',
-  notifications: 'Bell'
+  notifications: 'Bell',
+  menu: 'Menu',
+  award: 'Award',
+  dollarSign: 'DollarSign'
 }
+
+export const Icon = ({ name, size = 20, className = '', color = null }) => {
+  const iconName = iconMap[name] || name
+  const IconComponent = Icons[iconName]
+  
+  if (!IconComponent) {
+    console.warn(`Icon "${name}" not found`)
+    return null
+  }
+
+  const colorStyle = color ? { color } : {}
+  
+  return (
+    <IconComponent 
+      size={size} 
+      className={className}
+      style={colorStyle}
+    />
+  )
+}
+
+export const iconNames = iconMap

@@ -11,5 +11,6 @@ public interface IOrderService
     Task<IEnumerable<Order>> GetOrdersByProfessionalAsync(Guid professionalId, OrderStatus? status = null, int page = 1, int pageSize = 20);
     Task<Order> UpdateOrderAsync(Guid orderId, string? title = null, string? description = null, string? notes = null);
     Task<Order> CancelOrderAsync(Guid orderId, string? reason = null, Guid? cancelledByUserId = null);
+    Task<Order> RescheduleOrderAsync(Guid orderId, DateTime newScheduledDateTime, string? notes = null);
     Task<bool> DeleteOrderAsync(Guid orderId);
 }

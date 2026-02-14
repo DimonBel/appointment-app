@@ -91,7 +91,7 @@ public class OrderApprovalService : IOrderApprovalService
             throw new ArgumentException("Order not found", nameof(orderId));
         }
 
-        if (order.Status != OrderStatus.Approved)
+        if (order.Status != OrderStatus.Approved && order.Status != OrderStatus.Requested)
         {
             throw new InvalidOperationException($"Cannot complete order with status {order.Status}");
         }
