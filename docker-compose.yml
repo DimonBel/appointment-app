@@ -1,0 +1,193 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database for Identity Service
+  identity-db:
+    image: postgres:16-alpine
+    container_name: identity-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${IDENTITY_DB_NAME:-IdentityDb}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
+    ports:
+      - "5432:5432"
+    volumes:
+      - identity-db-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL Database for Appointment Service
+  appointment-db:
+    image: postgres:16-alpine
+    container_name: appointment-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${APPOINTMENT_DB_NAME:-appointmentdb}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
+    ports:
+      - "5433:5432"
+    volumes:
+      - appointment-db-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL Database for Chat Service
+  chat-db:
+    image: postgres:16-alpine
+    container_name: chat-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${CHAT_DB_NAME:-chatappdb}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
+    ports:
+      - "5434:5432"
+    volumes:
+      - chat-db-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Identity Service
+  identity-service:
+    build:
+      context: ./Identity
+      dockerfile: Dockerfile
+    container_name: identity-service
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5005
+      - ConnectionStrings__DefaultConnection=Host=identity-db;Port=5432;Database=${IDENTITY_DB_NAME:-IdentityDb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
+      - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
+      - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
+      - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
+      - Jwt__AccessTokenExpirationMinutes=${JWT_ACCESS_EXPIRATION:-30}
+      - Jwt__RefreshTokenExpirationDays=${JWT_REFRESH_EXPIRATION:-7}
+    ports:
+      - "5005:5005"
+    depends_on:
+      identity-db:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5005/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Appointment Service
+  appointment-service:
+    build:
+      context: ./Appointment
+      dockerfile: Dockerfile
+    container_name: appointment-service
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5001
+      - ConnectionStrings__DefaultConnection=Host=appointment-db;Port=5432;Database=${APPOINTMENT_DB_NAME:-appointmentdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
+      - IdentityService__BaseUrl=http://identity-service:5005
+      - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
+      - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
+      - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
+      - Jwt__ExpirationMinutes=${JWT_ACCESS_EXPIRATION:-30}
+    ports:
+      - "5001:5001"
+    depends_on:
+      appointment-db:
+        condition: service_healthy
+      identity-service:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Chat Service
+  chat-service:
+    build:
+      context: ./ChatApp
+      dockerfile: Dockerfile
+    container_name: chat-service
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5002
+      - ConnectionStrings__DefaultConnection=Host=chat-db;Port=5432;Database=${CHAT_DB_NAME:-chatappdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
+      - IdentityService__BaseUrl=http://identity-service:5005
+      - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
+      - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
+      - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
+    ports:
+      - "5002:5002"
+    depends_on:
+      chat-db:
+        condition: service_healthy
+      identity-service:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5002/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend (React + Nginx)
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - identity-service
+      - appointment-service
+      - chat-service
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  app-network:
+    driver: bridge
+    name: appointment-app-network
+
+volumes:
+  identity-db-data:
+    name: identity-db-data
+  appointment-db-data:
+    name: appointment-db-data
+  chat-db-data:
+    name: chat-db-data

@@ -1,0 +1,12 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.cache
+.git/
+.gitignore
+README.md
+*.md
+ChatApp.Frontend/
+node_modules/

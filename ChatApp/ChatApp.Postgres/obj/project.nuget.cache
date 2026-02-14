@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "uQIMGQAFOa0=",
+  "dgSpecHash": "GQ9dzyXfevg=",
   "success": true,
-  "projectFilePath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj",
+  "projectFilePath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Duma\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\Duma\\.nuget\\packages\\microsoft.aspnetcore.cryptography.internal\\9.0.0\\microsoft.aspnetcore.cryptography.internal.9.0.0.nupkg.sha512",

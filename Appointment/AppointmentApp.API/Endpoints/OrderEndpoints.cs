@@ -14,7 +14,39 @@ public static class OrderEndpoints
     {
         var group = app.MapGroup("/api/orders")
             .WithTags("Orders");
-            // .RequireAuthorization(); // Temporarily disabled for testing
+        // .RequireAuthorization(); // Temporarily disabled for testing
+
+        // Get all orders for current user
+        group.MapGet("/", async (
+            [FromServices] IOrderService orderService,
+            [FromServices] UserManager<AppIdentityUser> userManager,
+            HttpContext context,
+            [FromQuery] OrderStatus? status = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20) =>
+        {
+            // For testing without auth, use the seeded client user
+            Guid userId;
+            if (context.User.FindFirst("sub")?.Value != null)
+            {
+                userId = Guid.Parse(context.User.FindFirst("sub").Value);
+            }
+            else
+            {
+                // Use the test client from seed data
+                var testClient = await userManager.FindByEmailAsync("client@appointment.com");
+                if (testClient == null)
+                {
+                    return Results.BadRequest("Test client not found. Please ensure database is seeded.");
+                }
+                userId = testClient.Id;
+            }
+
+            var orders = await orderService.GetOrdersByClientAsync(userId, status, page, pageSize);
+            return Results.Ok(orders);
+        })
+        .WithName("GetAllOrders")
+        .WithOpenApi();
 
         // Create order
         group.MapPost("/", async (
@@ -39,7 +71,7 @@ public static class OrderEndpoints
                 }
                 clientId = testClient.Id;
             }
-            
+
             var order = await orderService.CreateOrderAsync(
                 clientId,
                 dto.ProfessionalId,
@@ -75,7 +107,7 @@ public static class OrderEndpoints
             [FromQuery] int pageSize = 20) =>
         {
             var orders = await orderService.GetOrdersByClientAsync(clientId, status, page, pageSize);
-            
+
             // Enrich orders with professional entity data
             var enrichedOrders = new List<object>();
             foreach (var order in orders)
@@ -86,7 +118,7 @@ public static class OrderEndpoints
                     var allProfessionals = await professionalRepo.GetAllAsync();
                     professionalEntity = allProfessionals.FirstOrDefault(p => p.UserId == order.ProfessionalId);
                 }
-                
+
                 enrichedOrders.Add(new
                 {
                     order.Id,
@@ -108,7 +140,8 @@ public static class OrderEndpoints
                     order.PreOrderDataId,
                     order.Client,
                     Professional = order.Professional,
-                    ProfessionalEntity = professionalEntity != null ? new {
+                    ProfessionalEntity = professionalEntity != null ? new
+                    {
                         professionalEntity.Id,
                         professionalEntity.UserId,
                         professionalEntity.Title,
@@ -120,7 +153,7 @@ public static class OrderEndpoints
                     order.OrderHistory
                 });
             }
-            
+
             return Results.Ok(enrichedOrders);
         })
         .WithName("GetOrdersByClient")
@@ -209,7 +242,7 @@ public static class OrderEndpoints
                     approvedByUserId = testClient.Id;
                 }
             }
-            
+
             var order = await approvalService.ApproveOrderAsync(id, dto.Reason, approvedByUserId);
             return Results.Ok(order);
         })
@@ -237,7 +270,7 @@ public static class OrderEndpoints
                     declinedByUserId = testClient.Id;
                 }
             }
-            
+
             var order = await approvalService.DeclineOrderAsync(id, dto.Reason, declinedByUserId);
             return Results.Ok(order);
         })
@@ -266,7 +299,7 @@ public static class OrderEndpoints
                     completedByUserId = testClient.Id;
                 }
             }
-            
+
             var order = await approvalService.CompleteOrderAsync(id, dto?.Notes, completedByUserId);
             return Results.Ok(order);
         })
@@ -294,7 +327,7 @@ public static class OrderEndpoints
                     markedByUserId = testClient.Id;
                 }
             }
-            
+
             var order = await approvalService.MarkAsNoShowAsync(id, dto?.Notes, markedByUserId);
             return Results.Ok(order);
         })

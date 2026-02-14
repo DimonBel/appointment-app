@@ -1,5 +1,6 @@
 using AppointmentApp.API.Endpoints;
 using AppointmentApp.API.Hubs;
+using AppointmentApp.API.Services;
 using AppointmentApp.Domain.Entity;
 using AppointmentApp.Domain.Interfaces;
 using AppointmentApp.Postgres.Data;
@@ -27,20 +28,27 @@ builder.Services.AddDbContext<AppointmentDbContext>(options =>
         b => b.MigrationsAssembly("AppointmentApp.Postgres"))
     .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
-// Configure Identity
+// Configure Identity (keep for existing database structure, but auth will use Identity Service)
 builder.Services.AddIdentity<AppIdentityUser, AppIdentityRole>(options =>
 {
     options.User.RequireUniqueEmail = true;
-    options.Password.RequireDigit = true;
-    options.Password.RequireLowercase = true;
-    options.Password.RequireUppercase = true;
-    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequireDigit = false;
+    options.Password.RequireLowercase = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequireNonAlphanumeric = false;
     options.Password.RequiredLength = 6;
 })
 .AddEntityFrameworkStores<AppointmentDbContext>()
 .AddDefaultTokenProviders();
 
-// Configure Authentication with JWT
+// Add HttpClient for Identity Service
+builder.Services.AddHttpClient<IIdentityServiceClient, IdentityServiceClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["IdentityService:BaseUrl"] ?? "http://localhost:5005");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
+// Configure Authentication with JWT (validate tokens from Identity Service)
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -57,7 +65,8 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"],
         IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
-            System.Text.Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!"))
+            System.Text.Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!")),
+        ClockSkew = TimeSpan.Zero
     };
 });
 
@@ -101,9 +110,11 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Apply database migrations automatically (changed from Development-only to always run)
+await EnsureDatabaseCreatedAndMigratedAsync(app.Services, app.Configuration);
+// Seed demo data only in Development
 if (app.Environment.IsDevelopment())
 {
-    await EnsureDatabaseCreatedAndMigratedAsync(app.Services, app.Configuration);
     await SeedDemoDataAsync(app.Services);
 }
 
@@ -119,6 +130,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // Map minimal API endpoints
+app.MapAuthEndpoints();
 app.MapOrderEndpoints();
 app.MapProfessionalEndpoints();
 app.MapAvailabilityEndpoints();
@@ -126,6 +138,11 @@ app.MapDomainConfigurationEndpoints();
 
 // Map SignalR Hub for real-time order notifications
 app.MapHub<OrderHub>("/orderhub");
+
+// Health check endpoint
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "Appointment API", timestamp = DateTime.UtcNow }))
+    .WithName("HealthCheck")
+    .WithTags("Health");
 
 app.Run();
 

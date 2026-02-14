@@ -11,6 +11,7 @@ Thumbs.db
 # IDE and Editor Files
 .vscode/
 .idea/
+.qodo
 *.swp
 *.swo
 *.swn

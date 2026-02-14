@@ -1,0 +1,108 @@
+### Identity Service API Tests
+### Base URL
+@baseUrl = http://localhost:5005
+@email = test@example.com
+@password = 123123
+
+### 1. Health Check
+GET {{baseUrl}}/health
+
+### 2. Register New User
+# @name register
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "userName": "testuser",
+  "firstName": "Test",
+  "lastName": "User",
+  "phoneNumber": "+1234567890"
+}
+
+### 3. Login
+# @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Extract tokens from login response
+@accessToken = {{login.response.body.accessToken}}
+@refreshToken = {{login.response.body.refreshToken}}
+@userId = {{login.response.body.user.id}}
+
+### 4. Get User by ID (requires authentication)
+GET {{baseUrl}}/api/users/{{userId}}
+Authorization: Bearer {{accessToken}}
+
+### 5. Get User by Email
+GET {{baseUrl}}/api/users/email/{{email}}
+Authorization: Bearer {{accessToken}}
+
+### 6. Get All Users
+GET {{baseUrl}}/api/users
+Authorization: Bearer {{accessToken}}
+
+### 7. Update User
+PUT {{baseUrl}}/api/users/{{userId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "id": "{{userId}}",
+  "email": "{{email}}",
+  "userName": "testuser",
+  "firstName": "Updated",
+  "lastName": "User",
+  "avatarUrl": "https://example.com/avatar.jpg",
+  "phoneNumber": "+1234567890",
+  "isActive": true,
+  "isOnline": true,
+  "createdAt": "2026-02-14T10:00:00Z",
+  "lastLoginAt": "2026-02-14T11:00:00Z",
+  "roles": ["User"]
+}
+
+### 8. Set User Online Status
+PATCH {{baseUrl}}/api/users/{{userId}}/online-status
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+true
+
+### 9. Refresh Token
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "accessToken": "{{accessToken}}",
+  "refreshToken": "{{refreshToken}}"
+}
+
+### 10. Validate Token
+POST {{baseUrl}}/api/auth/validate
+Content-Type: application/json
+
+"{{accessToken}}"
+
+### 11. Revoke Token (requires authentication)
+POST {{baseUrl}}/api/auth/revoke/{{userId}}
+Authorization: Bearer {{accessToken}}
+
+### 12. Register Another User (Professional)
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "professional@example.com",
+  "password": "123123",
+  "userName": "prouser",
+  "firstName": "Professional",
+  "lastName": "User",
+  "phoneNumber": "+9876543210"
+}

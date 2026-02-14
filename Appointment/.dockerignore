@@ -1,0 +1,13 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.cache
+.git/
+.gitignore
+README.md
+*.md
+*.sh
+appointment-app/
+node_modules/

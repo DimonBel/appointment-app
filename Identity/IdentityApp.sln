@@ -1,0 +1,46 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityApp.API", "IdentityApp.API\IdentityApp.API.csproj", "{FF352612-1FF3-4E0E-B5AA-C7B6FAD88136}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityApp.Domain", "IdentityApp.Domain\IdentityApp.Domain.csproj", "{09A30CB8-0B54-4066-A4CA-68DFA1243569}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityApp.Repository", "IdentityApp.Repository\IdentityApp.Repository.csproj", "{A0092331-F1C8-44A0-B9C7-602026B08E01}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityApp.Service", "IdentityApp.Service\IdentityApp.Service.csproj", "{6B38277F-9094-4DBE-A2FB-011737B58B70}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityApp.Postgres", "IdentityApp.Postgres\IdentityApp.Postgres.csproj", "{E1F60934-321C-45BE-BEB8-F7D061EBC8E2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FF352612-1FF3-4E0E-B5AA-C7B6FAD88136}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FF352612-1FF3-4E0E-B5AA-C7B6FAD88136}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FF352612-1FF3-4E0E-B5AA-C7B6FAD88136}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FF352612-1FF3-4E0E-B5AA-C7B6FAD88136}.Release|Any CPU.Build.0 = Release|Any CPU
+		{09A30CB8-0B54-4066-A4CA-68DFA1243569}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09A30CB8-0B54-4066-A4CA-68DFA1243569}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09A30CB8-0B54-4066-A4CA-68DFA1243569}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09A30CB8-0B54-4066-A4CA-68DFA1243569}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A0092331-F1C8-44A0-B9C7-602026B08E01}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A0092331-F1C8-44A0-B9C7-602026B08E01}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A0092331-F1C8-44A0-B9C7-602026B08E01}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A0092331-F1C8-44A0-B9C7-602026B08E01}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6B38277F-9094-4DBE-A2FB-011737B58B70}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6B38277F-9094-4DBE-A2FB-011737B58B70}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6B38277F-9094-4DBE-A2FB-011737B58B70}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6B38277F-9094-4DBE-A2FB-011737B58B70}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E1F60934-321C-45BE-BEB8-F7D061EBC8E2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E1F60934-321C-45BE-BEB8-F7D061EBC8E2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E1F60934-321C-45BE-BEB8-F7D061EBC8E2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E1F60934-321C-45BE-BEB8-F7D061EBC8E2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

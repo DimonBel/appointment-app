@@ -1,0 +1,141 @@
+import React, { useState, useEffect } from 'react'
+import { useSelector } from 'react-redux'
+import { MainContent, SectionHeader } from '../../components/layout/MainContent'
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
+import { Button } from '../../components/ui/Button'
+import { StatusBadge } from '../../components/ui/Badge'
+import { Avatar } from '../../components/ui/Avatar'
+import { Loader } from '../../components/ui/Loader'
+import { appointmentService } from '../../services/appointmentService'
+import { Calendar, Clock, MapPin, Phone } from 'lucide-react'
+
+export const Bookings = () => {
+  const [activeTab, setActiveTab] = useState('upcoming')
+  const [appointments, setAppointments] = useState([])
+  const [loading, setLoading] = useState(true)
+  const token = useSelector((state) => state.auth.token)
+
+  useEffect(() => {
+    fetchAppointments()
+  }, [activeTab, token])
+
+  const fetchAppointments = async () => {
+    setLoading(true)
+    try {
+      const data = await appointmentService.getOrders(token)
+      // Filter based on active tab
+      const filtered = data.filter(apt => {
+        if (activeTab === 'upcoming') return ['pending', 'confirmed'].includes(apt.status)
+        return apt.status === activeTab
+      })
+      setAppointments(filtered)
+    } catch (error) {
+      console.error('Error fetching appointments:', error)
+      setAppointments([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const tabs = [
+    { id: 'upcoming', label: 'Upcoming' },
+    { id: 'completed', label: 'Completed' },
+    { id: 'cancelled', label: 'Cancelled' },
+  ]
+
+  return (
+    <MainContent>
+      <SectionHeader 
+        title="My Bookings"
+        subtitle="Manage and track your appointments"
+      />
+
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 rounded-lg font-medium transition-all ${
+              activeTab === tab.id
+                ? 'bg-primary-dark text-white'
+                : 'bg-white text-text-secondary hover:bg-gray-50'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Appointments List */}
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <Loader size="lg" />
+        </div>
+      ) : appointments.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <Calendar size={48} className="mx-auto text-text-muted mb-4" />
+            <p className="text-text-secondary">No {activeTab} appointments</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {appointments.map((appointment) => (
+            <Card key={appointment.id} hover className="transition-all">
+              <CardContent className="flex items-start gap-4 p-6">
+                <Avatar 
+                  src={appointment.doctorAvatar}
+                  alt={appointment.doctorName}
+                  size={56}
+                />
+                
+                <div className="flex-1">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <h3 className="font-semibold text-text-primary text-lg">
+                        {appointment.doctorName}
+                      </h3>
+                      <p className="text-text-secondary text-sm">{appointment.specialty}</p>
+                    </div>
+                    <StatusBadge status={appointment.status} />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-sm">
+                    <div className="flex items-center gap-2 text-text-secondary">
+                      <Calendar size={16} />
+                      <span>{appointment.date}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-text-secondary">
+                      <Clock size={16} />
+                      <span>{appointment.time}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-text-secondary">
+                      <MapPin size={16} />
+                      <span>{appointment.location}</span>
+                    </div>
+                  </div>
+
+                  {activeTab === 'upcoming' && (
+                    <div className="flex gap-2 mt-4">
+                      <Button size="sm" variant="primary">
+                        Reschedule
+                      </Button>
+                      <Button size="sm" variant="outline">
+                        Cancel
+                      </Button>
+                      <Button size="sm" variant="ghost">
+                        <Phone size={16} className="mr-1" />
+                        Contact
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </MainContent>
+  )
+}
