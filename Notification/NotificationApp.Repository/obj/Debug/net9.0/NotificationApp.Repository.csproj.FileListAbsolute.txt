@@ -1,0 +1,16 @@
+d:\Duma\appointment-app\Notification\NotificationApp.Repository\bin\Debug\net9.0\NotificationApp.Repository.deps.json
+d:\Duma\appointment-app\Notification\NotificationApp.Repository\bin\Debug\net9.0\NotificationApp.Repository.dll
+d:\Duma\appointment-app\Notification\NotificationApp.Repository\bin\Debug\net9.0\NotificationApp.Repository.pdb
+d:\Duma\appointment-app\Notification\NotificationApp.Repository\bin\Debug\net9.0\NotificationApp.Domain.dll
+d:\Duma\appointment-app\Notification\NotificationApp.Repository\bin\Debug\net9.0\NotificationApp.Domain.pdb
+d:\Duma\appointment-app\Notification\NotificationApp.Repository\obj\Debug\net9.0\NotificationApp.Repository.csproj.AssemblyReference.cache
+d:\Duma\appointment-app\Notification\NotificationApp.Repository\obj\Debug\net9.0\NotificationApp.Repository.GeneratedMSBuildEditorConfig.editorconfig
+d:\Duma\appointment-app\Notification\NotificationApp.Repository\obj\Debug\net9.0\NotificationApp.Repository.AssemblyInfoInputs.cache
+d:\Duma\appointment-app\Notification\NotificationApp.Repository\obj\Debug\net9.0\NotificationApp.Repository.AssemblyInfo.cs
+d:\Duma\appointment-app\Notification\NotificationApp.Repository\obj\Debug\net9.0\NotificationApp.Repository.csproj.CoreCompileInputs.cache
+d:\Duma\appointment-app\Notification\NotificationApp.Repository\obj\Debug\net9.0\NotificationApp.Repository.sourcelink.json
+d:\Duma\appointment-app\Notification\NotificationApp.Repository\obj\Debug\net9.0\Notifica.B0E4D347.Up2Date
+d:\Duma\appointment-app\Notification\NotificationApp.Repository\obj\Debug\net9.0\NotificationApp.Repository.dll
+d:\Duma\appointment-app\Notification\NotificationApp.Repository\obj\Debug\net9.0\refint\NotificationApp.Repository.dll
+d:\Duma\appointment-app\Notification\NotificationApp.Repository\obj\Debug\net9.0\NotificationApp.Repository.pdb
+d:\Duma\appointment-app\Notification\NotificationApp.Repository\obj\Debug\net9.0\ref\NotificationApp.Repository.dll

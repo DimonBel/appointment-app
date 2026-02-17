@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj": {}
+    "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj": {}
   },
   "projects": {
-    "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj": {
+    "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj",
+        "projectUniqueName": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj",
         "projectName": "ChatApp.Domain",
-        "projectPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj",
+        "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj",
         "packagesPath": "C:\\Users\\Duma\\.nuget\\packages\\",
-        "outputPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\obj\\",
+        "outputPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -103,8 +103,8 @@
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj": {
-                "projectPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj"
+              "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj": {
+                "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj"
               }
             }
           }
@@ -144,14 +144,14 @@
         }
       }
     },
-    "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj": {
+    "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj",
+        "projectUniqueName": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj",
         "projectName": "ChatApp.Service",
-        "projectPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj",
+        "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj",
         "packagesPath": "C:\\Users\\Duma\\.nuget\\packages\\",
-        "outputPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\obj\\",
+        "outputPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -172,8 +172,8 @@
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj": {
-                "projectPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj"
+              "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj": {
+                "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj"
               },
               "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Repository\\ChatApp.Repository.csproj": {
                 "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Repository\\ChatApp.Repository.csproj"

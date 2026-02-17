@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "Ui+4FqtxysqhXKMVTOcy/Pk/shglzrxLh1ZjnNSULhM=",
+  "Source": "IdentityApp.API",
+  "BasePath": "_content/IdentityApp.API",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

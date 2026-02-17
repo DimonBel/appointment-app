@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.API\\ChatApp.API.csproj": {}
+    "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.API\\ChatApp.API.csproj": {}
   },
   "projects": {
-    "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.API\\ChatApp.API.csproj": {
+    "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.API\\ChatApp.API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.API\\ChatApp.API.csproj",
+        "projectUniqueName": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.API\\ChatApp.API.csproj",
         "projectName": "ChatApp.API",
-        "projectPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.API\\ChatApp.API.csproj",
+        "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.API\\ChatApp.API.csproj",
         "packagesPath": "C:\\Users\\Duma\\.nuget\\packages\\",
-        "outputPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.API\\obj\\",
+        "outputPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.API\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -32,11 +32,11 @@
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj": {
-                "projectPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj"
+              "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj": {
+                "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj"
               },
-              "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj": {
-                "projectPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj"
+              "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj": {
+                "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj"
               }
             }
           }
@@ -57,6 +57,10 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "dependencies": {
+            "Microsoft.AspNetCore.Authentication.JwtBearer": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
             "Microsoft.AspNetCore.OpenApi": {
               "target": "Package",
               "version": "[9.0.11, )"
@@ -91,14 +95,14 @@
         }
       }
     },
-    "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj": {
+    "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj",
+        "projectUniqueName": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj",
         "projectName": "ChatApp.Domain",
-        "projectPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj",
+        "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj",
         "packagesPath": "C:\\Users\\Duma\\.nuget\\packages\\",
-        "outputPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\obj\\",
+        "outputPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -162,14 +166,14 @@
         }
       }
     },
-    "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj": {
+    "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj",
+        "projectUniqueName": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj",
         "projectName": "ChatApp.Postgres",
-        "projectPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj",
+        "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj",
         "packagesPath": "C:\\Users\\Duma\\.nuget\\packages\\",
-        "outputPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\obj\\",
+        "outputPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -190,8 +194,8 @@
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj": {
-                "projectPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj"
+              "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj": {
+                "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj"
               },
               "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Repository\\ChatApp.Repository.csproj": {
                 "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Repository\\ChatApp.Repository.csproj"
@@ -278,8 +282,8 @@
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj": {
-                "projectPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj"
+              "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj": {
+                "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj"
               }
             }
           }
@@ -319,14 +323,14 @@
         }
       }
     },
-    "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj": {
+    "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj",
+        "projectUniqueName": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj",
         "projectName": "ChatApp.Service",
-        "projectPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj",
+        "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj",
         "packagesPath": "C:\\Users\\Duma\\.nuget\\packages\\",
-        "outputPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\obj\\",
+        "outputPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -347,8 +351,8 @@
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj": {
-                "projectPath": "d:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj"
+              "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj": {
+                "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj"
               },
               "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Repository\\ChatApp.Repository.csproj": {
                 "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Repository\\ChatApp.Repository.csproj"

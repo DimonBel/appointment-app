@@ -1,0 +1,16 @@
+.git
+.gitignore
+.vs
+.vscode
+*.md
+README.md
+*.txt
+*.log
+node_modules/
+bin/
+obj/
+dist/
+.env
+.env.local
+.env.development
+.env.production

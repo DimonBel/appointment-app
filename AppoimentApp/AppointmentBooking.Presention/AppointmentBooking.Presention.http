@@ -1,6 +1,0 @@
-@AppointmentBooking.Presention_HostAddress = http://localhost:5167
-
-GET {{AppointmentBooking.Presention_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

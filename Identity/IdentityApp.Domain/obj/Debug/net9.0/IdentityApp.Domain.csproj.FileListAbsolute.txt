@@ -1,0 +1,13 @@
+d:\Duma\appointment-app\Identity\IdentityApp.Domain\bin\Debug\net9.0\IdentityApp.Domain.deps.json
+d:\Duma\appointment-app\Identity\IdentityApp.Domain\bin\Debug\net9.0\IdentityApp.Domain.dll
+d:\Duma\appointment-app\Identity\IdentityApp.Domain\bin\Debug\net9.0\IdentityApp.Domain.pdb
+d:\Duma\appointment-app\Identity\IdentityApp.Domain\obj\Debug\net9.0\IdentityApp.Domain.csproj.AssemblyReference.cache
+d:\Duma\appointment-app\Identity\IdentityApp.Domain\obj\Debug\net9.0\IdentityApp.Domain.GeneratedMSBuildEditorConfig.editorconfig
+d:\Duma\appointment-app\Identity\IdentityApp.Domain\obj\Debug\net9.0\IdentityApp.Domain.AssemblyInfoInputs.cache
+d:\Duma\appointment-app\Identity\IdentityApp.Domain\obj\Debug\net9.0\IdentityApp.Domain.AssemblyInfo.cs
+d:\Duma\appointment-app\Identity\IdentityApp.Domain\obj\Debug\net9.0\IdentityApp.Domain.csproj.CoreCompileInputs.cache
+d:\Duma\appointment-app\Identity\IdentityApp.Domain\obj\Debug\net9.0\IdentityApp.Domain.sourcelink.json
+d:\Duma\appointment-app\Identity\IdentityApp.Domain\obj\Debug\net9.0\IdentityApp.Domain.dll
+d:\Duma\appointment-app\Identity\IdentityApp.Domain\obj\Debug\net9.0\refint\IdentityApp.Domain.dll
+d:\Duma\appointment-app\Identity\IdentityApp.Domain\obj\Debug\net9.0\IdentityApp.Domain.pdb
+d:\Duma\appointment-app\Identity\IdentityApp.Domain\obj\Debug\net9.0\ref\IdentityApp.Domain.dll

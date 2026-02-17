@@ -1,6 +1,8 @@
 using ChatApp.API.DTOs;
+using ChatApp.API.Hubs;
 using ChatApp.Domain.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
 
 namespace ChatApp.API.Endpoints;
@@ -40,18 +42,24 @@ public static class ChatEndpoints
 
     private static async Task<IResult> GetAllUsersAsync(
         IChatService chatService,
+        IFriendshipService friendshipService,
         HttpContext httpContext)
     {
-        var currentUserId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        
-        if (string.IsNullOrEmpty(currentUserId) || !Guid.TryParse(currentUserId, out var currentUserIdGuid))
+        var currentUserIdGuid = TryGetUserId(httpContext.User);
+
+        if (!currentUserIdGuid.HasValue)
         {
             return Results.Unauthorized();
         }
 
+        var friendIds = (await friendshipService.GetFriendIdsAsync(currentUserIdGuid.Value)).ToHashSet();
+        if (friendIds.Count == 0)
+        {
+            return Results.Ok(Array.Empty<object>());
+        }
+
         var users = await chatService.GetAllUsersAsync();
-        // Filter out the current user from the list
-        var filteredUsers = users.Where(u => u.Id != currentUserIdGuid);
+        var filteredUsers = users.Where(u => friendIds.Contains(u.Id));
         return Results.Ok(filteredUsers);
     }
 
@@ -60,7 +68,7 @@ public static class ChatEndpoints
         Guid id)
     {
         var user = await chatService.GetUserByIdAsync(id);
-        
+
         if (user == null)
         {
             return Results.NotFound();
@@ -76,32 +84,58 @@ public static class ChatEndpoints
         int page = 1,
         int pageSize = 50)
     {
-        var currentUserId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        
-        if (string.IsNullOrEmpty(currentUserId) || !Guid.TryParse(currentUserId, out var currentUserIdGuid))
+        var currentUserIdGuid = TryGetUserId(httpContext.User);
+
+        if (!currentUserIdGuid.HasValue)
         {
             return Results.Unauthorized();
         }
 
-        var messages = await chatService.GetMessagesBetweenUsersAsync(currentUserIdGuid, userId, page, pageSize);
+        var messages = await chatService.GetMessagesBetweenUsersAsync(currentUserIdGuid.Value, userId, page, pageSize);
         return Results.Ok(messages);
     }
 
     private static async Task<IResult> SendMessageAsync(
         IChatService chatService,
+        IFriendshipService friendshipService,
+        IHubContext<ChatHub> hubContext,
         HttpContext httpContext,
         [FromBody] SendMessageDto model)
     {
-        var currentUserId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var currentUserIdGuid = TryGetUserId(httpContext.User);
 
-        if (string.IsNullOrEmpty(currentUserId) || !Guid.TryParse(currentUserId, out var currentUserIdGuid))
+        if (!currentUserIdGuid.HasValue)
         {
             return Results.Unauthorized();
         }
 
+        // Check friendship before allowing message
+        var areFriends = await friendshipService.AreFriendsAsync(currentUserIdGuid.Value, model.ReceiverId);
+        if (!areFriends)
+        {
+            return Results.BadRequest(new { error = "You can only send messages to friends. Send a friend request first." });
+        }
+
         try
         {
-            var message = await chatService.SendMessageAsync(currentUserIdGuid, model.ReceiverId, model.Content);
+            var message = await chatService.SendMessageAsync(currentUserIdGuid.Value, model.ReceiverId, model.Content);
+
+            await hubContext.Clients.Group(model.ReceiverId.ToString()).SendAsync(
+                "ReceiveMessage",
+                message.SenderId.ToString(),
+                message.Content,
+                message.Id.ToString(),
+                message.CreatedAt.ToString("o")
+            );
+
+            await hubContext.Clients.Group(currentUserIdGuid.Value.ToString()).SendAsync(
+                "MessageSent",
+                message.ReceiverId.ToString(),
+                message.Content,
+                message.Id.ToString(),
+                message.CreatedAt.ToString("o")
+            );
+
             return Results.Ok(message);
         }
         catch (ArgumentException ex)
@@ -121,14 +155,14 @@ public static class ChatEndpoints
         HttpContext httpContext,
         int count = 20)
     {
-        var currentUserId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        
-        if (string.IsNullOrEmpty(currentUserId) || !Guid.TryParse(currentUserId, out var currentUserIdGuid))
+        var currentUserIdGuid = TryGetUserId(httpContext.User);
+
+        if (!currentUserIdGuid.HasValue)
         {
             return Results.Unauthorized();
         }
 
-        var messages = await chatService.GetUserRecentMessagesAsync(currentUserIdGuid, count);
+        var messages = await chatService.GetUserRecentMessagesAsync(currentUserIdGuid.Value, count);
         return Results.Ok(messages);
     }
 
@@ -137,16 +171,25 @@ public static class ChatEndpoints
         HttpContext httpContext,
         string? query = null)
     {
-        var currentUserId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        
-        if (string.IsNullOrEmpty(currentUserId) || !Guid.TryParse(currentUserId, out var currentUserIdGuid))
+        var currentUserIdGuid = TryGetUserId(httpContext.User);
+
+        if (!currentUserIdGuid.HasValue)
         {
             return Results.Unauthorized();
         }
 
         var users = await chatService.SearchUsersAsync(query ?? string.Empty);
         // Filter out the current user from search results
-        var filteredUsers = users.Where(u => u.Id != currentUserIdGuid);
+        var filteredUsers = users.Where(u => u.Id != currentUserIdGuid.Value);
         return Results.Ok(filteredUsers);
+    }
+
+    private static Guid? TryGetUserId(ClaimsPrincipal user)
+    {
+        var claimValue = user.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? user.FindFirstValue("sub")
+            ?? user.FindFirstValue("nameid");
+
+        return Guid.TryParse(claimValue, out var userId) ? userId : null;
     }
 }
