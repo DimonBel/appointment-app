@@ -1,13 +1,20 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { Calendar, Users, MessageCircle, User, Settings } from 'lucide-react'
+import { useSelector } from 'react-redux'
+import { Calendar, Users, MessageCircle, User, Settings, Stethoscope, Bell } from 'lucide-react'
 
 export const Sidebar = ({ activeItem, onNavigate }) => {
+  const user = useSelector((state) => state.auth.user)
+  const unreadCount = useSelector((state) => state.notifications?.unreadCount || 0)
+  const isProfessional = user?.roles?.includes('Professional') || false
+
   const navItems = [
     { id: 'bookings', label: 'My Bookings', Icon: Calendar, path: '/' },
     { id: 'doctors', label: 'Find Doctors', Icon: Users, path: '/doctors' },
     { id: 'chat', label: 'Messages', Icon: MessageCircle, path: '/chat' },
+    { id: 'notifications', label: 'Notifications', Icon: Bell, path: '/notifications', badge: unreadCount > 0 ? unreadCount : null },
     { id: 'profile', label: 'Profile', Icon: User, path: '/profile' },
+    ...(isProfessional ? [{ id: 'doctor-profile', label: 'Professional Profile', Icon: Stethoscope, path: '/doctor-profile' }] : []),
     { id: 'settings', label: 'Settings', Icon: Settings, path: '/settings' }
   ]
 
@@ -43,6 +50,11 @@ export const Sidebar = ({ activeItem, onNavigate }) => {
                 className={isActiveItem ? 'text-primary-dark' : 'text-gray-500'}
               />
               {item.label}
+              {item.badge && (
+                <span className="ml-auto bg-primary-accent text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                  {item.badge}
+                </span>
+              )}
             </Link>
           )
         })}

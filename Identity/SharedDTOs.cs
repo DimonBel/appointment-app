@@ -19,6 +19,9 @@ public record RegisterDto
     public string? FirstName { get; init; }
     public string? LastName { get; init; }
     public string? PhoneNumber { get; init; }
+
+    [Required]
+    public string Role { get; init; } = "User";
 }
 
 public record LoginDto

@@ -59,8 +59,8 @@ namespace IdentityApp.Postgres.Migrations
                         new
                         {
                             Id = new Guid("11111111-1111-1111-1111-111111111111"),
-                            ConcurrencyStamp = "4f696a87-2fb7-44de-a420-2efaa38ce44c",
-                            CreatedAt = new DateTime(2026, 2, 14, 14, 58, 12, 367, DateTimeKind.Utc).AddTicks(6881),
+                            ConcurrencyStamp = "2dc0e479-2751-4b5e-8cd4-fc2113d61301",
+                            CreatedAt = new DateTime(2026, 2, 16, 13, 30, 3, 587, DateTimeKind.Utc).AddTicks(9711),
                             Description = "Administrator role with full access",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
@@ -68,8 +68,8 @@ namespace IdentityApp.Postgres.Migrations
                         new
                         {
                             Id = new Guid("22222222-2222-2222-2222-222222222222"),
-                            ConcurrencyStamp = "c78d1277-9c95-4da0-a518-1d494204223f",
-                            CreatedAt = new DateTime(2026, 2, 14, 14, 58, 12, 368, DateTimeKind.Utc).AddTicks(5729),
+                            ConcurrencyStamp = "d3e80a47-5dd0-4a50-baf8-118fd8ee44f7",
+                            CreatedAt = new DateTime(2026, 2, 16, 13, 30, 3, 588, DateTimeKind.Utc).AddTicks(9166),
                             Description = "Regular user role",
                             Name = "User",
                             NormalizedName = "USER"
@@ -77,8 +77,8 @@ namespace IdentityApp.Postgres.Migrations
                         new
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333333"),
-                            ConcurrencyStamp = "4687feb8-2733-4550-82ec-e2345ee77fc6",
-                            CreatedAt = new DateTime(2026, 2, 14, 14, 58, 12, 368, DateTimeKind.Utc).AddTicks(5762),
+                            ConcurrencyStamp = "c2963b40-13ba-4d2c-9140-61b4ee0a2b66",
+                            CreatedAt = new DateTime(2026, 2, 16, 13, 30, 3, 588, DateTimeKind.Utc).AddTicks(9310),
                             Description = "Professional service provider role",
                             Name = "Professional",
                             NormalizedName = "PROFESSIONAL"
@@ -178,6 +178,78 @@ namespace IdentityApp.Postgres.Migrations
                         .IsUnique();
 
                     b.ToTable("AspNetUsers", (string)null);
+                });
+
+            modelBuilder.Entity("IdentityApp.Domain.Entity.DoctorProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Bio")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal?>("ConsultationFee")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsAvailableForAppointments")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Languages")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Qualifications")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Services")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Specialty")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("WorkingHours")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("YearsOfExperience")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("City");
+
+                    b.HasIndex("Specialty");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("DoctorProfiles");
                 });
 
             modelBuilder.Entity("IdentityApp.Domain.Entity.RefreshToken", b =>
@@ -324,6 +396,17 @@ namespace IdentityApp.Postgres.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("IdentityApp.Domain.Entity.DoctorProfile", b =>
+                {
+                    b.HasOne("IdentityApp.Domain.Entity.AppIdentityUser", "User")
+                        .WithOne()
+                        .HasForeignKey("IdentityApp.Domain.Entity.DoctorProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("IdentityApp.Domain.Entity.RefreshToken", b =>

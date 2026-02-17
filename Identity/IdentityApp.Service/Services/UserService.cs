@@ -55,10 +55,50 @@ public class UserService : IUserService
         return userDtos;
     }
 
+    public async Task<IEnumerable<UserDto>> SearchUsersAsync(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return await GetAllUsersAsync();
+        }
+
+        var lowerQuery = query.ToLowerInvariant();
+        var users = _userManager.Users
+            .Where(u =>
+                (u.Email != null && u.Email.ToLower().Contains(lowerQuery)) ||
+                (u.UserName != null && u.UserName.ToLower().Contains(lowerQuery)) ||
+                (u.FirstName != null && u.FirstName.ToLower().Contains(lowerQuery)) ||
+                (u.LastName != null && u.LastName.ToLower().Contains(lowerQuery)))
+            .ToList();
+
+        var userDtos = new List<UserDto>();
+        foreach (var user in users)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+            userDtos.Add(MapToUserDto(user, roles.ToList()));
+        }
+
+        return userDtos;
+    }
+
     public async Task<bool> UpdateUserAsync(Guid userId, UserDto userDto)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
         if (user == null) return false;
+
+        if (!string.IsNullOrWhiteSpace(userDto.UserName) &&
+            !string.Equals(user.UserName, userDto.UserName, StringComparison.Ordinal))
+        {
+            var setUserNameResult = await _userManager.SetUserNameAsync(user, userDto.UserName);
+            if (!setUserNameResult.Succeeded) return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(userDto.Email) &&
+            !string.Equals(user.Email, userDto.Email, StringComparison.OrdinalIgnoreCase))
+        {
+            var setEmailResult = await _userManager.SetEmailAsync(user, userDto.Email);
+            if (!setEmailResult.Succeeded) return false;
+        }
 
         user.FirstName = userDto.FirstName;
         user.LastName = userDto.LastName;

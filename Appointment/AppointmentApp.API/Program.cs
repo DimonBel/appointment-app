@@ -48,6 +48,14 @@ builder.Services.AddHttpClient<IIdentityServiceClient, IdentityServiceClient>(cl
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
+// Add HttpClient for Notification Service
+builder.Services.AddHttpClient("NotificationService", client =>
+{
+    var baseUrl = builder.Configuration["NotificationService:BaseUrl"] ?? "http://localhost:5003";
+    client.BaseAddress = new Uri(baseUrl);
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+
 // Configure Authentication with JWT (validate tokens from Identity Service)
 builder.Services.AddAuthentication(options =>
 {
@@ -135,6 +143,7 @@ app.MapOrderEndpoints();
 app.MapProfessionalEndpoints();
 app.MapAvailabilityEndpoints();
 app.MapDomainConfigurationEndpoints();
+app.MapPreOrderDataEndpoints();
 
 // Map SignalR Hub for real-time order notifications
 app.MapHub<OrderHub>("/orderhub");

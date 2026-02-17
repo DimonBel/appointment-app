@@ -2,6 +2,7 @@ using AppointmentApp.Domain.Entity;
 using AppointmentApp.Domain.Enums;
 using AppointmentApp.Domain.Interfaces;
 using AppointmentApp.Repository.Interfaces;
+using Microsoft.AspNetCore.Identity;
 
 namespace AppointmentApp.Service.Services;
 
@@ -10,19 +11,44 @@ public class OrderService : IOrderService
     private readonly IOrderRepository _orderRepository;
     private readonly IProfessionalRepository _professionalRepository;
     private readonly IAvailabilitySlotRepository _availabilitySlotRepository;
+    private readonly UserManager<AppIdentityUser> _userManager;
 
     public OrderService(
         IOrderRepository orderRepository,
         IProfessionalRepository professionalRepository,
-        IAvailabilitySlotRepository availabilitySlotRepository)
+        IAvailabilitySlotRepository availabilitySlotRepository,
+        UserManager<AppIdentityUser> userManager)
     {
         _orderRepository = orderRepository;
         _professionalRepository = professionalRepository;
         _availabilitySlotRepository = availabilitySlotRepository;
+        _userManager = userManager;
     }
 
     public async Task<Order> CreateOrderAsync(Guid clientId, Guid professionalId, DateTime scheduledDateTime, int durationMinutes, string? title = null, string? description = null, Guid? domainConfigurationId = null)
     {
+        var existingClient = await _userManager.FindByIdAsync(clientId.ToString());
+        if (existingClient == null)
+        {
+            var shadowClient = new AppIdentityUser
+            {
+                Id = clientId,
+                UserName = $"client_{clientId:N}",
+                Email = $"client_{clientId:N}@shadow.local",
+                FirstName = "Client",
+                LastName = "User",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var createResult = await _userManager.CreateAsync(shadowClient);
+            if (!createResult.Succeeded)
+            {
+                var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"Failed to create local appointment client: {errors}");
+            }
+        }
+
         var professional = await _professionalRepository.GetByIdAsync(professionalId);
         if (professional == null)
         {
@@ -59,7 +85,7 @@ public class OrderService : IOrderService
         };
 
         await _orderRepository.CreateAsync(order);
-        
+
         // Reload with navigation properties populated
         return await _orderRepository.GetByIdAsync(order.Id) ?? order;
     }

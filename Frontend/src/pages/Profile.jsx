@@ -1,25 +1,32 @@
 import React, { useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 import { MainContent, SectionHeader } from '../components/layout/MainContent'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Avatar } from '../components/ui/Avatar'
 import { updateUser } from '../store/slices/authSlice'
+import { userService } from '../services/userService'
 import { User, Mail, Phone, MapPin, Calendar } from 'lucide-react'
 
 export const Profile = () => {
   const user = useSelector((state) => state.auth.user)
+  const token = useSelector((state) => state.auth.token)
   const dispatch = useDispatch()
+  const navigate = useNavigate()
   
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
+    userName: user?.userName || '',
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     email: user?.email || '',
-    phone: user?.phone || '',
+    phoneNumber: user?.phoneNumber || '',
     address: user?.address || '',
   })
+
+  const [isSaving, setIsSaving] = useState(false)
 
   const handleChange = (e) => {
     setFormData({
@@ -28,18 +35,45 @@ export const Profile = () => {
     })
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    dispatch(updateUser(formData))
-    setIsEditing(false)
+    if (!user?.id || !token) return
+
+    try {
+      setIsSaving(true)
+
+      const userToUpdate = {
+        ...user,
+        userName: formData.userName,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phoneNumber: formData.phoneNumber,
+      }
+
+      const savedUser = await userService.updateUser(userToUpdate, token)
+
+      dispatch(
+        updateUser({
+          ...savedUser,
+          address: formData.address,
+        })
+      )
+
+      window.dispatchEvent(new CustomEvent('profile-updated'))
+      setIsEditing(false)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleCancel = () => {
     setFormData({
+      userName: user?.userName || '',
       firstName: user?.firstName || '',
       lastName: user?.lastName || '',
       email: user?.email || '',
-      phone: user?.phone || '',
+      phoneNumber: user?.phoneNumber || '',
       address: user?.address || '',
     })
     setIsEditing(false)
@@ -51,11 +85,16 @@ export const Profile = () => {
         title="Profile"
         subtitle="Manage your personal information"
         action={
-          !isEditing && (
-            <Button onClick={() => setIsEditing(true)} variant="primary">
-              Edit Profile
+          <div className="flex gap-2">
+            <Button onClick={() => navigate('/')} variant="outline">
+              Home
             </Button>
-          )
+            {!isEditing && (
+              <Button onClick={() => setIsEditing(true)} variant="primary">
+                Edit Profile
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -93,6 +132,14 @@ export const Profile = () => {
           <CardContent>
             {isEditing ? (
               <form onSubmit={handleSubmit} className="space-y-4">
+                <Input
+                  label="Nickname"
+                  name="userName"
+                  value={formData.userName}
+                  onChange={handleChange}
+                  icon={<User size={18} />}
+                />
+
                 <div className="grid grid-cols-2 gap-4">
                   <Input
                     label="First Name"
@@ -121,8 +168,8 @@ export const Profile = () => {
 
                 <Input
                   label="Phone"
-                  name="phone"
-                  value={formData.phone}
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
                   onChange={handleChange}
                   icon={<Phone size={18} />}
                 />
@@ -136,8 +183,8 @@ export const Profile = () => {
                 />
 
                 <div className="flex gap-2 pt-4">
-                  <Button type="submit" variant="primary">
-                    Save Changes
+                  <Button type="submit" variant="primary" disabled={isSaving}>
+                    {isSaving ? 'Saving...' : 'Save Changes'}
                   </Button>
                   <Button type="button" variant="outline" onClick={handleCancel}>
                     Cancel
@@ -146,6 +193,11 @@ export const Profile = () => {
               </form>
             ) : (
               <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-text-secondary">Nickname</label>
+                  <p className="mt-1 text-text-primary">{user?.userName || 'Not provided'}</p>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-text-secondary">First Name</label>
@@ -164,7 +216,7 @@ export const Profile = () => {
 
                 <div>
                   <label className="text-sm font-medium text-text-secondary">Phone</label>
-                  <p className="mt-1 text-text-primary">{user?.phone || 'Not provided'}</p>
+                  <p className="mt-1 text-text-primary">{user?.phoneNumber || 'Not provided'}</p>
                 </div>
 
                 <div>

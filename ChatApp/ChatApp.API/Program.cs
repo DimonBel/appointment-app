@@ -49,6 +49,14 @@ builder.Services.AddHttpClient<IIdentityServiceClient, IdentityServiceClient>(cl
     client.DefaultRequestHeaders.Add("Accept", "application/json");
 });
 
+// Register HttpClient for Notification Service
+builder.Services.AddHttpClient("NotificationService", client =>
+{
+    var notificationServiceUrl = builder.Configuration["NotificationService:BaseUrl"] ?? "http://localhost:5003";
+    client.BaseAddress = new Uri(notificationServiceUrl);
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+
 // Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured.");
@@ -101,10 +109,12 @@ builder.Services.AddSignalR();
 // Register Service Layer
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IFriendshipService, FriendshipService>();
 
 // Register Repository Layer
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IChatMessageRepository, ChatMessageRepository>();
+builder.Services.AddScoped<IFriendshipRepository, FriendshipRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Add CORS
@@ -143,6 +153,7 @@ app.UseAuthorization();
 // Map minimal API endpoints
 app.MapAuthEndpoints();
 app.MapChatEndpoints();
+app.MapFriendshipEndpoints();
 
 // Map SignalR Hub for real-time WebSocket communication
 app.MapHub<ChatHub>("/chathub");

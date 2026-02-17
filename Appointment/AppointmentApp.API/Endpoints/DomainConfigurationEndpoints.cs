@@ -11,7 +11,7 @@ public static class DomainConfigurationEndpoints
     {
         var group = app.MapGroup("/api/domain-configurations")
             .WithTags("DomainConfigurations");
-            // .RequireAuthorization(); // Temporarily disabled for testing
+        // .RequireAuthorization(); // Temporarily disabled for testing
 
         // Create domain configuration
         group.MapPost("/", async (
@@ -27,6 +27,12 @@ public static class DomainConfigurationEndpoints
             if (dto.RequiredFields != null)
             {
                 config.RequiredFields = dto.RequiredFields;
+                // Save the RequiredFields update back to database
+                config = await domainConfigurationService.UpdateDomainConfigurationAsync(
+                    config.Id,
+                    config.Name,
+                    config.Description,
+                    config.DefaultDurationMinutes);
             }
 
             return Results.Created($"/api/domain-configurations/{config.Id}", config);

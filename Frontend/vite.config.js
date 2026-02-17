@@ -23,6 +23,15 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/chat/, '/api')
       },
+      '/api/friends': {
+        target: 'http://localhost:5002',
+        changeOrigin: true,
+      },
+      '/api/notification': {
+        target: 'http://localhost:5003',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/notification/, '/api')
+      },
       '/api/auth': {
         target: 'http://localhost:5005',
         changeOrigin: true,
@@ -36,6 +45,15 @@ export default defineConfig({
         target: 'http://localhost:5001',
         changeOrigin: true,
         ws: true
+      },
+      '/notificationhub': {
+        target: 'http://localhost:5003',
+        changeOrigin: true,
+        ws: true
+      },
+      '/api/roles': {
+        target: 'http://localhost:5005',
+        changeOrigin: true,
       }
     }
   }

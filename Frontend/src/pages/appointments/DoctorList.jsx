@@ -6,25 +6,32 @@ import { Button } from '../../components/ui/Button'
 import { Avatar } from '../../components/ui/Avatar'
 import { Input } from '../../components/ui/Input'
 import { Loader } from '../../components/ui/Loader'
+import { BookingModal } from '../../components/booking/BookingModal'
+import { doctorProfileService } from '../../services/doctorProfileService'
 import { appointmentService } from '../../services/appointmentService'
-import { Search, Star, MapPin, Calendar } from 'lucide-react'
+import { Search, Star, MapPin, Calendar, Briefcase, DollarSign } from 'lucide-react'
 
 export const DoctorList = () => {
   const [doctors, setDoctors] = useState([])
   const [loading, setLoading] = useState(true)
+  const [bookingLoading, setBookingLoading] = useState(false)
+  const [selectedDoctor, setSelectedDoctor] = useState(null)
+  const [bookingModalOpen, setBookingModalOpen] = useState(false)
+  const [bookingMessage, setBookingMessage] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSpecialty, setSelectedSpecialty] = useState('all')
   const token = useSelector((state) => state.auth.token)
 
   useEffect(() => {
     fetchDoctors()
-  }, [token])
+  }, [])
 
   const fetchDoctors = async () => {
     setLoading(true)
     try {
-      const data = await appointmentService.getProfessionals(token)
-      setDoctors(data)
+      const data = await doctorProfileService.getAllProfiles()
+      const doctorArray = Array.isArray(data) ? data : []
+      setDoctors(doctorArray)
     } catch (error) {
       console.error('Error fetching doctors:', error)
       setDoctors([])
@@ -33,21 +40,87 @@ export const DoctorList = () => {
     }
   }
 
+  // Extract unique specialties from doctors - ensure doctors is array
   const specialties = [
     { value: 'all', label: 'All Specialties' },
-    { value: 'cardiology', label: 'Cardiology' },
-    { value: 'dermatology', label: 'Dermatology' },
-    { value: 'neurology', label: 'Neurology' },
-    { value: 'orthopedics', label: 'Orthopedics' },
-    { value: 'pediatrics', label: 'Pediatrics' },
+    ...(Array.isArray(doctors) ? 
+      Array.from(new Set(doctors.map(d => d.specialty).filter(Boolean)))
+        .map(specialty => ({ value: specialty, label: specialty })) : 
+      [])
   ]
 
-  const filteredDoctors = doctors.filter(doctor => {
-    const matchesSearch = doctor.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         doctor.specialty?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredDoctors = Array.isArray(doctors) ? doctors.filter(doctor => {
+    const fullName = doctor.user?.firstName && doctor.user?.lastName
+      ? `${doctor.user.firstName} ${doctor.user.lastName}`.toLowerCase()
+      : (doctor.user?.userName || '').toLowerCase()
+    
+    const matchesSearch = 
+      fullName.includes(searchQuery.toLowerCase()) ||
+      (doctor.specialty?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (doctor.city?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+    
     const matchesSpecialty = selectedSpecialty === 'all' || doctor.specialty === selectedSpecialty
+    
     return matchesSearch && matchesSpecialty
-  })
+  }) : []
+
+  const openBookingModal = (doctor) => {
+    if (!token) {
+      alert('Please login to book an appointment')
+      return
+    }
+    setBookingMessage('')
+    setSelectedDoctor(doctor)
+    setBookingModalOpen(true)
+  }
+
+  const closeBookingModal = () => {
+    setBookingModalOpen(false)
+    setSelectedDoctor(null)
+  }
+
+  const handleConfirmBooking = async ({ scheduledDateTime, durationMinutes, notes }) => {
+    if (!selectedDoctor || !selectedDoctor.user?.id) {
+      alert('Doctor data is incomplete')
+      return
+    }
+
+    try {
+      setBookingLoading(true)
+
+      let professional = await appointmentService.getProfessionalByUserId(selectedDoctor.user.id, token)
+
+      if (!professional) {
+        professional = await appointmentService.createProfessional({
+          userId: selectedDoctor.user.id,
+          title: 'Dr.',
+          qualifications: selectedDoctor.qualifications || null,
+          specialization: selectedDoctor.specialty || 'General',
+        }, token)
+      }
+
+      const doctorName = selectedDoctor.user?.firstName && selectedDoctor.user?.lastName
+        ? `${selectedDoctor.user.firstName} ${selectedDoctor.user.lastName}`
+        : selectedDoctor.user?.userName || 'Doctor'
+
+      await appointmentService.createOrder({
+        professionalId: professional.id,
+        scheduledDateTime,
+        durationMinutes,
+        title: `Appointment with Dr. ${doctorName}`,
+        description: notes || `Consultation: ${selectedDoctor.specialty || 'General'}`,
+        domainConfigurationId: null,
+      }, token)
+
+      setBookingMessage('Appointment created successfully!')
+      closeBookingModal()
+    } catch (error) {
+      console.error('Error creating appointment:', error)
+      alert(error.response?.data?.message || error.response?.data?.error || 'Failed to create appointment')
+    } finally {
+      setBookingLoading(false)
+    }
+  }
 
   return (
     <MainContent>
@@ -55,6 +128,12 @@ export const DoctorList = () => {
         title="Find Doctors"
         subtitle="Search and book appointments with healthcare professionals"
       />
+
+      {bookingMessage && (
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
+          {bookingMessage}
+        </div>
+      )}
 
       {/* Search and Filter */}
       <Card className="mb-6">
@@ -97,44 +176,94 @@ export const DoctorList = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredDoctors.map((doctor) => (
-            <Card key={doctor.id} hover>
-              <CardContent className="p-6">
-                <div className="flex gap-4">
-                  <Avatar 
-                    src={doctor.avatar}
-                    alt={doctor.name}
-                    size={64}
-                  />
-                  
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-text-primary text-lg mb-1">
-                      {doctor.name}
-                    </h3>
-                    <p className="text-text-secondary text-sm mb-2">{doctor.specialty}</p>
+          {filteredDoctors.map((doctor) => {
+            const doctorName = doctor.user?.firstName && doctor.user?.lastName
+              ? `${doctor.user.firstName} ${doctor.user.lastName}`
+              : doctor.user?.userName || 'Doctor'
+            
+            return (
+              <Card key={doctor.id} hover>
+                <CardContent className="p-6">
+                  <div className="flex gap-4">
+                    <Avatar 
+                      src={doctor.user?.avatarUrl}
+                      alt={doctorName}
+                      size={64}
+                    />
                     
-                    <div className="flex items-center gap-4 text-sm text-text-muted mb-3">
-                      <div className="flex items-center gap-1">
-                        <Star size={14} className="text-yellow-500 fill-yellow-500" />
-                        <span>{doctor.rating || '4.8'}</span>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-text-primary text-lg mb-1">
+                        Dr. {doctorName}
+                      </h3>
+                      <p className="text-text-secondary text-sm mb-2">{doctor.specialty}</p>
+                      
+                      {doctor.bio && (
+                        <p className="text-sm text-text-muted mb-3 line-clamp-2">
+                          {doctor.bio}
+                        </p>
+                      )}
+                      
+                      <div className="flex flex-wrap gap-3 text-sm text-text-muted mb-3">
+                        {doctor.yearsOfExperience > 0 && (
+                          <div className="flex items-center gap-1">
+                            <Briefcase size={14} />
+                            <span>{doctor.yearsOfExperience} years exp.</span>
+                          </div>
+                        )}
+                        {doctor.city && (
+                          <div className="flex items-center gap-1">
+                            <MapPin size={14} />
+                            <span>{doctor.city}</span>
+                          </div>
+                        )}
+                        {doctor.consultationFee && (
+                          <div className="flex items-center gap-1">
+                            <DollarSign size={14} />
+                            <span>${doctor.consultationFee}</span>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1">
-                        <MapPin size={14} />
-                        <span>{doctor.location || 'City Hospital'}</span>
-                      </div>
+
+                      {doctor.services && doctor.services.length > 0 && (
+                        <div className="mb-3">
+                          <div className="flex flex-wrap gap-1">
+                            {doctor.services.slice(0, 3).map((service, index) => (
+                              <span
+                                key={index}
+                                className="px-2 py-1 bg-primary-accent/10 text-primary-accent rounded text-xs"
+                              >
+                                {service}
+                              </span>
+                            ))}
+                            {doctor.services.length > 3 && (
+                              <span className="px-2 py-1 text-text-muted rounded text-xs">
+                                +{doctor.services.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <Button size="sm" variant="primary" className="w-full" onClick={() => openBookingModal(doctor)}>
+                        <Calendar size={16} className="mr-2" />
+                        Book Appointment
+                      </Button>
                     </div>
-                    
-                    <Button size="sm" variant="primary" className="w-full">
-                      <Calendar size={16} className="mr-2" />
-                      Book Appointment
-                    </Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
+
+      <BookingModal
+        isOpen={bookingModalOpen}
+        doctor={selectedDoctor}
+        loading={bookingLoading}
+        onClose={closeBookingModal}
+        onConfirm={handleConfirmBooking}
+      />
     </MainContent>
   )
 }

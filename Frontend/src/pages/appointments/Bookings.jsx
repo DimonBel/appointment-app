@@ -13,6 +13,7 @@ export const Bookings = () => {
   const [activeTab, setActiveTab] = useState('upcoming')
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
+  const [actionLoadingId, setActionLoadingId] = useState(null)
   const token = useSelector((state) => state.auth.token)
 
   useEffect(() => {
@@ -23,17 +24,120 @@ export const Bookings = () => {
     setLoading(true)
     try {
       const data = await appointmentService.getOrders(token)
-      // Filter based on active tab
-      const filtered = data.filter(apt => {
-        if (activeTab === 'upcoming') return ['pending', 'confirmed'].includes(apt.status)
-        return apt.status === activeTab
+      const allOrders = Array.isArray(data) ? data : []
+
+      const statusToUi = (status) => {
+        switch (status) {
+          case 0:
+            return 'pending'
+          case 1:
+            return 'confirmed'
+          case 3:
+            return 'cancelled'
+          case 4:
+            return 'completed'
+          default:
+            return 'pending'
+        }
+      }
+
+      const mapped = allOrders.map((order) => {
+        const professionalName = order.professional
+          ? `${order.professional.firstName || ''} ${order.professional.lastName || ''}`.trim()
+          : order.professionalId
+            ? `Doctor ${String(order.professionalId).slice(0, 8)}`
+            : 'Doctor'
+
+        const scheduled = order.scheduledDateTime ? new Date(order.scheduledDateTime) : null
+
+        return {
+          id: order.id,
+          orderStatus: order.status,
+          doctorName: professionalName || 'Doctor',
+          specialty: order.title || 'General Consultation',
+          location: order.description || 'To be confirmed',
+          date: scheduled ? scheduled.toLocaleDateString() : '-',
+          time: scheduled ? scheduled.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
+          status: statusToUi(order.status),
+        }
       })
+
+      const filtered = mapped.filter((apt) => {
+        if (activeTab === 'upcoming') {
+          return apt.orderStatus === 0 || apt.orderStatus === 1
+        }
+        if (activeTab === 'completed') {
+          return apt.orderStatus === 4
+        }
+        return apt.orderStatus === 3
+      })
+
       setAppointments(filtered)
     } catch (error) {
       console.error('Error fetching appointments:', error)
       setAppointments([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleCancel = async (appointment) => {
+    if (!appointment?.id) return
+    if (!window.confirm('Cancel this appointment?')) return
+
+    try {
+      setActionLoadingId(appointment.id)
+      await appointmentService.cancelOrder(appointment.id, token)
+      await fetchAppointments()
+    } catch (error) {
+      console.error('Error cancelling appointment:', error)
+      alert(error.response?.data?.message || 'Failed to cancel appointment')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleReschedule = async (appointment) => {
+    if (!appointment?.id) return
+
+    const dateInput = window.prompt('Enter new date and time (YYYY-MM-DDTHH:mm), e.g. 2026-02-20T14:30')
+    if (!dateInput) return
+
+    const parsed = new Date(dateInput)
+    if (Number.isNaN(parsed.getTime())) {
+      alert('Invalid date format')
+      return
+    }
+
+    const notes = window.prompt('Reschedule note (optional)') || ''
+
+    try {
+      setActionLoadingId(appointment.id)
+      await appointmentService.rescheduleOrder(appointment.id, parsed.toISOString(), notes, token)
+      await fetchAppointments()
+    } catch (error) {
+      console.error('Error rescheduling appointment:', error)
+      alert(error.response?.data?.message || 'Failed to reschedule appointment')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleComplete = async (appointment) => {
+    if (!appointment?.id) return
+    if (!window.confirm('Mark this appointment as completed?')) return
+
+    const notes = window.prompt('Completion note (optional)') || ''
+
+    try {
+      setActionLoadingId(appointment.id)
+      await appointmentService.completeOrder(appointment.id, notes, token)
+      await fetchAppointments()
+    } catch (error) {
+      console.error('Error completing appointment:', error)
+      alert(error.response?.data?.message || 'Failed to complete appointment')
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
@@ -118,15 +222,15 @@ export const Bookings = () => {
 
                   {activeTab === 'upcoming' && (
                     <div className="flex gap-2 mt-4">
-                      <Button size="sm" variant="primary">
+                      <Button size="sm" variant="primary" onClick={() => handleReschedule(appointment)} disabled={actionLoadingId === appointment.id}>
                         Reschedule
                       </Button>
-                      <Button size="sm" variant="outline">
+                      <Button size="sm" variant="outline" onClick={() => handleCancel(appointment)} disabled={actionLoadingId === appointment.id}>
                         Cancel
                       </Button>
-                      <Button size="sm" variant="ghost">
+                      <Button size="sm" variant="ghost" onClick={() => handleComplete(appointment)} disabled={actionLoadingId === appointment.id}>
                         <Phone size={16} className="mr-1" />
-                        Contact
+                        Complete
                       </Button>
                     </div>
                   )}

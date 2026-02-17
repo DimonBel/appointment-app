@@ -11,12 +11,18 @@ import { DoctorList } from './pages/appointments/DoctorList'
 import { Chat } from './pages/chat/Chat'
 import { Profile } from './pages/Profile'
 import { Settings } from './pages/Settings'
+import { DoctorProfile } from './pages/DoctorProfile'
+import { Notifications } from './pages/notifications/Notifications'
+import { useNotificationHub } from './hooks/useNotificationHub'
 import './App.css'
 
 function App() {
   const [activeItem, setActiveItem] = useState('bookings')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated)
+
+  // Connect to NotificationHub for real-time notifications
+  useNotificationHub()
 
   const handleNavigate = (itemId) => {
     setActiveItem(itemId)
@@ -58,6 +64,8 @@ function App() {
                 <Route path="/doctors" element={<DoctorList />} />
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/doctor-profile" element={<DoctorProfile />} />
+                <Route path="/notifications" element={<Notifications />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

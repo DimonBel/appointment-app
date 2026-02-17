@@ -11,3 +11,16 @@
 /home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Domain/obj/Debug/net9.0/refint/AppointmentApp.Domain.dll
 /home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Domain/obj/Debug/net9.0/AppointmentApp.Domain.pdb
 /home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Domain/obj/Debug/net9.0/ref/AppointmentApp.Domain.dll
+d:\Duma\appointment-app\Appointment\AppointmentApp.Domain\bin\Debug\net9.0\AppointmentApp.Domain.deps.json
+d:\Duma\appointment-app\Appointment\AppointmentApp.Domain\bin\Debug\net9.0\AppointmentApp.Domain.dll
+d:\Duma\appointment-app\Appointment\AppointmentApp.Domain\bin\Debug\net9.0\AppointmentApp.Domain.pdb
+d:\Duma\appointment-app\Appointment\AppointmentApp.Domain\obj\Debug\net9.0\AppointmentApp.Domain.csproj.AssemblyReference.cache
+d:\Duma\appointment-app\Appointment\AppointmentApp.Domain\obj\Debug\net9.0\AppointmentApp.Domain.GeneratedMSBuildEditorConfig.editorconfig
+d:\Duma\appointment-app\Appointment\AppointmentApp.Domain\obj\Debug\net9.0\AppointmentApp.Domain.AssemblyInfoInputs.cache
+d:\Duma\appointment-app\Appointment\AppointmentApp.Domain\obj\Debug\net9.0\AppointmentApp.Domain.AssemblyInfo.cs
+d:\Duma\appointment-app\Appointment\AppointmentApp.Domain\obj\Debug\net9.0\AppointmentApp.Domain.csproj.CoreCompileInputs.cache
+d:\Duma\appointment-app\Appointment\AppointmentApp.Domain\obj\Debug\net9.0\AppointmentApp.Domain.sourcelink.json
+d:\Duma\appointment-app\Appointment\AppointmentApp.Domain\obj\Debug\net9.0\AppointmentApp.Domain.dll
+d:\Duma\appointment-app\Appointment\AppointmentApp.Domain\obj\Debug\net9.0\refint\AppointmentApp.Domain.dll
+d:\Duma\appointment-app\Appointment\AppointmentApp.Domain\obj\Debug\net9.0\AppointmentApp.Domain.pdb
+d:\Duma\appointment-app\Appointment\AppointmentApp.Domain\obj\Debug\net9.0\ref\AppointmentApp.Domain.dll

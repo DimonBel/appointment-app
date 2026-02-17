@@ -1,19 +1,25 @@
 import React, { useState } from 'react'
-import { useDispatch } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
 import { MainContent, SectionHeader } from '../components/layout/MainContent'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { setTheme } from '../store/slices/uiSlice'
-import { Bell, Lock, Shield, Moon, Sun, Globe } from 'lucide-react'
+import { Bell, Lock, Shield, Moon, Sun, Globe, Check, AlertCircle } from 'lucide-react'
+import axios from 'axios'
 
 export const Settings = () => {
   const dispatch = useDispatch()
+  const token = useSelector((state) => state.auth.token)
   const [notifications, setNotifications] = useState({
     email: true,
     push: true,
     sms: false,
   })
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [passwordMessage, setPasswordMessage] = useState(null)
+  const [passwordLoading, setPasswordLoading] = useState(false)
 
   const handleThemeChange = (theme) => {
     dispatch(setTheme(theme))
@@ -111,10 +117,74 @@ export const Settings = () => {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button variant="outline" className="w-full justify-start">
-              <Lock size={18} className="mr-2" />
-              Change Password
-            </Button>
+            {!showPasswordForm ? (
+              <Button variant="outline" className="w-full justify-start" onClick={() => setShowPasswordForm(true)}>
+                <Lock size={18} className="mr-2" />
+                Change Password
+              </Button>
+            ) : (
+              <div className="space-y-3">
+                <Input
+                  type="password"
+                  placeholder="Current Password"
+                  value={passwordData.currentPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                />
+                <Input
+                  type="password"
+                  placeholder="New Password (min 6 characters)"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                />
+                <Input
+                  type="password"
+                  placeholder="Confirm New Password"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                />
+                {passwordMessage && (
+                  <div className={`flex items-center gap-2 text-sm ${passwordMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                    {passwordMessage.type === 'success' ? <Check size={14} /> : <AlertCircle size={14} />}
+                    {passwordMessage.text}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    disabled={passwordLoading}
+                    onClick={async () => {
+                      if (passwordData.newPassword !== passwordData.confirmPassword) {
+                        setPasswordMessage({ type: 'error', text: 'Passwords do not match' })
+                        return
+                      }
+                      if (passwordData.newPassword.length < 6) {
+                        setPasswordMessage({ type: 'error', text: 'Password must be at least 6 characters' })
+                        return
+                      }
+                      setPasswordLoading(true)
+                      setPasswordMessage(null)
+                      try {
+                        await axios.post('/api/auth/change-password', {
+                          currentPassword: passwordData.currentPassword,
+                          newPassword: passwordData.newPassword,
+                        }, { headers: { Authorization: `Bearer ${token}` } })
+                        setPasswordMessage({ type: 'success', text: 'Password changed successfully' })
+                        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+                        setTimeout(() => setShowPasswordForm(false), 2000)
+                      } catch (err) {
+                        setPasswordMessage({ type: 'error', text: err.response?.data?.message || 'Failed to change password' })
+                      } finally {
+                        setPasswordLoading(false)
+                      }
+                    }}
+                  >
+                    {passwordLoading ? 'Saving...' : 'Save Password'}
+                  </Button>
+                  <Button variant="outline" onClick={() => { setShowPasswordForm(false); setPasswordMessage(null) }}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
             <Button variant="outline" className="w-full justify-start">
               <Shield size={18} className="mr-2" />
               Two-Factor Authentication

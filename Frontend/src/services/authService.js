@@ -11,9 +11,10 @@ class AuthService {
     return response.data
   }
 
-  async register(email, password, firstName, lastName) {
-    // Generate username from email (part before @)
-    const userName = email.split('@')[0]
+  async register(email, password, firstName, lastName, role = 'User') {
+    // Generate username from email and ensure backend min length (3)
+    const emailPrefix = (email.split('@')[0] || '').replace(/[^a-zA-Z0-9._-]/g, '')
+    const userName = emailPrefix.length >= 3 ? emailPrefix : `user${Math.random().toString(36).slice(2, 8)}`
     
     const response = await axios.post(`${API_URL}/register`, {
       email,
@@ -21,12 +22,16 @@ class AuthService {
       userName,
       firstName,
       lastName,
+      role,
     })
     return response.data
   }
 
   async refreshToken(refreshToken) {
+    const accessToken = localStorage.getItem('token') || ''
+
     const response = await axios.post(`${API_URL}/refresh`, {
+      accessToken,
       refreshToken,
     })
     return response.data

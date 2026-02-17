@@ -31,7 +31,7 @@ public class ChatMessageRepository : IChatMessageRepository
         // Load users in batch to prevent N+1 queries
         var userIds = new[] { message.SenderId, message.ReceiverId };
         var users = await GetUsersByIdsAsync(userIds);
-        
+
         var sender = users.FirstOrDefault(u => u.Id == message.SenderId);
         var receiver = users.FirstOrDefault(u => u.Id == message.ReceiverId);
 
@@ -69,7 +69,7 @@ public class ChatMessageRepository : IChatMessageRepository
         {
             if (userDictionary.TryGetValue(message.SenderId, out var sender))
                 message.Sender = ConvertToUser(sender);
-            
+
             if (userDictionary.TryGetValue(message.ReceiverId, out var receiver))
                 message.Receiver = ConvertToUser(receiver);
         }
@@ -79,10 +79,13 @@ public class ChatMessageRepository : IChatMessageRepository
 
     public async Task<ChatMessage> CreateAsync(ChatMessage message)
     {
+        await EnsureUserExistsAsync(message.SenderId, "sender");
+        await EnsureUserExistsAsync(message.ReceiverId, "receiver");
+
         // Check if both sender and receiver exist in the AspNetUsers table before adding the message
         var userIds = new[] { message.SenderId, message.ReceiverId };
         var users = await GetUsersByIdsAsync(userIds);
-        
+
         var sender = users.FirstOrDefault(u => u.Id == message.SenderId);
         var receiver = users.FirstOrDefault(u => u.Id == message.ReceiverId);
 
@@ -104,6 +107,31 @@ public class ChatMessageRepository : IChatMessageRepository
         message.Receiver = ConvertToUser(receiver);
 
         return message;
+    }
+
+    private async Task EnsureUserExistsAsync(Guid userId, string rolePrefix)
+    {
+        var existing = await _userManager.FindByIdAsync(userId.ToString());
+        if (existing != null)
+        {
+            return;
+        }
+
+        var shadowUser = new AppIdentityUser
+        {
+            Id = userId,
+            UserName = $"{rolePrefix}_{userId:N}",
+            Email = $"{rolePrefix}_{userId:N}@shadow.local",
+            CreatedAt = DateTime.UtcNow,
+            IsOnline = false,
+        };
+
+        var createResult = await _userManager.CreateAsync(shadowUser);
+        if (!createResult.Succeeded)
+        {
+            var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
+            throw new InvalidOperationException($"Failed to ensure chat user {userId}: {errors}");
+        }
     }
 
     public async Task<IEnumerable<ChatMessage>> GetUserRecentMessagesAsync(Guid userId, int count = 20)
@@ -131,7 +159,7 @@ public class ChatMessageRepository : IChatMessageRepository
         {
             if (userDictionary.TryGetValue(message.SenderId, out var sender))
                 message.Sender = ConvertToUser(sender);
-            
+
             if (userDictionary.TryGetValue(message.ReceiverId, out var receiver))
                 message.Receiver = ConvertToUser(receiver);
         }

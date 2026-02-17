@@ -6,11 +6,13 @@ import chatsReducer from './slices/chatsSlice'
 import messagesReducer from './slices/messagesSlice'
 import appointmentsReducer from './slices/appointmentsSlice'
 import uiReducer from './slices/uiSlice'
+import notificationsReducer from './slices/notificationsSlice'
+import friendsReducer from './slices/friendsSlice'
 
 const authPersistConfig = {
   key: 'auth',
   storage,
-  whitelist: ['user', 'token', 'isAuthenticated']
+  whitelist: ['user', 'token', 'refreshToken', 'isAuthenticated']
 }
 
 export const store = configureStore({
@@ -20,6 +22,8 @@ export const store = configureStore({
     messages: messagesReducer,
     appointments: appointmentsReducer,
     ui: uiReducer,
+    notifications: notificationsReducer,
+    friends: friendsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

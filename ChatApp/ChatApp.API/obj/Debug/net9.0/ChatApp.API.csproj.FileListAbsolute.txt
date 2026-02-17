@@ -259,3 +259,11 @@ d:\Duma\appointment-app\ChatApp\ChatApp.API\obj\Debug\net9.0\refint\ChatApp.API.
 d:\Duma\appointment-app\ChatApp\ChatApp.API\obj\Debug\net9.0\ChatApp.API.pdb
 d:\Duma\appointment-app\ChatApp\ChatApp.API\obj\Debug\net9.0\ChatApp.API.genruntimeconfig.cache
 d:\Duma\appointment-app\ChatApp\ChatApp.API\obj\Debug\net9.0\ref\ChatApp.API.dll
+d:\Duma\appointment-app\ChatApp\ChatApp.API\bin\Debug\net9.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+d:\Duma\appointment-app\ChatApp\ChatApp.API\bin\Debug\net9.0\Microsoft.IdentityModel.Abstractions.dll
+d:\Duma\appointment-app\ChatApp\ChatApp.API\bin\Debug\net9.0\Microsoft.IdentityModel.JsonWebTokens.dll
+d:\Duma\appointment-app\ChatApp\ChatApp.API\bin\Debug\net9.0\Microsoft.IdentityModel.Logging.dll
+d:\Duma\appointment-app\ChatApp\ChatApp.API\bin\Debug\net9.0\Microsoft.IdentityModel.Protocols.dll
+d:\Duma\appointment-app\ChatApp\ChatApp.API\bin\Debug\net9.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+d:\Duma\appointment-app\ChatApp\ChatApp.API\bin\Debug\net9.0\Microsoft.IdentityModel.Tokens.dll
+d:\Duma\appointment-app\ChatApp\ChatApp.API\bin\Debug\net9.0\System.IdentityModel.Tokens.Jwt.dll

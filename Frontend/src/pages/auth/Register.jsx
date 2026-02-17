@@ -6,7 +6,7 @@ import { authService } from '../../services/authService'
 import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
-import { Calendar } from 'lucide-react'
+import { Calendar, UserCircle, Stethoscope } from 'lucide-react'
 
 export const Register = () => {
   const [formData, setFormData] = useState({
@@ -15,6 +15,7 @@ export const Register = () => {
     confirmPassword: '',
     firstName: '',
     lastName: '',
+    role: 'User',
   })
   const [localError, setLocalError] = useState('')
   const [loading, setLocalLoading] = useState(false)
@@ -50,7 +51,8 @@ export const Register = () => {
         formData.email,
         formData.password,
         formData.firstName,
-        formData.lastName
+        formData.lastName,
+        formData.role
       )
       
       dispatch(setCredentials({
@@ -88,6 +90,56 @@ export const Register = () => {
         )}
 
         <form onSubmit={handleSubmit}>
+          {/* Role Selection */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-text-primary mb-3">
+              I am registering as
+            </label>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, role: 'User' })}
+                className={`p-4 border-2 rounded-lg transition-all ${
+                  formData.role === 'User'
+                    ? 'border-primary-accent bg-primary-accent/10'
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                <UserCircle
+                  size={32}
+                  className={`mx-auto mb-2 ${
+                    formData.role === 'User' ? 'text-primary-accent' : 'text-gray-400'
+                  }`}
+                />
+                <p className="font-medium text-text-primary">Client</p>
+                <p className="text-xs text-text-secondary mt-1">
+                  Book appointments
+                </p>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, role: 'Professional' })}
+                className={`p-4 border-2 rounded-lg transition-all ${
+                  formData.role === 'Professional'
+                    ? 'border-primary-accent bg-primary-accent/10'
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                <Stethoscope
+                  size={32}
+                  className={`mx-auto mb-2 ${
+                    formData.role === 'Professional' ? 'text-primary-accent' : 'text-gray-400'
+                  }`}
+                />
+                <p className="font-medium text-text-primary">Doctor</p>
+                <p className="text-xs text-text-secondary mt-1">
+                  Provide services
+                </p>
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="First Name"

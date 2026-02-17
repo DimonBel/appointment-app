@@ -12,6 +12,7 @@ public class IdentityDbContext : IdentityDbContext<AppIdentityUser, AppIdentityR
     }
 
     public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<DoctorProfile> DoctorProfiles { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -48,6 +49,30 @@ public class IdentityDbContext : IdentityDbContext<AppIdentityUser, AppIdentityR
             entity.Property(e => e.Description).HasMaxLength(500);
         });
 
+        // Configure DoctorProfile
+        builder.Entity<DoctorProfile>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Specialty).HasMaxLength(200);
+            entity.Property(e => e.Bio).HasMaxLength(2000);
+            entity.Property(e => e.Qualifications).HasMaxLength(1000);
+            entity.Property(e => e.Services).HasMaxLength(1000);
+            entity.Property(e => e.WorkingHours).HasMaxLength(1000);
+            entity.Property(e => e.Languages).HasMaxLength(500);
+            entity.Property(e => e.Address).HasMaxLength(500);
+            entity.Property(e => e.City).HasMaxLength(100);
+            entity.Property(e => e.Country).HasMaxLength(100);
+
+            entity.HasOne(e => e.User)
+                .WithOne()
+                .HasForeignKey<DoctorProfile>(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.UserId).IsUnique();
+            entity.HasIndex(e => e.Specialty);
+            entity.HasIndex(e => e.City);
+        });
+
         // Seed default roles
         SeedRoles(builder);
     }
@@ -78,6 +103,30 @@ public class IdentityDbContext : IdentityDbContext<AppIdentityUser, AppIdentityR
                 Name = "Professional",
                 NormalizedName = "PROFESSIONAL",
                 Description = "Professional service provider role",
+                ConcurrencyStamp = Guid.NewGuid().ToString()
+            },
+            new AppIdentityRole
+            {
+                Id = Guid.Parse("44444444-4444-4444-4444-444444444444"),
+                Name = "Patient",
+                NormalizedName = "PATIENT",
+                Description = "Patient role for medical appointments",
+                ConcurrencyStamp = Guid.NewGuid().ToString()
+            },
+            new AppIdentityRole
+            {
+                Id = Guid.Parse("55555555-5555-5555-5555-555555555555"),
+                Name = "Doctor",
+                NormalizedName = "DOCTOR",
+                Description = "Doctor role for medical professionals",
+                ConcurrencyStamp = Guid.NewGuid().ToString()
+            },
+            new AppIdentityRole
+            {
+                Id = Guid.Parse("66666666-6666-6666-6666-666666666666"),
+                Name = "Jurist",
+                NormalizedName = "JURIST",
+                Description = "Legal professional role",
                 ConcurrencyStamp = Guid.NewGuid().ToString()
             }
         };

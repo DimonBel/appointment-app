@@ -1,5 +1,7 @@
 using IdentityApp.Domain.DTOs;
 using IdentityApp.Domain.Interfaces;
+using Microsoft.AspNetCore.Identity;
+using IdentityApp.Domain.Entity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IdentityApp.API.Endpoints;
@@ -40,6 +42,38 @@ public static class AuthEndpoints
             .WithName("ValidateToken")
             .WithOpenApi()
             .Produces<bool>(StatusCodes.Status200OK);
+
+        group.MapPost("/change-password", ChangePasswordAsync)
+            .WithName("ChangePassword")
+            .RequireAuthorization()
+            .WithOpenApi()
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest);
+
+        // Role management
+        var roleGroup = app.MapGroup("/api/roles")
+            .WithTags("Roles")
+            .RequireAuthorization();
+
+        roleGroup.MapGet("/", GetAllRolesAsync)
+            .WithName("GetAllRoles")
+            .WithOpenApi();
+
+        roleGroup.MapPost("/assign", AssignRoleAsync)
+            .WithName("AssignRole")
+            .WithOpenApi()
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest);
+
+        roleGroup.MapPost("/remove", RemoveRoleAsync)
+            .WithName("RemoveRole")
+            .WithOpenApi()
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest);
+
+        roleGroup.MapGet("/user/{userId:guid}", GetUserRolesAsync)
+            .WithName("GetUserRoles")
+            .WithOpenApi();
     }
 
     private static async Task<IResult> RegisterAsync(
@@ -104,5 +138,115 @@ public static class AuthEndpoints
     {
         var isValid = await authService.ValidateTokenAsync(token);
         return Results.Ok(new { isValid });
+    }
+
+    private static async Task<IResult> ChangePasswordAsync(
+        [FromBody] ChangePasswordDto model,
+        UserManager<AppIdentityUser> userManager,
+        IHttpClientFactory httpClientFactory,
+        HttpContext context)
+    {
+        var userId = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+            return Results.Unauthorized();
+
+        var user = await userManager.FindByIdAsync(userId);
+        if (user == null)
+            return Results.NotFound(new { message = "User not found" });
+
+        var result = await userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            return Results.BadRequest(new { message = errors });
+        }
+
+        // Fire password changed notification (fire-and-forget)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var client = httpClientFactory.CreateClient("NotificationService");
+                var payload = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    userId = Guid.Parse(userId),
+                    userName = user.UserName ?? user.Email ?? "User",
+                    email = user.Email
+                });
+                await client.PostAsJsonAsync("/api/notifications/events", new
+                {
+                    sourceService = "IdentityService",
+                    eventName = "PasswordChanged",
+                    payload
+                });
+            }
+            catch { /* non-critical */ }
+        });
+
+        return Results.Ok(new { message = "Password changed successfully" });
+    }
+
+    private static async Task<IResult> GetAllRolesAsync(
+        RoleManager<AppIdentityRole> roleManager)
+    {
+        var roles = roleManager.Roles.Select(r => new { r.Id, r.Name, r.Description }).ToList();
+        return Results.Ok(roles);
+    }
+
+    private static async Task<IResult> AssignRoleAsync(
+        [FromBody] RoleAssignmentDto model,
+        UserManager<AppIdentityUser> userManager,
+        RoleManager<AppIdentityRole> roleManager)
+    {
+        var user = await userManager.FindByIdAsync(model.UserId.ToString());
+        if (user == null)
+            return Results.NotFound(new { message = "User not found" });
+
+        var roleExists = await roleManager.RoleExistsAsync(model.RoleName);
+        if (!roleExists)
+            return Results.BadRequest(new { message = $"Role '{model.RoleName}' does not exist" });
+
+        var isInRole = await userManager.IsInRoleAsync(user, model.RoleName);
+        if (isInRole)
+            return Results.BadRequest(new { message = $"User already has role '{model.RoleName}'" });
+
+        var result = await userManager.AddToRoleAsync(user, model.RoleName);
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            return Results.BadRequest(new { message = errors });
+        }
+
+        return Results.Ok(new { message = $"Role '{model.RoleName}' assigned successfully" });
+    }
+
+    private static async Task<IResult> RemoveRoleAsync(
+        [FromBody] RoleAssignmentDto model,
+        UserManager<AppIdentityUser> userManager)
+    {
+        var user = await userManager.FindByIdAsync(model.UserId.ToString());
+        if (user == null)
+            return Results.NotFound(new { message = "User not found" });
+
+        var result = await userManager.RemoveFromRoleAsync(user, model.RoleName);
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            return Results.BadRequest(new { message = errors });
+        }
+
+        return Results.Ok(new { message = $"Role '{model.RoleName}' removed successfully" });
+    }
+
+    private static async Task<IResult> GetUserRolesAsync(
+        Guid userId,
+        UserManager<AppIdentityUser> userManager)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user == null)
+            return Results.NotFound(new { message = "User not found" });
+
+        var roles = await userManager.GetRolesAsync(user);
+        return Results.Ok(new { userId, roles });
     }
 }

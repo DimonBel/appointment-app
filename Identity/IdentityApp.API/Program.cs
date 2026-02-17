@@ -71,10 +71,20 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IDoctorProfileService, DoctorProfileService>();
 
 // Register Repository Layer
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+builder.Services.AddScoped<IDoctorProfileRepository, DoctorProfileRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+// Register HttpClient for Notification service
+builder.Services.AddHttpClient("NotificationService", client =>
+{
+    var baseUrl = builder.Configuration["NotificationService:BaseUrl"] ?? "http://localhost:5003";
+    client.BaseAddress = new Uri(baseUrl);
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -113,6 +123,7 @@ app.UseAuthorization();
 // Map endpoints
 app.MapAuthEndpoints();
 app.MapUserEndpoints();
+app.MapDoctorProfileEndpoints();
 
 // Health check endpoint
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "Identity API", timestamp = DateTime.UtcNow }))

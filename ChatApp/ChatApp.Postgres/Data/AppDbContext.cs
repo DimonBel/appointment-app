@@ -12,6 +12,7 @@ public class AppDbContext : IdentityDbContext<AppIdentityUser, AppIdentityRole, 
     }
 
     public DbSet<ChatMessage> ChatMessages { get; set; }
+    public DbSet<Friendship> Friendships { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -40,10 +41,34 @@ public class AppDbContext : IdentityDbContext<AppIdentityUser, AppIdentityRole, 
                 .HasPrincipalKey(u => u.Id)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_ChatMessages_AspNetUsers_ReceiverId");
-            
+
             // Ignore the navigation properties that don't match the relationship
             entity.Ignore(e => e.Sender);
             entity.Ignore(e => e.Receiver);
+        });
+
+        // Configure Friendship entity
+        builder.Entity<Friendship>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasOne<AppIdentityUser>()
+                .WithMany()
+                .HasForeignKey(e => e.RequesterId)
+                .HasPrincipalKey(u => u.Id)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_Friendships_AspNetUsers_RequesterId");
+
+            entity.HasOne<AppIdentityUser>()
+                .WithMany()
+                .HasForeignKey(e => e.AddresseeId)
+                .HasPrincipalKey(u => u.Id)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_Friendships_AspNetUsers_AddresseeId");
+
+            // Ensure unique friendship between two users
+            entity.HasIndex(e => new { e.RequesterId, e.AddresseeId }).IsUnique();
         });
     }
 }

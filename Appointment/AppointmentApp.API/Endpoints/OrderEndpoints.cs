@@ -1,10 +1,13 @@
 using AppointmentApp.API.DTOs;
+using AppointmentApp.API.Services;
 using AppointmentApp.Domain.Entity;
 using AppointmentApp.Domain.Enums;
 using AppointmentApp.Domain.Interfaces;
 using AppointmentApp.Repository.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using System.Text.Json;
 
 namespace AppointmentApp.API.Endpoints;
 
@@ -25,24 +28,13 @@ public static class OrderEndpoints
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20) =>
         {
-            // For testing without auth, use the seeded client user
-            Guid userId;
-            if (context.User.FindFirst("sub")?.Value != null)
+            var userId = ResolveUserId(context);
+            if (!userId.HasValue)
             {
-                userId = Guid.Parse(context.User.FindFirst("sub").Value);
-            }
-            else
-            {
-                // Use the test client from seed data
-                var testClient = await userManager.FindByEmailAsync("client@appointment.com");
-                if (testClient == null)
-                {
-                    return Results.BadRequest("Test client not found. Please ensure database is seeded.");
-                }
-                userId = testClient.Id;
+                return Results.Unauthorized();
             }
 
-            var orders = await orderService.GetOrdersByClientAsync(userId, status, page, pageSize);
+            var orders = await orderService.GetOrdersByClientAsync(userId.Value, status, page, pageSize);
             return Results.Ok(orders);
         })
         .WithName("GetAllOrders")
@@ -53,33 +45,61 @@ public static class OrderEndpoints
             [FromBody] CreateOrderDto dto,
             [FromServices] IOrderService orderService,
             [FromServices] UserManager<AppIdentityUser> userManager,
+            [FromServices] IHttpClientFactory httpClientFactory,
             HttpContext context) =>
         {
-            // For testing without auth, use the seeded client user
-            Guid clientId;
-            if (context.User.FindFirst("sub")?.Value != null)
+            var clientId = ResolveUserId(context);
+            if (!clientId.HasValue)
             {
-                clientId = Guid.Parse(context.User.FindFirst("sub").Value);
-            }
-            else
-            {
-                // Use the test client from seed data
-                var testClient = await userManager.FindByEmailAsync("client@appointment.com");
-                if (testClient == null)
-                {
-                    return Results.BadRequest("Test client not found. Please ensure database is seeded.");
-                }
-                clientId = testClient.Id;
+                return Results.Unauthorized();
             }
 
             var order = await orderService.CreateOrderAsync(
-                clientId,
+                clientId.Value,
                 dto.ProfessionalId,
                 dto.ScheduledDateTime,
                 dto.DurationMinutes,
                 dto.Title,
                 dto.Description,
                 dto.DomainConfigurationId);
+
+            var localUser = await userManager.FindByIdAsync(clientId.Value.ToString());
+            var userName = context.User.FindFirstValue(ClaimTypes.Name)
+                ?? context.User.FindFirstValue("name")
+                ?? localUser?.UserName
+                ?? "Patient";
+            var userEmail = context.User.FindFirstValue(ClaimTypes.Email)
+                ?? context.User.FindFirstValue("email")
+                ?? localUser?.Email;
+
+            // Fire booking confirmation notification (fire-and-forget)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var client = httpClientFactory.CreateClient("NotificationService");
+                    var payload = JsonSerializer.Serialize(new
+                    {
+                        userId = clientId.Value,
+                        userName,
+                        email = userEmail,
+                        orderId = order.Id,
+                        doctorName = "Doctor",
+                        appointmentDate = dto.ScheduledDateTime.ToString("yyyy-MM-dd"),
+                        appointmentTime = dto.ScheduledDateTime.ToString("HH:mm"),
+                        title = dto.Title ?? "Appointment",
+                        scheduledDateTime = dto.ScheduledDateTime,
+                        professionalId = dto.ProfessionalId
+                    });
+                    await client.PostAsJsonAsync("/api/notifications/events", new
+                    {
+                        sourceService = "AppointmentService",
+                        eventName = "BookingConfirmed",
+                        payload
+                    });
+                }
+                catch { /* non-critical */ }
+            });
 
             return Results.Created($"/api/orders/{order.Id}", order);
         })
@@ -193,17 +213,13 @@ public static class OrderEndpoints
             [FromServices] UserManager<AppIdentityUser> userManager,
             HttpContext context) =>
         {
-            Guid cancelledByUserId;
-            if (context.User.FindFirst("sub")?.Value != null)
+            var cancelledByUserId = ResolveUserId(context);
+            if (!cancelledByUserId.HasValue)
             {
-                cancelledByUserId = Guid.Parse(context.User.FindFirst("sub").Value);
+                return Results.Unauthorized();
             }
-            else
-            {
-                var testClient = await userManager.FindByEmailAsync("client@appointment.com");
-                cancelledByUserId = testClient?.Id ?? Guid.Empty;
-            }
-            var order = await orderService.CancelOrderAsync(id, dto?.Reason, cancelledByUserId);
+
+            var order = await orderService.CancelOrderAsync(id, dto?.Reason, cancelledByUserId.Value);
             return Results.Ok(order);
         })
         .WithName("CancelOrder")
@@ -226,6 +242,9 @@ public static class OrderEndpoints
             Guid id,
             [FromBody] ApproveOrderDto dto,
             [FromServices] IOrderApprovalService approvalService,
+            [FromServices] IOrderService orderService,
+            [FromServices] IIdentityServiceClient identityServiceClient,
+            [FromServices] IHttpClientFactory httpClientFactory,
             [FromServices] UserManager<AppIdentityUser> userManager,
             HttpContext context) =>
         {
@@ -244,6 +263,48 @@ public static class OrderEndpoints
             }
 
             var order = await approvalService.ApproveOrderAsync(id, dto.Reason, approvedByUserId);
+
+            // Fire order approved notification to the client (fire-and-forget)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var client = httpClientFactory.CreateClient("NotificationService");
+                    var fullOrder = await orderService.GetOrderByIdAsync(id);
+                    if (fullOrder != null)
+                    {
+                        var accessToken = context.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
+                        var clientUser = await userManager.FindByIdAsync(fullOrder.ClientId.ToString());
+                        var identityClientUser = !string.IsNullOrWhiteSpace(accessToken)
+                            ? await identityServiceClient.GetUserByIdAsync(fullOrder.ClientId, accessToken)
+                            : null;
+
+                        var targetEmail = identityClientUser?.Email ?? clientUser?.Email;
+
+                        var payload = JsonSerializer.Serialize(new
+                        {
+                            userId = fullOrder.ClientId,
+                            userName = identityClientUser?.UserName ?? clientUser?.UserName ?? "Patient",
+                            email = targetEmail,
+                            orderId = fullOrder.Id,
+                            doctorName = "Doctor",
+                            appointmentDate = fullOrder.ScheduledDateTime.ToString("yyyy-MM-dd"),
+                            appointmentTime = fullOrder.ScheduledDateTime.ToString("HH:mm"),
+                            title = fullOrder.Title ?? "Appointment",
+                            status = "Approved",
+                            reason = dto.Reason
+                        });
+                        await client.PostAsJsonAsync("/api/notifications/events", new
+                        {
+                            sourceService = "AppointmentService",
+                            eventName = "OrderApproved",
+                            payload
+                        });
+                    }
+                }
+                catch { /* non-critical */ }
+            });
+
             return Results.Ok(order);
         })
         .WithName("ApproveOrder")
@@ -355,6 +416,35 @@ public static class OrderEndpoints
         })
         .WithName("DeleteOrder")
         .WithOpenApi();
+    }
+
+    private static Guid? TryGetUserId(ClaimsPrincipal user)
+    {
+        var claimValue = user.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? user.FindFirstValue("sub")
+            ?? user.FindFirstValue("nameid");
+
+        return Guid.TryParse(claimValue, out var userId) ? userId : null;
+    }
+
+    private static Guid? ResolveUserId(HttpContext context)
+    {
+        var fromClaims = TryGetUserId(context.User);
+        if (fromClaims.HasValue)
+        {
+            return fromClaims;
+        }
+
+        if (context.Request.Headers.TryGetValue("X-User-Id", out var headerValues))
+        {
+            var headerUserId = headerValues.FirstOrDefault();
+            if (Guid.TryParse(headerUserId, out var parsed))
+            {
+                return parsed;
+            }
+        }
+
+        return null;
     }
 }
 

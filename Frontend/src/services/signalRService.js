@@ -67,3 +67,4 @@ class SignalRService {
 // Create instances for both hubs
 export const chatHubService = new SignalRService()
 export const orderHubService = new SignalRService()
+export const notificationHubService = new SignalRService()

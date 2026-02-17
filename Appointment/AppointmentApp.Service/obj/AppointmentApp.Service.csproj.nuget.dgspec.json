@@ -1,26 +1,31 @@
 {
   "format": 1,
   "restore": {
-    "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Service/AppointmentApp.Service.csproj": {}
+    "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Service\\AppointmentApp.Service.csproj": {}
   },
   "projects": {
-    "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Domain/AppointmentApp.Domain.csproj": {
+    "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Domain\\AppointmentApp.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Domain/AppointmentApp.Domain.csproj",
+        "projectUniqueName": "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Domain\\AppointmentApp.Domain.csproj",
         "projectName": "AppointmentApp.Domain",
-        "projectPath": "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Domain/AppointmentApp.Domain.csproj",
-        "packagesPath": "/home/dumas/.nuget/packages/",
-        "outputPath": "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Domain/obj/",
+        "projectPath": "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Domain\\AppointmentApp.Domain.csproj",
+        "packagesPath": "C:\\Users\\Duma\\.nuget\\packages\\",
+        "outputPath": "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Domain\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "/home/dumas/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Duma\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
-          "/usr/lib/dotnet/library-packs": {},
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -66,35 +71,40 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.112/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.101/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/AppointmentApp.Repository.csproj": {
+    "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Repository\\AppointmentApp.Repository.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/AppointmentApp.Repository.csproj",
+        "projectUniqueName": "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Repository\\AppointmentApp.Repository.csproj",
         "projectName": "AppointmentApp.Repository",
-        "projectPath": "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/AppointmentApp.Repository.csproj",
-        "packagesPath": "/home/dumas/.nuget/packages/",
-        "outputPath": "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/obj/",
+        "projectPath": "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Repository\\AppointmentApp.Repository.csproj",
+        "packagesPath": "C:\\Users\\Duma\\.nuget\\packages\\",
+        "outputPath": "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Repository\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "/home/dumas/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Duma\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
-          "/usr/lib/dotnet/library-packs": {},
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Domain/AppointmentApp.Domain.csproj": {
-                "projectPath": "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Domain/AppointmentApp.Domain.csproj"
+              "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Domain\\AppointmentApp.Domain.csproj": {
+                "projectPath": "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Domain\\AppointmentApp.Domain.csproj"
               }
             }
           }
@@ -130,38 +140,43 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.112/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.101/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Service/AppointmentApp.Service.csproj": {
+    "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Service\\AppointmentApp.Service.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Service/AppointmentApp.Service.csproj",
+        "projectUniqueName": "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Service\\AppointmentApp.Service.csproj",
         "projectName": "AppointmentApp.Service",
-        "projectPath": "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Service/AppointmentApp.Service.csproj",
-        "packagesPath": "/home/dumas/.nuget/packages/",
-        "outputPath": "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Service/obj/",
+        "projectPath": "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Service\\AppointmentApp.Service.csproj",
+        "packagesPath": "C:\\Users\\Duma\\.nuget\\packages\\",
+        "outputPath": "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Service\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "/home/dumas/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Duma\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
-          "/usr/lib/dotnet/library-packs": {},
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Domain/AppointmentApp.Domain.csproj": {
-                "projectPath": "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Domain/AppointmentApp.Domain.csproj"
+              "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Domain\\AppointmentApp.Domain.csproj": {
+                "projectPath": "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Domain\\AppointmentApp.Domain.csproj"
               },
-              "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/AppointmentApp.Repository.csproj": {
-                "projectPath": "/home/dumas/Desktop/Final-proj/appointment-app/Appointment/AppointmentApp.Repository/AppointmentApp.Repository.csproj"
+              "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Repository\\AppointmentApp.Repository.csproj": {
+                "projectPath": "D:\\Duma\\appointment-app\\Appointment\\AppointmentApp.Repository\\AppointmentApp.Repository.csproj"
               }
             }
           }
@@ -197,7 +212,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.112/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.101/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

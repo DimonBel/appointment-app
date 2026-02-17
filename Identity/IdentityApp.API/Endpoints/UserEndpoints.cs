@@ -35,6 +35,11 @@ public static class UserEndpoints
             .WithOpenApi()
             .Produces<IEnumerable<UserDto>>(StatusCodes.Status200OK);
 
+        group.MapGet("/search", SearchUsersAsync)
+            .WithName("SearchUsers")
+            .WithOpenApi()
+            .Produces<IEnumerable<UserDto>>(StatusCodes.Status200OK);
+
         group.MapPut("/{userId:guid}", UpdateUserAsync)
             .WithName("UpdateUser")
             .WithOpenApi()
@@ -81,6 +86,14 @@ public static class UserEndpoints
     private static async Task<IResult> GetAllUsersAsync(IUserService userService)
     {
         var users = await userService.GetAllUsersAsync();
+        return Results.Ok(users);
+    }
+
+    private static async Task<IResult> SearchUsersAsync(
+        [FromQuery] string? query,
+        IUserService userService)
+    {
+        var users = await userService.SearchUsersAsync(query ?? string.Empty);
         return Results.Ok(users);
     }
 

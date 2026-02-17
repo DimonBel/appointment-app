@@ -1,16 +1,21 @@
 using AppointmentApp.Domain.Entity;
 using AppointmentApp.Domain.Interfaces;
 using AppointmentApp.Repository.Interfaces;
+using Microsoft.AspNetCore.Identity;
 
 namespace AppointmentApp.Service.Services;
 
 public class ProfessionalService : IProfessionalService
 {
     private readonly IProfessionalRepository _professionalRepository;
+    private readonly UserManager<AppIdentityUser> _userManager;
 
-    public ProfessionalService(IProfessionalRepository professionalRepository)
+    public ProfessionalService(
+        IProfessionalRepository professionalRepository,
+        UserManager<AppIdentityUser> userManager)
     {
         _professionalRepository = professionalRepository;
+        _userManager = userManager;
     }
 
     public async Task<Professional> CreateProfessionalAsync(Guid userId, string? title = null, string? qualifications = null, string? specialization = null)
@@ -19,6 +24,28 @@ public class ProfessionalService : IProfessionalService
         if (existingProfessional != null)
         {
             throw new InvalidOperationException("A professional profile already exists for this user");
+        }
+
+        var existingUser = await _userManager.FindByIdAsync(userId.ToString());
+        if (existingUser == null)
+        {
+            var shadowUser = new AppIdentityUser
+            {
+                Id = userId,
+                UserName = $"user_{userId:N}",
+                Email = $"user_{userId:N}@shadow.local",
+                FirstName = "Doctor",
+                LastName = "Profile",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var createResult = await _userManager.CreateAsync(shadowUser);
+            if (!createResult.Succeeded)
+            {
+                var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"Failed to create local appointment user: {errors}");
+            }
         }
 
         var professional = new Professional

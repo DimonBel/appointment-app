@@ -60,8 +60,10 @@ public class AuthService : IAuthService
             return (false, errors, null);
         }
 
-        // Assign default "User" role
-        await _userManager.AddToRoleAsync(user, "User");
+        // Validate and assign role
+        var validRoles = new[] { "User", "Professional", "Admin" };
+        var roleToAssign = validRoles.Contains(model.Role) ? model.Role : "User";
+        await _userManager.AddToRoleAsync(user, roleToAssign);
 
         // Update last login
         user.LastLoginAt = DateTime.UtcNow;
