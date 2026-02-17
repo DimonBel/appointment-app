@@ -32,7 +32,7 @@ public class NotificationRepository : INotificationRepository
     public async Task<IEnumerable<Notification>> GetByUserIdAsync(Guid userId, int page, int pageSize)
     {
         return await _context.Notifications
-            .Where(n => n.UserId == userId)
+            .Where(n => n.UserId == userId && n.Channel == NotificationChannel.InApp)
             .OrderByDescending(n => n.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -43,7 +43,7 @@ public class NotificationRepository : INotificationRepository
     public async Task<int> GetUnreadCountAsync(Guid userId)
     {
         return await _context.Notifications
-            .CountAsync(n => n.UserId == userId && n.Status != NotificationStatus.Read);
+            .CountAsync(n => n.UserId == userId && n.Channel == NotificationChannel.InApp && n.Status != NotificationStatus.Read);
     }
 
     public async Task<Notification> UpdateAsync(Notification notification)
@@ -66,7 +66,7 @@ public class NotificationRepository : INotificationRepository
     public async Task<IEnumerable<Notification>> GetByTypeAsync(Guid userId, NotificationType type)
     {
         return await _context.Notifications
-            .Where(n => n.UserId == userId && n.Type == type)
+            .Where(n => n.UserId == userId && n.Type == type && n.Channel == NotificationChannel.InApp)
             .OrderByDescending(n => n.CreatedAt)
             .ToListAsync();
     }
@@ -74,7 +74,7 @@ public class NotificationRepository : INotificationRepository
     public async Task MarkAllAsReadAsync(Guid userId)
     {
         await _context.Notifications
-            .Where(n => n.UserId == userId && n.Status != NotificationStatus.Read)
+            .Where(n => n.UserId == userId && n.Channel == NotificationChannel.InApp && n.Status != NotificationStatus.Read)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(n => n.Status, NotificationStatus.Read)
                 .SetProperty(n => n.ReadAt, DateTime.UtcNow));

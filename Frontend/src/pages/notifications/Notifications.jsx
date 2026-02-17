@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux'
 import { Bell, Check, CheckCheck, Trash2, Settings, Clock, AlertCircle, Calendar, MessageCircle, UserPlus, UserCheck, UserX } from 'lucide-react'
 import { notificationService } from '../../services/notificationService'
 import { friendService } from '../../services/friendService'
+import { appointmentService } from '../../services/appointmentService'
 import {
   setNotifications,
   markNotificationAsRead,
@@ -72,6 +73,31 @@ const priorityColors = {
   Urgent: 'text-red-600',
 }
 
+const normalizeMessageText = (value) => {
+  if (!value) return ''
+
+  const withLineBreaks = String(value)
+    .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\s*\/\s*(p|div|tr|h1|h2|h3|h4|h5|h6|li|table)\s*>/gi, '\n')
+
+  const withoutTags = withLineBreaks.replace(/<[^>]*>/g, ' ')
+
+  const normalized = withoutTags
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+
+  return normalized
+    .split('\n')
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter((line) => line.length > 0)
+    .join('\n')
+    .trim()
+}
+
 export const Notifications = () => {
   const dispatch = useDispatch()
   const { notifications, unreadCount, isLoading } = useSelector((state) => state.notifications)
@@ -80,12 +106,16 @@ export const Notifications = () => {
   const [filter, setFilter] = useState('all') // all, unread, read
   const [processingFriendRequest, setProcessingFriendRequest] = useState(null) // notificationId
   const [friendRequestResults, setFriendRequestResults] = useState({}) // notificationId -> 'accepted'|'declined'
+  const [processingBookingRequest, setProcessingBookingRequest] = useState(null) // notificationId
+  const [bookingRequestResults, setBookingRequestResults] = useState({}) // notificationId -> 'accepted'|'declined'
+  const [bookingRequestErrors, setBookingRequestErrors] = useState({}) // notificationId -> error
 
   const normalizeNotification = (notification) => ({
     ...notification,
     type: typeof notification.type === 'number' ? (typeByValue[notification.type] || notification.type) : notification.type,
     status: typeof notification.status === 'number' ? (statusByValue[notification.status] || notification.status) : notification.status,
     priority: typeof notification.priority === 'number' ? (priorityByValue[notification.priority] || notification.priority) : notification.priority,
+    message: normalizeMessageText(notification.message),
   })
 
   useEffect(() => {
@@ -150,6 +180,50 @@ export const Notifications = () => {
     return { friendshipId: notification.referenceId, senderId: null }
   }
 
+  const parseBookingRequestOrderId = (notification) => {
+    if (notification?.referenceId) {
+      return notification.referenceId
+    }
+
+    try {
+      if (notification?.metadata) {
+        const meta = typeof notification.metadata === 'string'
+          ? JSON.parse(notification.metadata)
+          : notification.metadata
+        return meta?.orderId || null
+      }
+    } catch {
+      return null
+    }
+
+    return null
+  }
+
+  const parseNotificationMetadata = (notification) => {
+    if (!notification?.metadata) return null
+
+    try {
+      return typeof notification.metadata === 'string'
+        ? JSON.parse(notification.metadata)
+        : notification.metadata
+    } catch {
+      return null
+    }
+  }
+
+  const isDoctorBookingRequest = (notification) => {
+    if (notification?.type !== 'OrderCreated') return false
+
+    const metadata = parseNotificationMetadata(notification)
+    if (metadata?.action === 'booking_request') return true
+
+    if (notification?.referenceType === 'Order' && /new appointment request/i.test(notification?.title || '')) {
+      return true
+    }
+
+    return /new appointment request/i.test(notification?.message || '')
+  }
+
   const handleAcceptFriendRequest = async (notification) => {
     const { friendshipId, senderId } = parseFriendRequestMetadata(notification)
     if (!friendshipId) return
@@ -190,6 +264,62 @@ export const Notifications = () => {
       console.error('Failed to decline friend request:', err)
     } finally {
       setProcessingFriendRequest(null)
+    }
+  }
+
+  const handleApproveBookingRequest = async (notification) => {
+    const orderId = parseBookingRequestOrderId(notification)
+    if (!orderId) return
+
+    setProcessingBookingRequest(notification.id)
+    setBookingRequestErrors(prev => ({ ...prev, [notification.id]: null }))
+    try {
+      await appointmentService.approveOrder(orderId, null, token)
+      setBookingRequestResults(prev => ({ ...prev, [notification.id]: 'accepted' }))
+
+      if (notification.status !== 'Read') {
+        await notificationService.markAsRead(notification.id, token)
+        dispatch(markNotificationAsRead(notification.id))
+      }
+
+      await notificationService.deleteNotification(notification.id, token)
+      dispatch(removeNotification(notification.id))
+
+      await loadNotifications()
+    } catch (err) {
+      console.error('Failed to approve booking request:', err)
+      const apiMessage = err?.response?.data?.message || err?.response?.data?.title || 'Failed to accept request'
+      setBookingRequestErrors(prev => ({ ...prev, [notification.id]: apiMessage }))
+    } finally {
+      setProcessingBookingRequest(null)
+    }
+  }
+
+  const handleDeclineBookingRequest = async (notification) => {
+    const orderId = parseBookingRequestOrderId(notification)
+    if (!orderId) return
+
+    setProcessingBookingRequest(notification.id)
+    setBookingRequestErrors(prev => ({ ...prev, [notification.id]: null }))
+    try {
+      await appointmentService.declineOrder(orderId, 'Declined by doctor', token)
+      setBookingRequestResults(prev => ({ ...prev, [notification.id]: 'declined' }))
+
+      if (notification.status !== 'Read') {
+        await notificationService.markAsRead(notification.id, token)
+        dispatch(markNotificationAsRead(notification.id))
+      }
+
+      await notificationService.deleteNotification(notification.id, token)
+      dispatch(removeNotification(notification.id))
+
+      await loadNotifications()
+    } catch (err) {
+      console.error('Failed to decline booking request:', err)
+      const apiMessage = err?.response?.data?.message || err?.response?.data?.title || 'Failed to decline request'
+      setBookingRequestErrors(prev => ({ ...prev, [notification.id]: apiMessage }))
+    } finally {
+      setProcessingBookingRequest(null)
     }
   }
 
@@ -287,7 +417,7 @@ export const Notifications = () => {
                   <p className={`text-sm ${isUnread ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
                     {notification.title}
                   </p>
-                  <p className="text-sm text-gray-500 mt-0.5">{notification.message}</p>
+                  <p className="text-sm text-gray-500 mt-0.5 whitespace-pre-line">{notification.message}</p>
 
                   {/* Friend Request Actions */}
                   {notification.type === 'FriendRequest' && (
@@ -323,9 +453,47 @@ export const Notifications = () => {
                     </div>
                   )}
 
+                  {/* Doctor Booking Request Actions */}
+                  {isDoctorBookingRequest(notification) && isUnread && (
+                    <div className="mt-2">
+                      {bookingRequestResults[notification.id] === 'accepted' ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-lg">
+                          <Check size={14} /> Accepted
+                        </span>
+                      ) : bookingRequestResults[notification.id] === 'declined' ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-red-600 bg-red-50 px-2 py-1 rounded-lg">
+                          <UserX size={14} /> Declined
+                        </span>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleApproveBookingRequest(notification)}
+                            disabled={processingBookingRequest === notification.id}
+                            className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-lg bg-green-500 text-white hover:bg-green-600 disabled:opacity-50 transition-colors"
+                          >
+                            <Check size={14} />
+                            {processingBookingRequest === notification.id ? '...' : 'Accept'}
+                          </button>
+                          <button
+                            onClick={() => handleDeclineBookingRequest(notification)}
+                            disabled={processingBookingRequest === notification.id}
+                            className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-lg bg-red-100 text-red-600 hover:bg-red-200 disabled:opacity-50 transition-colors"
+                          >
+                            <UserX size={14} />
+                            {processingBookingRequest === notification.id ? '...' : 'Decline'}
+                          </button>
+                        </div>
+                      )}
+
+                      {bookingRequestErrors[notification.id] && (
+                        <p className="mt-2 text-xs text-red-600">{bookingRequestErrors[notification.id]}</p>
+                      )}
+                    </div>
+                  )}
+
                   <p className="text-xs text-gray-400 mt-1">{formatDate(notification.createdAt)}</p>
                 </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
                   {isUnread && (
                     <button
                       onClick={() => handleMarkAsRead(notification.id)}

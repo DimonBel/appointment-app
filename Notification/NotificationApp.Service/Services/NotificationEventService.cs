@@ -147,11 +147,20 @@ public class NotificationEventService : INotificationEventService
             ["AppointmentTime"] = appointmentTime
         };
 
+        var metadata = JsonSerializer.Serialize(new
+        {
+            action = "booking_request",
+            orderId,
+            patientName,
+            appointmentDate,
+            appointmentTime
+        });
+
         try
         {
             var (title, body) = await _templateService.RenderTemplateAsync("order_created", data);
             await _notificationService.SendNotificationAsync(
-                professionalId, NotificationType.OrderCreated, title, body, orderId, "Order");
+                professionalId, NotificationType.OrderCreated, title, body, orderId, "Order", metadata);
         }
         catch
         {
@@ -159,7 +168,7 @@ public class NotificationEventService : INotificationEventService
                 professionalId, NotificationType.OrderCreated,
                 "New Appointment Request",
                 $"You have a new appointment request from {patientName}.",
-                orderId, "Order");
+                orderId, "Order", metadata);
         }
 
         // Schedule reminder for the appointment
@@ -267,14 +276,14 @@ public class NotificationEventService : INotificationEventService
         await _notificationService.SendNotificationAsync(
             userId, NotificationType.BookingConfirmation,
             "Booking Confirmed",
-            $@"<h2>Your Appointment is Confirmed!</h2>
-            <p>Your appointment has been successfully booked.</p>
-            <table style=""border-collapse: collapse; margin: 16px 0;"">
-                <tr><td style=""padding: 8px; font-weight: bold;"">Doctor:</td><td style=""padding: 8px;"">{doctorName}</td></tr>
-                <tr><td style=""padding: 8px; font-weight: bold;"">Date:</td><td style=""padding: 8px;"">{appointmentDate}</td></tr>
-                <tr><td style=""padding: 8px; font-weight: bold;"">Time:</td><td style=""padding: 8px;"">{appointmentTime}</td></tr>
-            </table>
-            <p>Please arrive 10 minutes before your scheduled appointment.</p>",
+            $@"Your Appointment is Confirmed!
+Your appointment has been successfully booked.
+
+Doctor: {doctorName}
+Date: {appointmentDate}
+Time: {appointmentTime}
+
+Please arrive 10 minutes before your scheduled appointment.",
             orderId, "Order", metadata);
     }
 

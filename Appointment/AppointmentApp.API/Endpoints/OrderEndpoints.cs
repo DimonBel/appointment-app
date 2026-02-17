@@ -1,4 +1,5 @@
 using AppointmentApp.API.DTOs;
+using AppointmentApp.API.DTOs.Identity;
 using AppointmentApp.API.Services;
 using AppointmentApp.Domain.Entity;
 using AppointmentApp.Domain.Enums;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace AppointmentApp.API.Endpoints;
 
@@ -44,6 +46,7 @@ public static class OrderEndpoints
         group.MapPost("/", async (
             [FromBody] CreateOrderDto dto,
             [FromServices] IOrderService orderService,
+            [FromServices] IIdentityServiceClient identityServiceClient,
             [FromServices] UserManager<AppIdentityUser> userManager,
             [FromServices] IHttpClientFactory httpClientFactory,
             HttpContext context) =>
@@ -64,38 +67,57 @@ public static class OrderEndpoints
                 dto.DomainConfigurationId);
 
             var localUser = await userManager.FindByIdAsync(clientId.Value.ToString());
-            var userName = context.User.FindFirstValue(ClaimTypes.Name)
-                ?? context.User.FindFirstValue("name")
-                ?? localUser?.UserName
-                ?? "Patient";
+            var accessToken = context.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
+            var identityUser = !string.IsNullOrWhiteSpace(accessToken)
+                ? await identityServiceClient.GetUserByIdAsync(clientId.Value, accessToken)
+                : null;
+
+            var patientName = ResolveIdentityDisplayName(identityUser)
+                ?? ResolveDisplayName(context.User, localUser?.UserName ?? "Patient");
             var userEmail = context.User.FindFirstValue(ClaimTypes.Email)
                 ?? context.User.FindFirstValue("email")
+                ?? identityUser?.Email
                 ?? localUser?.Email;
 
-            // Fire booking confirmation notification (fire-and-forget)
+            // Fire booking request notification for doctor only.
+            // Client confirmation is sent only after doctor approves.
             _ = Task.Run(async () =>
             {
                 try
                 {
                     var client = httpClientFactory.CreateClient("NotificationService");
-                    var payload = JsonSerializer.Serialize(new
+                    var orderCreatedPayload = JsonSerializer.Serialize(new
                     {
-                        userId = clientId.Value,
-                        userName,
-                        email = userEmail,
+                        professionalId = order.ProfessionalId,
+                        clientId = clientId.Value,
                         orderId = order.Id,
-                        doctorName = "Doctor",
+                        patientName,
                         appointmentDate = dto.ScheduledDateTime.ToString("yyyy-MM-dd"),
                         appointmentTime = dto.ScheduledDateTime.ToString("HH:mm"),
-                        title = dto.Title ?? "Appointment",
-                        scheduledDateTime = dto.ScheduledDateTime,
-                        professionalId = dto.ProfessionalId
+                        scheduledDateTime = dto.ScheduledDateTime
                     });
+
                     await client.PostAsJsonAsync("/api/notifications/events", new
                     {
                         sourceService = "AppointmentService",
-                        eventName = "BookingConfirmed",
-                        payload
+                        eventName = "OrderCreated",
+                        payload = orderCreatedPayload
+                    });
+
+                    await client.PostAsJsonAsync("/api/notifications", new
+                    {
+                        userId = clientId.Value,
+                        title = "Booking Pending",
+                        message = "Your booking request has been sent and is pending doctor confirmation.",
+                        type = 0,
+                        referenceId = order.Id,
+                        referenceType = "Order",
+                        metadata = JsonSerializer.Serialize(new
+                        {
+                            status = "Pending",
+                            appointmentDate = dto.ScheduledDateTime.ToString("yyyy-MM-dd"),
+                            appointmentTime = dto.ScheduledDateTime.ToString("HH:mm")
+                        })
                     });
                 }
                 catch { /* non-critical */ }
@@ -219,8 +241,15 @@ public static class OrderEndpoints
                 return Results.Unauthorized();
             }
 
-            var order = await orderService.CancelOrderAsync(id, dto?.Reason, cancelledByUserId.Value);
-            return Results.Ok(order);
+            try
+            {
+                var order = await orderService.CancelOrderAsync(id, dto?.Reason, cancelledByUserId.Value);
+                return Results.Ok(ToOrderStatusResponse(order));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { message = ex.Message });
+            }
         })
         .WithName("CancelOrder")
         .WithOpenApi();
@@ -242,7 +271,6 @@ public static class OrderEndpoints
             Guid id,
             [FromBody] ApproveOrderDto dto,
             [FromServices] IOrderApprovalService approvalService,
-            [FromServices] IOrderService orderService,
             [FromServices] IIdentityServiceClient identityServiceClient,
             [FromServices] IHttpClientFactory httpClientFactory,
             [FromServices] UserManager<AppIdentityUser> userManager,
@@ -264,48 +292,54 @@ public static class OrderEndpoints
 
             var order = await approvalService.ApproveOrderAsync(id, dto.Reason, approvedByUserId);
 
-            // Fire order approved notification to the client (fire-and-forget)
-            _ = Task.Run(async () =>
+            try
             {
-                try
+                var client = httpClientFactory.CreateClient("NotificationService");
+                var accessToken = context.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
+                var clientUser = await userManager.FindByIdAsync(order.ClientId.ToString());
+                var professionalUser = await userManager.FindByIdAsync(order.ProfessionalId.ToString());
+                var identityClientUser = !string.IsNullOrWhiteSpace(accessToken)
+                    ? await identityServiceClient.GetUserByIdAsync(order.ClientId, accessToken)
+                    : null;
+                var identityProfessionalUser = !string.IsNullOrWhiteSpace(accessToken)
+                    ? await identityServiceClient.GetUserByIdAsync(order.ProfessionalId, accessToken)
+                    : null;
+
+                var targetEmail = identityClientUser?.Email ?? clientUser?.Email;
+                var actorUserId = TryGetUserId(context.User);
+                var doctorNameFromClaims = actorUserId == order.ProfessionalId
+                    ? ResolvePreferredDisplayName(ResolveDisplayName(context.User, string.Empty))
+                    : null;
+                var doctorNameFromTitle = ExtractDoctorNameFromOrderTitle(order.Title);
+                var doctorName = doctorNameFromClaims
+                    ?? ResolveIdentityDisplayName(identityProfessionalUser)
+                    ?? doctorNameFromTitle
+                    ?? ResolveAppUserDisplayName(professionalUser, "Doctor");
+
+                var payload = JsonSerializer.Serialize(new
                 {
-                    var client = httpClientFactory.CreateClient("NotificationService");
-                    var fullOrder = await orderService.GetOrderByIdAsync(id);
-                    if (fullOrder != null)
-                    {
-                        var accessToken = context.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
-                        var clientUser = await userManager.FindByIdAsync(fullOrder.ClientId.ToString());
-                        var identityClientUser = !string.IsNullOrWhiteSpace(accessToken)
-                            ? await identityServiceClient.GetUserByIdAsync(fullOrder.ClientId, accessToken)
-                            : null;
+                    userId = order.ClientId,
+                    userName = identityClientUser?.UserName ?? clientUser?.UserName ?? "Patient",
+                    email = targetEmail,
+                    orderId = order.Id,
+                    doctorName,
+                    appointmentDate = order.ScheduledDateTime.ToString("yyyy-MM-dd"),
+                    appointmentTime = order.ScheduledDateTime.ToString("HH:mm"),
+                    title = order.Title ?? "Appointment",
+                    status = "Approved",
+                    reason = dto.Reason
+                });
 
-                        var targetEmail = identityClientUser?.Email ?? clientUser?.Email;
+                await client.PostAsJsonAsync("/api/notifications/events", new
+                {
+                    sourceService = "AppointmentService",
+                    eventName = "BookingConfirmed",
+                    payload
+                });
+            }
+            catch { /* non-critical */ }
 
-                        var payload = JsonSerializer.Serialize(new
-                        {
-                            userId = fullOrder.ClientId,
-                            userName = identityClientUser?.UserName ?? clientUser?.UserName ?? "Patient",
-                            email = targetEmail,
-                            orderId = fullOrder.Id,
-                            doctorName = "Doctor",
-                            appointmentDate = fullOrder.ScheduledDateTime.ToString("yyyy-MM-dd"),
-                            appointmentTime = fullOrder.ScheduledDateTime.ToString("HH:mm"),
-                            title = fullOrder.Title ?? "Appointment",
-                            status = "Approved",
-                            reason = dto.Reason
-                        });
-                        await client.PostAsJsonAsync("/api/notifications/events", new
-                        {
-                            sourceService = "AppointmentService",
-                            eventName = "OrderApproved",
-                            payload
-                        });
-                    }
-                }
-                catch { /* non-critical */ }
-            });
-
-            return Results.Ok(order);
+            return Results.Ok(ToOrderStatusResponse(order));
         })
         .WithName("ApproveOrder")
         .WithOpenApi();
@@ -315,6 +349,8 @@ public static class OrderEndpoints
             Guid id,
             [FromBody] DeclineOrderDto dto,
             [FromServices] IOrderApprovalService approvalService,
+            [FromServices] IIdentityServiceClient identityServiceClient,
+            [FromServices] IHttpClientFactory httpClientFactory,
             [FromServices] UserManager<AppIdentityUser> userManager,
             HttpContext context) =>
         {
@@ -333,7 +369,55 @@ public static class OrderEndpoints
             }
 
             var order = await approvalService.DeclineOrderAsync(id, dto.Reason, declinedByUserId);
-            return Results.Ok(order);
+
+            try
+            {
+                var client = httpClientFactory.CreateClient("NotificationService");
+                var accessToken = context.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
+                var clientUser = await userManager.FindByIdAsync(order.ClientId.ToString());
+                var professionalUser = await userManager.FindByIdAsync(order.ProfessionalId.ToString());
+                var identityClientUser = !string.IsNullOrWhiteSpace(accessToken)
+                    ? await identityServiceClient.GetUserByIdAsync(order.ClientId, accessToken)
+                    : null;
+                var identityProfessionalUser = !string.IsNullOrWhiteSpace(accessToken)
+                    ? await identityServiceClient.GetUserByIdAsync(order.ProfessionalId, accessToken)
+                    : null;
+
+                var targetEmail = identityClientUser?.Email ?? clientUser?.Email;
+                var actorUserId = TryGetUserId(context.User);
+                var doctorNameFromClaims = actorUserId == order.ProfessionalId
+                    ? ResolvePreferredDisplayName(ResolveDisplayName(context.User, string.Empty))
+                    : null;
+                var doctorNameFromTitle = ExtractDoctorNameFromOrderTitle(order.Title);
+                var doctorName = doctorNameFromClaims
+                    ?? ResolveIdentityDisplayName(identityProfessionalUser)
+                    ?? doctorNameFromTitle
+                    ?? ResolveAppUserDisplayName(professionalUser, "Doctor");
+
+                var payload = JsonSerializer.Serialize(new
+                {
+                    userId = order.ClientId,
+                    userName = identityClientUser?.UserName ?? clientUser?.UserName ?? "Patient",
+                    email = targetEmail,
+                    orderId = order.Id,
+                    doctorName,
+                    appointmentDate = order.ScheduledDateTime.ToString("yyyy-MM-dd"),
+                    appointmentTime = order.ScheduledDateTime.ToString("HH:mm"),
+                    title = order.Title ?? "Appointment",
+                    status = "Declined",
+                    reason = dto.Reason
+                });
+
+                await client.PostAsJsonAsync("/api/notifications/events", new
+                {
+                    sourceService = "AppointmentService",
+                    eventName = "OrderDeclined",
+                    payload
+                });
+            }
+            catch { /* non-critical */ }
+
+            return Results.Ok(ToOrderStatusResponse(order));
         })
         .WithName("DeclineOrder")
         .WithOpenApi();
@@ -343,6 +427,8 @@ public static class OrderEndpoints
             Guid id,
             [FromBody] CompleteOrderDto? dto,
             [FromServices] IOrderApprovalService approvalService,
+            [FromServices] IIdentityServiceClient identityServiceClient,
+            [FromServices] IHttpClientFactory httpClientFactory,
             [FromServices] UserManager<AppIdentityUser> userManager,
             HttpContext context) =>
         {
@@ -362,7 +448,55 @@ public static class OrderEndpoints
             }
 
             var order = await approvalService.CompleteOrderAsync(id, dto?.Notes, completedByUserId);
-            return Results.Ok(order);
+
+            try
+            {
+                var client = httpClientFactory.CreateClient("NotificationService");
+                var accessToken = context.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
+                var clientUser = await userManager.FindByIdAsync(order.ClientId.ToString());
+                var professionalUser = await userManager.FindByIdAsync(order.ProfessionalId.ToString());
+                var identityClientUser = !string.IsNullOrWhiteSpace(accessToken)
+                    ? await identityServiceClient.GetUserByIdAsync(order.ClientId, accessToken)
+                    : null;
+                var identityProfessionalUser = !string.IsNullOrWhiteSpace(accessToken)
+                    ? await identityServiceClient.GetUserByIdAsync(order.ProfessionalId, accessToken)
+                    : null;
+
+                var targetEmail = identityClientUser?.Email ?? clientUser?.Email;
+                var actorUserId = TryGetUserId(context.User);
+                var doctorNameFromClaims = actorUserId == order.ProfessionalId
+                    ? ResolvePreferredDisplayName(ResolveDisplayName(context.User, string.Empty))
+                    : null;
+                var doctorNameFromTitle = ExtractDoctorNameFromOrderTitle(order.Title);
+                var doctorName = doctorNameFromClaims
+                    ?? ResolveIdentityDisplayName(identityProfessionalUser)
+                    ?? doctorNameFromTitle
+                    ?? ResolveAppUserDisplayName(professionalUser, "Doctor");
+
+                var payload = JsonSerializer.Serialize(new
+                {
+                    userId = order.ClientId,
+                    userName = identityClientUser?.UserName ?? clientUser?.UserName ?? "Patient",
+                    email = targetEmail,
+                    orderId = order.Id,
+                    doctorName,
+                    appointmentDate = order.ScheduledDateTime.ToString("yyyy-MM-dd"),
+                    appointmentTime = order.ScheduledDateTime.ToString("HH:mm"),
+                    title = order.Title ?? "Appointment",
+                    status = "Completed",
+                    reason = dto?.Notes
+                });
+
+                await client.PostAsJsonAsync("/api/notifications/events", new
+                {
+                    sourceService = "AppointmentService",
+                    eventName = "OrderCompleted",
+                    payload
+                });
+            }
+            catch { /* non-critical */ }
+
+            return Results.Ok(ToOrderStatusResponse(order));
         })
         .WithName("CompleteOrder")
         .WithOpenApi();
@@ -445,6 +579,118 @@ public static class OrderEndpoints
         }
 
         return null;
+    }
+
+    private static string ResolveDisplayName(ClaimsPrincipal user, string fallback)
+    {
+        var customFirstName = user.FindFirstValue("FirstName");
+        var customLastName = user.FindFirstValue("LastName");
+        var customFirstNameLower = user.FindFirstValue("firstName") ?? user.FindFirstValue("firstname");
+        var customLastNameLower = user.FindFirstValue("lastName") ?? user.FindFirstValue("lastname");
+        var claimFirstName = user.FindFirstValue(ClaimTypes.GivenName);
+        var claimLastName = user.FindFirstValue(ClaimTypes.Surname);
+        var jwtGivenName = user.FindFirstValue("given_name");
+        var jwtFamilyName = user.FindFirstValue("family_name");
+
+        var firstName = customFirstName ?? customFirstNameLower ?? claimFirstName ?? jwtGivenName;
+        var lastName = customLastName ?? customLastNameLower ?? claimLastName ?? jwtFamilyName;
+
+        if (!string.IsNullOrWhiteSpace(firstName) && !string.IsNullOrWhiteSpace(lastName))
+        {
+            return $"{firstName} {lastName}";
+        }
+
+        return user.FindFirstValue(ClaimTypes.Name)
+            ?? user.FindFirstValue("name")
+            ?? user.FindFirstValue(ClaimTypes.Email)
+            ?? fallback;
+    }
+
+    private static string? ResolveIdentityDisplayName(IdentityUserDto? user)
+    {
+        if (user == null) return null;
+
+        if (!string.IsNullOrWhiteSpace(user.FirstName) && !string.IsNullOrWhiteSpace(user.LastName))
+        {
+            var fullName = $"{user.FirstName} {user.LastName}".Trim();
+            var preferredFullName = ResolvePreferredDisplayName(fullName);
+            if (!string.IsNullOrWhiteSpace(preferredFullName))
+            {
+                return preferredFullName;
+            }
+        }
+
+        return ResolvePreferredDisplayName(user.UserName);
+    }
+
+    private static string ResolveAppUserDisplayName(AppIdentityUser? user, string fallback)
+    {
+        if (user == null) return fallback;
+
+        if (!string.IsNullOrWhiteSpace(user.FirstName) && !string.IsNullOrWhiteSpace(user.LastName))
+        {
+            var fullName = $"{user.FirstName} {user.LastName}".Trim();
+            if (!string.Equals(fullName, "Doctor Profile", StringComparison.OrdinalIgnoreCase))
+            {
+                return fullName;
+            }
+        }
+
+        var preferredUserName = ResolvePreferredDisplayName(user.UserName);
+        if (!string.IsNullOrWhiteSpace(preferredUserName))
+        {
+            return preferredUserName;
+        }
+
+        return fallback;
+    }
+
+    private static string? ResolvePreferredDisplayName(string? rawDisplayName)
+    {
+        if (string.IsNullOrWhiteSpace(rawDisplayName)) return null;
+
+        var value = rawDisplayName.Trim();
+        if (value.Contains('@')) return null;
+        if (string.Equals(value, "Doctor Profile", StringComparison.OrdinalIgnoreCase)) return null;
+        if (string.Equals(value, "User Profile", StringComparison.OrdinalIgnoreCase)) return null;
+        if (Regex.IsMatch(value, "^user_[0-9a-f]{16,}$", RegexOptions.IgnoreCase)) return null;
+
+        return value;
+    }
+
+    private static string? ExtractDoctorNameFromOrderTitle(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return null;
+
+        const string marker = "Appointment with Dr.";
+        if (!title.StartsWith(marker, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var extracted = title.Substring(marker.Length).Trim();
+        return ResolvePreferredDisplayName(extracted);
+    }
+
+    private static object ToOrderStatusResponse(Order order)
+    {
+        return new
+        {
+            order.Id,
+            order.ClientId,
+            order.ProfessionalId,
+            order.Status,
+            order.ScheduledDateTime,
+            order.DurationMinutes,
+            order.Title,
+            order.Description,
+            order.Notes,
+            order.DeclineReason,
+            order.ApprovalReason,
+            order.CompletedAt,
+            order.CreatedAt,
+            order.UpdatedAt
+        };
     }
 }
 

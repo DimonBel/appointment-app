@@ -111,6 +111,34 @@ class AppointmentService {
     return response.data
   }
 
+  async approveOrder(orderId, reason, token) {
+    const response = await requestWithAuthRetry(
+      {
+        method: 'post',
+        url: `${API_URL}/orders/${orderId}/approve`,
+        data: {
+          reason: reason || null,
+        },
+      },
+      token
+    )
+    return response.data
+  }
+
+  async declineOrder(orderId, reason, token) {
+    const response = await requestWithAuthRetry(
+      {
+        method: 'post',
+        url: `${API_URL}/orders/${orderId}/decline`,
+        data: {
+          reason: reason || 'Declined by doctor',
+        },
+      },
+      token
+    )
+    return response.data
+  }
+
   async getProfessionals(token) {
     const response = await requestWithAuthRetry(
       {

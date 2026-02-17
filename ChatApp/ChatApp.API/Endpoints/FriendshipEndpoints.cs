@@ -67,7 +67,7 @@ public static class FriendshipEndpoints
                 try
                 {
                     var requester = await chatService.GetUserByIdAsync(currentUserId.Value);
-                    var requesterName = requester?.UserName ?? "Someone";
+                    var requesterName = ResolveDisplayName(httpContext.User, requester?.UserName ?? "Someone");
 
                     var httpClient = httpClientFactory.CreateClient("NotificationService");
                     var eventPayload = JsonSerializer.Serialize(new
@@ -375,5 +375,26 @@ public static class FriendshipEndpoints
             ?? user.FindFirstValue("nameid");
 
         return Guid.TryParse(claimValue, out var userId) ? userId : null;
+    }
+
+    private static string ResolveDisplayName(ClaimsPrincipal user, string fallback)
+    {
+        var customFirstName = user.FindFirstValue("FirstName");
+        var customLastName = user.FindFirstValue("LastName");
+        var claimFirstName = user.FindFirstValue(ClaimTypes.GivenName);
+        var claimLastName = user.FindFirstValue(ClaimTypes.Surname);
+
+        var firstName = customFirstName ?? claimFirstName;
+        var lastName = customLastName ?? claimLastName;
+
+        if (!string.IsNullOrWhiteSpace(firstName) && !string.IsNullOrWhiteSpace(lastName))
+        {
+            return $"{firstName} {lastName}";
+        }
+
+        return user.FindFirstValue(ClaimTypes.Name)
+            ?? user.FindFirstValue("name")
+            ?? user.FindFirstValue(ClaimTypes.Email)
+            ?? fallback;
     }
 }
