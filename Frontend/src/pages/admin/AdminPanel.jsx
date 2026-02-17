@@ -592,6 +592,7 @@ export const AdminPanel = () => {
                   <option value="Doctor">Doctor</option>
                   <option value="Patient">Patient</option>
                   <option value="Jurist">Jurist</option>
+                  <option value="Management">Management</option>
                   <option value="Admin">Admin</option>
                 </select>
               </div>
@@ -704,6 +705,7 @@ export const AdminPanel = () => {
                   <option value="Doctor">Doctor</option>
                   <option value="Patient">Patient</option>
                   <option value="Jurist">Jurist</option>
+                  <option value="Management">Management</option>
                   <option value="Admin">Admin</option>
                 </select>
               </div>

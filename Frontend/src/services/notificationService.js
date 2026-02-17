@@ -19,10 +19,10 @@ class NotificationService {
     return response.data
   }
 
-  async getUnreadNotifications(userId, token) {
+  async getUnreadNotifications(userId, token, page = 1, pageSize = 20) {
     const response = await requestWithAuthRetry({
       method: 'get',
-      url: `${API_URL}/notifications/unread?userId=${encodeURIComponent(userId)}`,
+      url: `${API_URL}/notifications/unread?userId=${encodeURIComponent(userId)}&page=${page}&pageSize=${pageSize}`,
     }, token)
     return response.data
   }

@@ -10,6 +10,7 @@ namespace IdentityApp.Service.Services;
 public class AuthService : IAuthService
 {
     private readonly UserManager<AppIdentityUser> _userManager;
+    private readonly RoleManager<AppIdentityRole> _roleManager;
     private readonly ITokenService _tokenService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConfiguration _configuration;
@@ -17,12 +18,14 @@ public class AuthService : IAuthService
 
     public AuthService(
         UserManager<AppIdentityUser> userManager,
+        RoleManager<AppIdentityRole> roleManager,
         ITokenService tokenService,
         IUnitOfWork unitOfWork,
         IConfiguration configuration,
         IIdentityEmailService identityEmailService)
     {
         _userManager = userManager;
+        _roleManager = roleManager;
         _tokenService = tokenService;
         _unitOfWork = unitOfWork;
         _configuration = configuration;
@@ -66,12 +69,37 @@ public class AuthService : IAuthService
         }
 
         // Validate and assign role
-        var validRoles = new[] { "User", "Professional", "Admin" };
-        var roleToAssign = validRoles.Contains(model.Role) ? model.Role : "User";
-        await _userManager.AddToRoleAsync(user, roleToAssign);
+        var validRoles = new[] { "User", "Professional", "Management", "Admin" };
+        var requestedRole = validRoles.Contains(model.Role) ? model.Role : "User";
+
+        var roleExists = await _roleManager.RoleExistsAsync(requestedRole);
+        if (!roleExists)
+        {
+            var createRoleResult = await _roleManager.CreateAsync(new AppIdentityRole
+            {
+                Name = requestedRole,
+                NormalizedName = requestedRole.ToUpperInvariant(),
+                Description = $"Auto-created role: {requestedRole}"
+            });
+
+            if (!createRoleResult.Succeeded)
+            {
+                await _userManager.DeleteAsync(user);
+                var roleErrors = string.Join(", ", createRoleResult.Errors.Select(e => e.Description));
+                return (false, $"Failed to create role '{requestedRole}': {roleErrors}", null);
+            }
+        }
+
+        var roleAssignResult = await _userManager.AddToRoleAsync(user, requestedRole);
+        if (!roleAssignResult.Succeeded)
+        {
+            await _userManager.DeleteAsync(user);
+            var roleAssignErrors = string.Join(", ", roleAssignResult.Errors.Select(e => e.Description));
+            return (false, $"Failed to assign role '{requestedRole}': {roleAssignErrors}", null);
+        }
 
         // Only send confirmation email for non-admin users
-        if (model.Role != "Admin")
+        if (requestedRole != "Admin")
         {
             var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             var publicBaseUrl = _configuration["Frontend:PublicBaseUrl"]

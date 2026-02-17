@@ -7,6 +7,7 @@ import { StatusBadge } from '../../components/ui/Badge'
 import { Avatar } from '../../components/ui/Avatar'
 import { Loader } from '../../components/ui/Loader'
 import { appointmentService } from '../../services/appointmentService'
+import { userService } from '../../services/userService'
 import { Calendar, Clock, MapPin, Phone } from 'lucide-react'
 
 export const Bookings = () => {
@@ -26,6 +27,28 @@ export const Bookings = () => {
       const data = await appointmentService.getOrders(token)
       const allOrders = Array.isArray(data) ? data : []
 
+      const uniqueProfessionalUserIds = Array.from(
+        new Set(
+          allOrders
+            .map((order) => order.professionalId)
+            .filter(Boolean)
+        )
+      )
+
+      const identityUsersById = {}
+      await Promise.all(
+        uniqueProfessionalUserIds.map(async (userId) => {
+          try {
+            const user = await userService.getUserById(userId, token)
+            if (user?.id) {
+              identityUsersById[user.id] = user
+            }
+          } catch {
+            // Keep fallback data from order payload
+          }
+        })
+      )
+
       const statusToUi = (status) => {
         switch (status) {
           case 0:
@@ -42,6 +65,14 @@ export const Bookings = () => {
       }
 
       const mapped = allOrders.map((order) => {
+        const identityDoctor = order.professionalId
+          ? identityUsersById[order.professionalId]
+          : null
+
+        const identityDoctorName = identityDoctor
+          ? `${identityDoctor.firstName || ''} ${identityDoctor.lastName || ''}`.trim()
+          : ''
+
         const professionalName = order.professional
           ? `${order.professional.firstName || ''} ${order.professional.lastName || ''}`.trim()
           : order.professionalId
@@ -53,7 +84,8 @@ export const Bookings = () => {
         return {
           id: order.id,
           orderStatus: order.status,
-          doctorName: professionalName || 'Doctor',
+          doctorName: identityDoctorName || professionalName || 'Doctor',
+          doctorAvatar: identityDoctor?.avatarUrl || null,
           specialty: order.title || 'General Consultation',
           location: order.description || 'To be confirmed',
           date: scheduled ? scheduled.toLocaleDateString() : '-',

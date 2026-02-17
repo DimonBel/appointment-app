@@ -27,6 +27,8 @@ public class OrderService : IOrderService
 
     public async Task<Order> CreateOrderAsync(Guid clientId, Guid professionalId, DateTime scheduledDateTime, int durationMinutes, string? title = null, string? description = null, Guid? domainConfigurationId = null)
     {
+        var normalizedScheduledDateTime = NormalizeToUtc(scheduledDateTime);
+
         var existingClient = await _userManager.FindByIdAsync(clientId.ToString());
         if (existingClient == null)
         {
@@ -60,22 +62,18 @@ public class OrderService : IOrderService
             throw new InvalidOperationException("Professional is not available for booking");
         }
 
-        // TODO: For now, we'll skip slot availability check until we implement slot generation
-        // The availability checking requires AvailabilitySlots to be generated from Availability schedules
-        /*
-        var isAvailable = await _availabilitySlotRepository.IsSlotAvailableAsync(professionalId, scheduledDateTime, durationMinutes);
+        var isAvailable = await _availabilitySlotRepository.IsSlotAvailableAsync(professionalId, normalizedScheduledDateTime, durationMinutes);
         if (!isAvailable)
         {
             throw new InvalidOperationException("Requested time slot is not available");
         }
-        */
 
         var order = new Order
         {
             Id = Guid.NewGuid(),
             ClientId = clientId,
             ProfessionalId = professional.UserId, // Use the professional's UserId, not the Professional entity Id
-            ScheduledDateTime = scheduledDateTime,
+            ScheduledDateTime = normalizedScheduledDateTime,
             DurationMinutes = durationMinutes,
             Title = title,
             Description = description,
@@ -88,6 +86,21 @@ public class OrderService : IOrderService
 
         // Reload with navigation properties populated
         return await _orderRepository.GetByIdAsync(order.Id) ?? order;
+    }
+
+    private static DateTime NormalizeToUtc(DateTime dateTime)
+    {
+        if (dateTime.Kind == DateTimeKind.Utc)
+        {
+            return dateTime;
+        }
+
+        if (dateTime.Kind == DateTimeKind.Local)
+        {
+            return dateTime.ToUniversalTime();
+        }
+
+        return DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
     }
 
     public async Task<Order?> GetOrderByIdAsync(Guid orderId)
@@ -128,9 +141,16 @@ public class OrderService : IOrderService
             throw new ArgumentException("Order not found", nameof(orderId));
         }
 
+        var previousStatus = order.Status;
+
         if (order.Status != OrderStatus.Requested && order.Status != OrderStatus.Approved)
         {
             throw new InvalidOperationException($"Cannot cancel order with status {order.Status}");
+        }
+
+        if (previousStatus == OrderStatus.Approved)
+        {
+            await ReleaseReservedSlotsAsync(order.ProfessionalId, order.ScheduledDateTime, order.DurationMinutes);
         }
 
         order.Status = OrderStatus.Cancelled;
@@ -158,7 +178,7 @@ public class OrderService : IOrderService
             throw new ArgumentException("Scheduled date and time must be in the future", nameof(newScheduledDateTime));
         }
 
-        order.ScheduledDateTime = newScheduledDateTime;
+        order.ScheduledDateTime = NormalizeToUtc(newScheduledDateTime);
         if (!string.IsNullOrWhiteSpace(notes))
         {
             order.Notes = notes;
@@ -171,5 +191,38 @@ public class OrderService : IOrderService
     public async Task<bool> DeleteOrderAsync(Guid orderId)
     {
         return await _orderRepository.DeleteAsync(orderId);
+    }
+
+    private async Task ReleaseReservedSlotsAsync(Guid professionalUserId, DateTime scheduledDateTime, int durationMinutes)
+    {
+        if (durationMinutes <= 0)
+        {
+            return;
+        }
+
+        var professional = await _professionalRepository.GetByUserIdAsync(professionalUserId);
+        if (professional == null)
+        {
+            return;
+        }
+
+        var startDateTimeUtc = NormalizeToUtc(scheduledDateTime);
+        var requestedStartTime = startDateTimeUtc.TimeOfDay;
+        var requestedEndTime = requestedStartTime.Add(TimeSpan.FromMinutes(durationMinutes));
+
+        var daySlots = (await _availabilitySlotRepository.GetSlotsByDateAsync(professional.Id, startDateTimeUtc.Date))
+            .Where(slot => slot.StartTime >= requestedStartTime && slot.StartTime < requestedEndTime)
+            .ToList();
+
+        foreach (var slot in daySlots)
+        {
+            if (slot.IsAvailable)
+            {
+                continue;
+            }
+
+            slot.IsAvailable = true;
+            await _availabilitySlotRepository.UpdateAsync(slot);
+        }
     }
 }

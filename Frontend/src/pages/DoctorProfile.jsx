@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Loader } from '../components/ui/Loader'
 import { doctorProfileService } from '../services/doctorProfileService'
+import { appointmentService } from '../services/appointmentService'
 import { Save, Trash2, Plus, X } from 'lucide-react'
 
 export const DoctorProfile = () => {
@@ -20,7 +21,6 @@ export const DoctorProfile = () => {
     qualifications: '',
     yearsOfExperience: 0,
     services: [],
-    workingHours: '',
     consultationFee: '',
     languages: [],
     address: '',
@@ -30,17 +30,28 @@ export const DoctorProfile = () => {
   })
   const [newService, setNewService] = useState('')
   const [newLanguage, setNewLanguage] = useState('')
+  const [professionalEntity, setProfessionalEntity] = useState(null)
+  const [availabilityItems, setAvailabilityItems] = useState([])
+  const [availabilityLoading, setAvailabilityLoading] = useState(false)
+  const [addingAvailability, setAddingAvailability] = useState(false)
+  const [availabilityForm, setAvailabilityForm] = useState({
+    dayOfWeek: '1',
+    startTime: '09:00',
+    endTime: '17:00',
+  })
 
   const token = useSelector((state) => state.auth.token)
+  const user = useSelector((state) => state.auth.user)
 
   useEffect(() => {
     if (token) {
       fetchProfile()
+      fetchProfessionalAvailability()
     } else {
       setLoading(false)
       setError('Please login to manage your professional profile')
     }
-  }, [token])
+  }, [token, user?.id])
 
   const fetchProfile = async () => {
     setLoading(true)
@@ -56,7 +67,6 @@ export const DoctorProfile = () => {
           qualifications: '',
           yearsOfExperience: 0,
           services: [],
-          workingHours: '',
           consultationFee: '',
           languages: [],
           address: '',
@@ -74,7 +84,6 @@ export const DoctorProfile = () => {
         qualifications: data.qualifications || '',
         yearsOfExperience: data.yearsOfExperience || 0,
         services: data.services || [],
-        workingHours: data.workingHours || '',
         consultationFee: data.consultationFee?.toString() || '',
         languages: data.languages || [],
         address: data.address || '',
@@ -92,6 +101,116 @@ export const DoctorProfile = () => {
       setLoading(false)
     }
   }
+
+  const normalizeTimeToApi = (timeValue) => `${timeValue}:00`
+
+  const ensureProfessionalExists = async () => {
+    if (!token || !user?.id) {
+      throw new Error('User not authenticated')
+    }
+
+    let professional = await appointmentService.getProfessionalByUserId(user.id, token)
+
+    if (!professional) {
+      professional = await appointmentService.createProfessional({
+        userId: user.id,
+        title: 'Dr.',
+        qualifications: formData.qualifications || null,
+        specialization: formData.specialty || 'General',
+      }, token)
+    }
+
+    setProfessionalEntity(professional)
+    return professional
+  }
+
+  const fetchProfessionalAvailability = async () => {
+    if (!token || !user?.id) {
+      setProfessionalEntity(null)
+      setAvailabilityItems([])
+      return
+    }
+
+    setAvailabilityLoading(true)
+    try {
+      const professional = await ensureProfessionalExists()
+
+      const availabilities = await appointmentService.getAvailabilitiesByProfessional(professional.id, token)
+      const items = Array.isArray(availabilities) ? availabilities : []
+      setAvailabilityItems(items)
+    } catch (err) {
+      console.error('Failed to load professional availability', err)
+      setAvailabilityItems([])
+    } finally {
+      setAvailabilityLoading(false)
+    }
+  }
+
+  const handleAvailabilityFieldChange = (e) => {
+    const { name, value } = e.target
+    setAvailabilityForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
+  const handleAddAvailability = async () => {
+    setError('')
+    setSuccess('')
+
+    if (!availabilityForm.startTime || !availabilityForm.endTime) {
+      setError('Please select both start and end time for slot setup.')
+      return
+    }
+
+    if (availabilityForm.startTime >= availabilityForm.endTime) {
+      setError('Start time must be earlier than end time.')
+      return
+    }
+
+    setAddingAvailability(true)
+
+    try {
+      let professional = professionalEntity
+
+      // Ensure professional entity exists
+      if (!professional?.id) {
+        professional = await ensureProfessionalExists()
+      }
+
+      await appointmentService.createAvailability({
+        professionalId: professional.id,
+        dayOfWeek: Number(availabilityForm.dayOfWeek),
+        startTime: normalizeTimeToApi(availabilityForm.startTime),
+        endTime: normalizeTimeToApi(availabilityForm.endTime),
+        scheduleType: 1,
+      }, token)
+
+      setSuccess('Time slot schedule added successfully!')
+      await fetchProfessionalAvailability()
+    } catch (err) {
+      console.error('Error adding availability:', err)
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Failed to add time slot schedule'
+      setError(errorMessage)
+    } finally {
+      setAddingAvailability(false)
+    }
+  }
+
+  const handleDeleteAvailability = async (availabilityId) => {
+    setError('')
+    setSuccess('')
+
+    try {
+      await appointmentService.deleteAvailability(availabilityId, token)
+      setSuccess('Time slot schedule deleted successfully!')
+      await fetchProfessionalAvailability()
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete time slot schedule')
+    }
+  }
+
+  const dayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -162,6 +281,7 @@ export const DoctorProfile = () => {
       }
       
       await fetchProfile()
+      await fetchProfessionalAvailability()
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save profile')
     } finally {
@@ -340,13 +460,6 @@ export const DoctorProfile = () => {
                   step="0.01"
                   min="0"
                 />
-                <Input
-                  label="Working Hours"
-                  name="workingHours"
-                  value={formData.workingHours}
-                  onChange={handleChange}
-                  placeholder="e.g., Mon-Fri 9AM-5PM"
-                />
               </div>
             </div>
 
@@ -390,6 +503,139 @@ export const DoctorProfile = () => {
                 />
                 <span className="text-sm text-text-primary">Available for appointments</span>
               </label>
+            </div>
+
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Weekly Schedule</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Configure your weekly slot schedule. Patients can book appointments during these times.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-full">
+                    Timezone: Local
+                  </div>
+                  {professionalEntity?.id && (
+                    <div className="text-xs text-green-600 bg-green-50 px-3 py-1.5 rounded-full flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      Professional Ready
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-medium p-6 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Day of Week</label>
+                    <select
+                      name="dayOfWeek"
+                      value={availabilityForm.dayOfWeek}
+                      onChange={handleAvailabilityFieldChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-accent focus:border-transparent transition-all bg-gray-50 hover:bg-white"
+                    >
+                      {dayLabels.map((day, index) => (
+                        <option key={day} value={String(index)}>{day}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                    <input
+                      type="time"
+                      name="startTime"
+                      value={availabilityForm.startTime}
+                      onChange={handleAvailabilityFieldChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-accent focus:border-transparent transition-all bg-gray-50 hover:bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+                    <input
+                      type="time"
+                      name="endTime"
+                      value={availabilityForm.endTime}
+                      onChange={handleAvailabilityFieldChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-accent focus:border-transparent transition-all bg-gray-50 hover:bg-white"
+                    />
+                  </div>
+
+                  <div className="flex items-end">
+                    <Button
+                      type="button"
+                      onClick={handleAddAvailability}
+                      disabled={addingAvailability || availabilityLoading}
+                      className="w-full h-11 rounded-xl bg-primary-dark hover:bg-primary-dark/90 text-white font-medium transition-all"
+                    >
+                      <Plus size={18} className="mr-2" />
+                      {addingAvailability ? 'Adding...' : 'Add Schedule'}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2 text-xs text-gray-500 bg-blue-50 p-3 rounded-xl">
+                  <svg className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  <p>
+                    <span className="font-medium text-gray-700">Tip:</span> Add multiple schedules for different days. For example, you can set Monday-Friday 9AM-5PM and Saturday 10AM-2PM.
+                  </p>
+                </div>
+              </div>
+
+              {availabilityLoading ? (
+                <div className="flex items-center justify-center py-8 bg-white rounded-2xl shadow-medium">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-dark"></div>
+                  <span className="ml-3 text-sm text-gray-500">
+                    {!professionalEntity?.id ? 'Initializing professional profile...' : 'Loading schedules...'}
+                  </span>
+                </div>
+              ) : availabilityItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 bg-white rounded-2xl shadow-medium border-2 border-dashed border-gray-200">
+                  <svg className="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <p className="text-sm text-gray-500">No schedules configured yet</p>
+                  <p className="text-xs text-gray-400 mt-1">Add your first working schedule above</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700 mb-3">Your Schedules</p>
+                  {availabilityItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-primary-accent/10 flex items-center justify-center">
+                          <svg className="w-5 h-5 text-primary-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {dayLabels[item.dayOfWeek] || 'Unknown day'}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {String(item.startTime).slice(0, 5)} - {String(item.endTime).slice(0, 5)}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => handleDeleteAvailability(item.id)}
+                        className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 size={16} className="text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Submit */}

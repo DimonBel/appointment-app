@@ -10,6 +10,7 @@ public interface IAvailabilityService
     Task<IEnumerable<Availability>> GetAvailabilitiesByProfessionalAsync(Guid professionalId);
     Task<Availability> UpdateAvailabilityAsync(Guid availabilityId, DayOfWeek? dayOfWeek = null, TimeSpan? startTime = null, TimeSpan? endTime = null, DateTime? endDate = null);
     Task<bool> DeleteAvailabilityAsync(Guid availabilityId);
+    Task<IEnumerable<AvailabilitySlot>> GetSlotsByDateAsync(Guid professionalId, DateTime date);
     Task<IEnumerable<AvailabilitySlot>> GetAvailableSlotsAsync(Guid professionalId, DateTime date);
     Task<bool> IsSlotAvailableAsync(Guid professionalId, DateTime dateTime, int durationMinutes);
     Task<IEnumerable<AvailabilitySlot>> GenerateSlotsForDateAsync(Guid professionalId, DateTime date);

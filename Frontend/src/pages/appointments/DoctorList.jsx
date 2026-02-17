@@ -4,12 +4,11 @@ import { MainContent, SectionHeader } from '../../components/layout/MainContent'
 import { Card, CardContent } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Avatar } from '../../components/ui/Avatar'
-import { Input } from '../../components/ui/Input'
 import { Loader } from '../../components/ui/Loader'
 import { BookingModal } from '../../components/booking/BookingModal'
-import { doctorProfileService } from '../../services/doctorProfileService'
 import { appointmentService } from '../../services/appointmentService'
-import { Search, Star, MapPin, Calendar, Briefcase, DollarSign } from 'lucide-react'
+import { userService } from '../../services/userService'
+import { Search, MapPin, Calendar, Briefcase, DollarSign } from 'lucide-react'
 
 export const DoctorList = () => {
   const [doctors, setDoctors] = useState([])
@@ -29,9 +28,62 @@ export const DoctorList = () => {
   const fetchDoctors = async () => {
     setLoading(true)
     try {
-      const data = await doctorProfileService.getAllProfiles()
-      const doctorArray = Array.isArray(data) ? data : []
-      setDoctors(doctorArray)
+      // Get professionals from Appointment API
+      const professionals = await appointmentService.getProfessionals(token)
+      const professionalArray = Array.isArray(professionals) ? professionals : []
+
+      const doctors = await Promise.all(
+        professionalArray.map(async (prof) => {
+          const fallbackUser = {
+            id: prof.user?.id || prof.userId || null,
+            firstName: prof.user?.firstName || null,
+            lastName: prof.user?.lastName || null,
+            userName: prof.user?.userName || null,
+            email: prof.user?.email || null,
+            avatarUrl: prof.user?.avatarUrl || null,
+          }
+
+          let resolvedUser = fallbackUser
+          const userId = prof.userId || prof.user?.id
+
+          if (token && userId) {
+            try {
+              const identityUser = await userService.getUserById(userId, token)
+              if (identityUser) {
+                resolvedUser = {
+                  ...fallbackUser,
+                  id: identityUser.id || fallbackUser.id,
+                  firstName: identityUser.firstName || fallbackUser.firstName,
+                  lastName: identityUser.lastName || fallbackUser.lastName,
+                  userName: identityUser.userName || fallbackUser.userName,
+                  email: identityUser.email || fallbackUser.email,
+                  avatarUrl: identityUser.avatarUrl || fallbackUser.avatarUrl,
+                }
+              }
+            } catch {
+              // Keep fallbackUser when Identity lookup is unavailable
+            }
+          }
+
+          return {
+            id: prof.id,
+            user: resolvedUser,
+            specialty: prof.specialization,
+            bio: prof.bio,
+            qualifications: prof.qualifications,
+            yearsOfExperience: prof.experienceYears,
+            services: [],
+            consultationFee: prof.hourlyRate,
+            languages: [],
+            city: null,
+            country: null,
+            address: null,
+            isAvailableForAppointments: prof.isAvailable,
+          }
+        })
+      )
+      
+      setDoctors(doctors)
     } catch (error) {
       console.error('Error fetching doctors:', error)
       setDoctors([])
@@ -64,14 +116,39 @@ export const DoctorList = () => {
     return matchesSearch && matchesSpecialty
   }) : []
 
-  const openBookingModal = (doctor) => {
+  const openBookingModal = async (doctor) => {
     if (!token) {
       alert('Please login to book an appointment')
       return
     }
-    setBookingMessage('')
-    setSelectedDoctor(doctor)
-    setBookingModalOpen(true)
+
+    if (!doctor?.user?.id) {
+      alert('Doctor profile is incomplete. Please try another doctor.')
+      return
+    }
+
+    try {
+      setBookingLoading(true)
+      let professional = await appointmentService.getProfessionalByUserId(doctor.user.id, token)
+
+      if (!professional) {
+        professional = await appointmentService.createProfessional({
+          userId: doctor.user.id,
+          title: 'Dr.',
+          qualifications: doctor.qualifications || null,
+          specialization: doctor.specialty || 'General',
+        }, token)
+      }
+
+      setBookingMessage('')
+      setSelectedDoctor({ ...doctor, professionalId: professional.id })
+      setBookingModalOpen(true)
+    } catch (error) {
+      console.error('Error preparing booking:', error)
+      alert(error.response?.data?.message || 'Failed to open booking form')
+    } finally {
+      setBookingLoading(false)
+    }
   }
 
   const closeBookingModal = () => {
@@ -80,7 +157,7 @@ export const DoctorList = () => {
   }
 
   const handleConfirmBooking = async ({ scheduledDateTime, durationMinutes, notes }) => {
-    if (!selectedDoctor || !selectedDoctor.user?.id) {
+    if (!selectedDoctor || !selectedDoctor.professionalId) {
       alert('Doctor data is incomplete')
       return
     }
@@ -88,23 +165,12 @@ export const DoctorList = () => {
     try {
       setBookingLoading(true)
 
-      let professional = await appointmentService.getProfessionalByUserId(selectedDoctor.user.id, token)
-
-      if (!professional) {
-        professional = await appointmentService.createProfessional({
-          userId: selectedDoctor.user.id,
-          title: 'Dr.',
-          qualifications: selectedDoctor.qualifications || null,
-          specialization: selectedDoctor.specialty || 'General',
-        }, token)
-      }
-
       const doctorName = selectedDoctor.user?.firstName && selectedDoctor.user?.lastName
         ? `${selectedDoctor.user.firstName} ${selectedDoctor.user.lastName}`
         : selectedDoctor.user?.userName || 'Doctor'
 
       await appointmentService.createOrder({
-        professionalId: professional.id,
+        professionalId: selectedDoctor.professionalId,
         scheduledDateTime,
         durationMinutes,
         title: `Appointment with Dr. ${doctorName}`,

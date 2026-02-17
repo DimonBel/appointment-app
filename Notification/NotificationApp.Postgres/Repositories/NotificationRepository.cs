@@ -46,6 +46,17 @@ public class NotificationRepository : INotificationRepository
             .CountAsync(n => n.UserId == userId && n.Channel == NotificationChannel.InApp && n.Status != NotificationStatus.Read);
     }
 
+    public async Task<IEnumerable<Notification>> GetUnreadByUserIdAsync(Guid userId, int page, int pageSize)
+    {
+        return await _context.Notifications
+            .Where(n => n.UserId == userId && n.Channel == NotificationChannel.InApp && n.Status != NotificationStatus.Read)
+            .OrderByDescending(n => n.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Include(n => n.Template)
+            .ToListAsync();
+    }
+
     public async Task<Notification> UpdateAsync(Notification notification)
     {
         _context.Notifications.Update(notification);

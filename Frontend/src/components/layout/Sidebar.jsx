@@ -1,13 +1,14 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { Calendar, Users, MessageCircle, User, Settings, Stethoscope, Bell, Shield } from 'lucide-react'
+import { Calendar, Users, MessageCircle, User, Settings, Stethoscope, Bell, Shield, Briefcase } from 'lucide-react'
 
 export const Sidebar = ({ activeItem, onNavigate }) => {
   const user = useSelector((state) => state.auth.user)
   const unreadCount = useSelector((state) => state.notifications?.unreadCount || 0)
   const isProfessional = user?.roles?.includes('Professional') || false
   const isAdmin = user?.roles?.includes('Admin') || false
+  const isManagement = user?.roles?.includes('Management') || false
 
   const navItems = [
     { id: 'bookings', label: 'My Bookings', Icon: Calendar, path: '/' },
@@ -16,6 +17,7 @@ export const Sidebar = ({ activeItem, onNavigate }) => {
     { id: 'notifications', label: 'Notifications', Icon: Bell, path: '/notifications', badge: unreadCount > 0 ? unreadCount : null },
     { id: 'profile', label: 'Profile', Icon: User, path: '/profile' },
     ...(isProfessional ? [{ id: 'doctor-profile', label: 'Professional Profile', Icon: Stethoscope, path: '/doctor-profile' }] : []),
+    ...(isManagement ? [{ id: 'management', label: 'Management Panel', Icon: Briefcase, path: '/management' }] : []),
     ...(isAdmin ? [{ id: 'admin', label: 'Admin Panel', Icon: Shield, path: '/admin' }] : []),
     { id: 'settings', label: 'Settings', Icon: Settings, path: '/settings' }
   ]

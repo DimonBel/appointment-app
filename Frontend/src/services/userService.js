@@ -7,6 +7,18 @@ const getIdentityApiBase = () => {
 }
 
 class UserService {
+  async getAllUsers(token) {
+    const identityApiBase = getIdentityApiBase()
+    const response = await requestWithAuthRetry(
+      {
+        method: 'get',
+        url: `${identityApiBase}/users`,
+      },
+      token
+    )
+    return response.data
+  }
+
   async getUserById(userId, token) {
     const identityApiBase = getIdentityApiBase()
     const response = await requestWithAuthRetry(

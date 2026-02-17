@@ -7,6 +7,7 @@ using AppointmentApp.Domain.Interfaces;
 using AppointmentApp.Repository.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -57,14 +58,31 @@ public static class OrderEndpoints
                 return Results.Unauthorized();
             }
 
-            var order = await orderService.CreateOrderAsync(
-                clientId.Value,
-                dto.ProfessionalId,
-                dto.ScheduledDateTime,
-                dto.DurationMinutes,
-                dto.Title,
-                dto.Description,
-                dto.DomainConfigurationId);
+            Order order;
+            try
+            {
+                order = await orderService.CreateOrderAsync(
+                    clientId.Value,
+                    dto.ProfessionalId,
+                    dto.ScheduledDateTime,
+                    dto.DurationMinutes,
+                    dto.Title,
+                    dto.Description,
+                    dto.DomainConfigurationId);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { message = ex.Message });
+            }
+            catch (DbUpdateException ex)
+            {
+                var message = ex.InnerException?.Message ?? ex.Message;
+                return Results.BadRequest(new { message = message });
+            }
 
             var localUser = await userManager.FindByIdAsync(clientId.Value.ToString());
             var accessToken = context.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
@@ -290,7 +308,19 @@ public static class OrderEndpoints
                 }
             }
 
-            var order = await approvalService.ApproveOrderAsync(id, dto.Reason, approvedByUserId);
+            Order order;
+            try
+            {
+                order = await approvalService.ApproveOrderAsync(id, dto.Reason, approvedByUserId);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { message = ex.Message });
+            }
 
             try
             {

@@ -140,3 +140,7 @@ d:\Duma\appointment-app\Identity\IdentityApp.API\obj\Debug\net9.0\ref\IdentityAp
 D:\Duma\appointment-app\Identity\IdentityApp.API\bin\Debug\net9.0\BouncyCastle.Cryptography.dll
 D:\Duma\appointment-app\Identity\IdentityApp.API\bin\Debug\net9.0\MailKit.dll
 D:\Duma\appointment-app\Identity\IdentityApp.API\bin\Debug\net9.0\MimeKit.dll
+D:\Duma\appointment-app\Identity\IdentityApp.API\bin\Debug\net9.0\CommunityToolkit.HighPerformance.dll
+D:\Duma\appointment-app\Identity\IdentityApp.API\bin\Debug\net9.0\Minio.dll
+D:\Duma\appointment-app\Identity\IdentityApp.API\bin\Debug\net9.0\System.IO.Hashing.dll
+D:\Duma\appointment-app\Identity\IdentityApp.API\bin\Debug\net9.0\System.Reactive.dll
