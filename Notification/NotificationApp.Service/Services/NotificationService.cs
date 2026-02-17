@@ -108,7 +108,12 @@ public class NotificationService : INotificationService
             _logger.LogWarning(ex, "Failed to send real-time notification to user {UserId}", userId);
         }
 
-        // Try to send email notification
+        // Try to send email notification (only for booking confirmation)
+        if (type != NotificationType.BookingConfirmation)
+        {
+            return;
+        }
+
         string? userEmail = null;
         if (metadata != null)
         {

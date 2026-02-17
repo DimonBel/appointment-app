@@ -34,6 +34,7 @@ public class EmailService : IEmailService
             var fromName = smtpSettings["FromName"] ?? "Healthcare Hub";
             var useSsl = bool.Parse(smtpSettings["UseSsl"] ?? "false");
             var useStartTls = bool.Parse(smtpSettings["UseStartTls"] ?? "true");
+            var secureSocketRaw = smtpSettings["SecureSocket"];
 
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(fromName, fromEmail));
@@ -56,12 +57,23 @@ public class EmailService : IEmailService
             using var client = new SmtpClient();
 
             SecureSocketOptions socketOptions;
-            if (useSsl)
+            if (!string.IsNullOrWhiteSpace(secureSocketRaw)
+                && Enum.TryParse<SecureSocketOptions>(secureSocketRaw, true, out var parsedOption))
+            {
+                socketOptions = parsedOption;
+            }
+            else if (useSsl)
+            {
                 socketOptions = SecureSocketOptions.SslOnConnect;
+            }
             else if (useStartTls)
+            {
                 socketOptions = SecureSocketOptions.StartTls;
+            }
             else
+            {
                 socketOptions = SecureSocketOptions.Auto;
+            }
 
             await client.ConnectAsync(host, port, socketOptions);
             await client.AuthenticateAsync(username, password);

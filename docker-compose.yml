@@ -196,12 +196,13 @@ services:
       - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
       - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
       - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
-      - Smtp__Host=${SMTP_HOST:-mail.rts.md}
+      - Smtp__Host=${SMTP_HOST:-mail.kubzle.com}
       - Smtp__Port=${SMTP_PORT:-587}
       - Smtp__Username=${SMTP_USERNAME:-Test-internship@rts.md}
       - Smtp__Password=${SMTP_PASSWORD:-5517bBueeT8z}
       - Smtp__FromEmail=${SMTP_FROM_EMAIL:-Test-internship@rts.md}
-      - Smtp__FromName=${SMTP_FROM_NAME:-Healthcare Hub}
+      - Smtp__FromName=${SMTP_FROM_NAME:-Booking-app}
+      - Smtp__SecureSocket=${SMTP_SECURE_SOCKET:-StartTls}
       - Smtp__UseSsl=false
       - Smtp__UseStartTls=true
     ports:
