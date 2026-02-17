@@ -311,9 +311,9 @@ public static class OrderEndpoints
                     ? ResolvePreferredDisplayName(ResolveDisplayName(context.User, string.Empty))
                     : null;
                 var doctorNameFromTitle = ExtractDoctorNameFromOrderTitle(order.Title);
-                var doctorName = doctorNameFromClaims
-                    ?? ResolveIdentityDisplayName(identityProfessionalUser)
+                var doctorName = ResolveIdentityDisplayName(identityProfessionalUser)
                     ?? doctorNameFromTitle
+                    ?? doctorNameFromClaims
                     ?? ResolveAppUserDisplayName(professionalUser, "Doctor");
 
                 var payload = JsonSerializer.Serialize(new
@@ -389,9 +389,9 @@ public static class OrderEndpoints
                     ? ResolvePreferredDisplayName(ResolveDisplayName(context.User, string.Empty))
                     : null;
                 var doctorNameFromTitle = ExtractDoctorNameFromOrderTitle(order.Title);
-                var doctorName = doctorNameFromClaims
-                    ?? ResolveIdentityDisplayName(identityProfessionalUser)
+                var doctorName = ResolveIdentityDisplayName(identityProfessionalUser)
                     ?? doctorNameFromTitle
+                    ?? doctorNameFromClaims
                     ?? ResolveAppUserDisplayName(professionalUser, "Doctor");
 
                 var payload = JsonSerializer.Serialize(new
@@ -468,9 +468,9 @@ public static class OrderEndpoints
                     ? ResolvePreferredDisplayName(ResolveDisplayName(context.User, string.Empty))
                     : null;
                 var doctorNameFromTitle = ExtractDoctorNameFromOrderTitle(order.Title);
-                var doctorName = doctorNameFromClaims
-                    ?? ResolveIdentityDisplayName(identityProfessionalUser)
+                var doctorName = ResolveIdentityDisplayName(identityProfessionalUser)
                     ?? doctorNameFromTitle
+                    ?? doctorNameFromClaims
                     ?? ResolveAppUserDisplayName(professionalUser, "Doctor");
 
                 var payload = JsonSerializer.Serialize(new
