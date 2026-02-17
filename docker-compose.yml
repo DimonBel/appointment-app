@@ -102,6 +102,16 @@ services:
       - Jwt__AccessTokenExpirationMinutes=${JWT_ACCESS_EXPIRATION:-30}
       - Jwt__RefreshTokenExpirationDays=${JWT_REFRESH_EXPIRATION:-7}
       - NotificationService__BaseUrl=http://notification-service:5003
+      - IdentityService__PublicBaseUrl=${IDENTITY_PUBLIC_BASE_URL:-http://localhost:5005}
+      - Smtp__Host=${SMTP_HOST:-mail.kubzle.com}
+      - Smtp__Port=${SMTP_PORT:-587}
+      - Smtp__Username=${SMTP_USERNAME:-Test-internship@rts.md}
+      - Smtp__Password=${SMTP_PASSWORD:-5517bBueeT8z}
+      - Smtp__FromEmail=${SMTP_FROM_EMAIL:-Test-internship@rts.md}
+      - Smtp__FromName=${SMTP_FROM_NAME:-Booking-app}
+      - Smtp__SecureSocket=${SMTP_SECURE_SOCKET:-StartTls}
+      - Smtp__UseSsl=false
+      - Smtp__UseStartTls=true
     ports:
       - "5005:5005"
     depends_on:

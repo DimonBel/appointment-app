@@ -6,6 +6,7 @@ import { Sidebar } from './components/layout/Sidebar'
 import { MainContent } from './components/layout/MainContent'
 import { Login } from './pages/auth/Login'
 import { Register } from './pages/auth/Register'
+import { VerifyEmail } from './pages/auth/VerifyEmail'
 import { Bookings } from './pages/appointments/Bookings'
 import { DoctorList } from './pages/appointments/DoctorList'
 import { Chat } from './pages/chat/Chat'
@@ -39,6 +40,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>

@@ -13,17 +13,20 @@ public class AuthService : IAuthService
     private readonly ITokenService _tokenService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConfiguration _configuration;
+    private readonly IIdentityEmailService _identityEmailService;
 
     public AuthService(
         UserManager<AppIdentityUser> userManager,
         ITokenService tokenService,
         IUnitOfWork unitOfWork,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IIdentityEmailService identityEmailService)
     {
         _userManager = userManager;
         _tokenService = tokenService;
         _unitOfWork = unitOfWork;
         _configuration = configuration;
+        _identityEmailService = identityEmailService;
     }
 
     public async Task<(bool Success, string Message, AuthResponseDto? Response)> RegisterAsync(RegisterDto model)
@@ -65,39 +68,34 @@ public class AuthService : IAuthService
         var roleToAssign = validRoles.Contains(model.Role) ? model.Role : "User";
         await _userManager.AddToRoleAsync(user, roleToAssign);
 
-        // Update last login
-        user.LastLoginAt = DateTime.UtcNow;
-        await _userManager.UpdateAsync(user);
+        var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        var publicBaseUrl = _configuration["Frontend:PublicBaseUrl"]
+            ?? _configuration["IdentityService:PublicBaseUrl"]
+            ?? "http://localhost";
+        var encodedToken = Uri.EscapeDataString(emailToken);
+        var confirmationLink = $"{publicBaseUrl.TrimEnd('/')}/verify-email?userId={user.Id}&token={encodedToken}";
 
-        // Generate tokens
-        var roles = await _userManager.GetRolesAsync(user);
-        var accessToken = _tokenService.GenerateAccessToken(user, roles);
-        var refreshToken = _tokenService.GenerateRefreshToken();
+        var emailBody = $@"
+    <h2>Email confirmation required</h2>
+    <p>Hello {user.FirstName ?? user.UserName},</p>
+    <p>Thank you for registering. Please confirm your email before signing in.</p>
+    <p><a href=""{confirmationLink}"">Confirm Email</a></p>
+    <p>If the button doesn't work, copy this link into your browser:</p>
+    <p>{confirmationLink}</p>";
 
-        // Get JwtId from access token
-        var jwtId = _tokenService.ValidateToken(accessToken);
+        var emailSent = await _identityEmailService.SendEmailAsync(
+            user.Email!,
+            "Confirm your account",
+            emailBody,
+            isHtml: true);
 
-        // Save refresh token
-        var refreshTokenEntity = new RefreshToken
+        if (!emailSent)
         {
-            Token = refreshToken,
-            UserId = user.Id,
-            JwtId = jwtId ?? Guid.NewGuid().ToString(),
-            ExpiresAt = DateTime.UtcNow.AddDays(double.Parse(_configuration["Jwt:RefreshTokenExpirationDays"] ?? "7"))
-        };
+            await _userManager.DeleteAsync(user);
+            return (false, "Registration succeeded but failed to send confirmation email. Please try again.", null);
+        }
 
-        await _tokenService.SaveRefreshTokenAsync(refreshTokenEntity);
-
-        var userDto = MapToUserDto(user, roles.ToList());
-        var response = new AuthResponseDto
-        {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(double.Parse(_configuration["Jwt:AccessTokenExpirationMinutes"] ?? "30")),
-            User = userDto
-        };
-
-        return (true, "Registration successful", response);
+        return (true, "Registration successful. Please confirm your email before signing in.", null);
     }
 
     public async Task<(bool Success, string Message, AuthResponseDto? Response)> LoginAsync(LoginDto model)
@@ -111,6 +109,11 @@ public class AuthService : IAuthService
         if (!user.IsActive)
         {
             return (false, "User account is deactivated", null);
+        }
+
+        if (!user.EmailConfirmed)
+        {
+            return (false, "Please confirm your email before signing in.", null);
         }
 
         var passwordValid = await _userManager.CheckPasswordAsync(user, model.Password);
@@ -233,6 +236,30 @@ public class AuthService : IAuthService
         };
 
         return (true, "Token refreshed successfully", response);
+    }
+
+    public async Task<(bool Success, string Message)> ConfirmEmailAsync(Guid userId, string token)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user == null)
+        {
+            return (false, "User not found.");
+        }
+
+        if (user.EmailConfirmed)
+        {
+            return (true, "Email is already confirmed. You can sign in.");
+        }
+
+        var normalizedToken = token.Replace(' ', '+');
+        var result = await _userManager.ConfirmEmailAsync(user, normalizedToken);
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            return (false, $"Email confirmation failed: {errors}");
+        }
+
+        return (true, "Email confirmed successfully. You can now sign in.");
     }
 
     public async Task<bool> RevokeTokenAsync(string userId)

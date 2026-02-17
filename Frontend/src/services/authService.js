@@ -58,6 +58,13 @@ class AuthService {
     })
     return response.data
   }
+
+  async confirmEmail(userId, token) {
+    const response = await axios.get(`${API_URL}/confirm-email`, {
+      params: { userId, token },
+    })
+    return response.data
+  }
 }
 
 export const authService = new AuthService()

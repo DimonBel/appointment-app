@@ -25,6 +25,12 @@ public static class AuthEndpoints
             .Produces<AuthResponseDto>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized);
 
+        group.MapGet("/confirm-email", ConfirmEmailAsync)
+            .WithName("ConfirmEmail")
+            .WithOpenApi()
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest);
+
         group.MapPost("/refresh", RefreshTokenAsync)
             .WithName("RefreshToken")
             .WithOpenApi()
@@ -98,7 +104,7 @@ public static class AuthEndpoints
 
         if (!success)
         {
-            return Results.Unauthorized();
+            return Results.Json(new { message }, statusCode: StatusCodes.Status401Unauthorized);
         }
 
         return Results.Ok(response);
@@ -116,6 +122,17 @@ public static class AuthEndpoints
         }
 
         return Results.Ok(response);
+    }
+
+    private static async Task<IResult> ConfirmEmailAsync(
+        [FromQuery] Guid userId,
+        [FromQuery] string token,
+        IAuthService authService)
+    {
+        var (success, message) = await authService.ConfirmEmailAsync(userId, token);
+        return success
+            ? Results.Ok(new { message })
+            : Results.BadRequest(new { message });
     }
 
     private static async Task<IResult> RevokeTokenAsync(

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useDispatch } from 'react-redux'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { setCredentials, setError, setLoading } from '../../store/slices/authSlice'
 import { authService } from '../../services/authService'
 import { Input } from '../../components/ui/Input'
@@ -13,8 +13,16 @@ export const Login = () => {
   const [password, setPassword] = useState('')
   const [localError, setLocalError] = useState('')
   const [loading, setLocalLoading] = useState(false)
+  const [infoMessage, setInfoMessage] = useState('')
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  React.useEffect(() => {
+    if (location.state?.message) {
+      setInfoMessage(location.state.message)
+    }
+  }, [location.state])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -56,6 +64,12 @@ export const Login = () => {
         {localError && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
             {localError}
+          </div>
+        )}
+
+        {infoMessage && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
+            {infoMessage}
           </div>
         )}
 

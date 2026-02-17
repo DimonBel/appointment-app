@@ -3032,11 +3032,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "d:\\Duma\\appointment-app\\Identity\\IdentityApp.Postgres\\IdentityApp.Postgres.csproj",
+      "projectUniqueName": "D:\\Duma\\appointment-app\\Identity\\IdentityApp.Postgres\\IdentityApp.Postgres.csproj",
       "projectName": "IdentityApp.Postgres",
-      "projectPath": "d:\\Duma\\appointment-app\\Identity\\IdentityApp.Postgres\\IdentityApp.Postgres.csproj",
+      "projectPath": "D:\\Duma\\appointment-app\\Identity\\IdentityApp.Postgres\\IdentityApp.Postgres.csproj",
       "packagesPath": "C:\\Users\\Duma\\.nuget\\packages\\",
-      "outputPath": "d:\\Duma\\appointment-app\\Identity\\IdentityApp.Postgres\\obj\\",
+      "outputPath": "D:\\Duma\\appointment-app\\Identity\\IdentityApp.Postgres\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -3057,11 +3057,11 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
-            "d:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\IdentityApp.Domain.csproj": {
-              "projectPath": "d:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\IdentityApp.Domain.csproj"
+            "D:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\IdentityApp.Domain.csproj": {
+              "projectPath": "D:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\IdentityApp.Domain.csproj"
             },
-            "d:\\Duma\\appointment-app\\Identity\\IdentityApp.Repository\\IdentityApp.Repository.csproj": {
-              "projectPath": "d:\\Duma\\appointment-app\\Identity\\IdentityApp.Repository\\IdentityApp.Repository.csproj"
+            "D:\\Duma\\appointment-app\\Identity\\IdentityApp.Repository\\IdentityApp.Repository.csproj": {
+              "projectPath": "D:\\Duma\\appointment-app\\Identity\\IdentityApp.Repository\\IdentityApp.Repository.csproj"
             }
           }
         }

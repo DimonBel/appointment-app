@@ -816,11 +816,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "d:\\Duma\\appointment-app\\Identity\\IdentityApp.Repository\\IdentityApp.Repository.csproj",
+      "projectUniqueName": "D:\\Duma\\appointment-app\\Identity\\IdentityApp.Repository\\IdentityApp.Repository.csproj",
       "projectName": "IdentityApp.Repository",
-      "projectPath": "d:\\Duma\\appointment-app\\Identity\\IdentityApp.Repository\\IdentityApp.Repository.csproj",
+      "projectPath": "D:\\Duma\\appointment-app\\Identity\\IdentityApp.Repository\\IdentityApp.Repository.csproj",
       "packagesPath": "C:\\Users\\Duma\\.nuget\\packages\\",
-      "outputPath": "d:\\Duma\\appointment-app\\Identity\\IdentityApp.Repository\\obj\\",
+      "outputPath": "D:\\Duma\\appointment-app\\Identity\\IdentityApp.Repository\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -841,8 +841,8 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
-            "d:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\IdentityApp.Domain.csproj": {
-              "projectPath": "d:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\IdentityApp.Domain.csproj"
+            "D:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\IdentityApp.Domain.csproj": {
+              "projectPath": "D:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\IdentityApp.Domain.csproj"
             }
           }
         }

@@ -137,3 +137,6 @@ d:\Duma\appointment-app\Identity\IdentityApp.API\obj\Debug\net9.0\refint\Identit
 d:\Duma\appointment-app\Identity\IdentityApp.API\obj\Debug\net9.0\IdentityApp.API.pdb
 d:\Duma\appointment-app\Identity\IdentityApp.API\obj\Debug\net9.0\IdentityApp.API.genruntimeconfig.cache
 d:\Duma\appointment-app\Identity\IdentityApp.API\obj\Debug\net9.0\ref\IdentityApp.API.dll
+D:\Duma\appointment-app\Identity\IdentityApp.API\bin\Debug\net9.0\BouncyCastle.Cryptography.dll
+D:\Duma\appointment-app\Identity\IdentityApp.API\bin\Debug\net9.0\MailKit.dll
+D:\Duma\appointment-app\Identity\IdentityApp.API\bin\Debug\net9.0\MimeKit.dll

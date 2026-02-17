@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useDispatch } from 'react-redux'
 import { useNavigate, Link } from 'react-router-dom'
-import { setCredentials, setError, setLoading } from '../../store/slices/authSlice'
+import { setError, setLoading } from '../../store/slices/authSlice'
 import { authService } from '../../services/authService'
 import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
@@ -54,14 +54,13 @@ export const Register = () => {
         formData.lastName,
         formData.role
       )
-      
-      dispatch(setCredentials({
-        user: response.user,
-        accessToken: response.accessToken,
-        refreshToken: response.refreshToken,
-      }))
-      
-      navigate('/')
+
+      navigate('/verify-email', {
+        state: {
+          email: formData.email,
+          message: response?.message || 'Registration successful. Please confirm your email before signing in.',
+        },
+      })
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Registration failed. Please try again.'
       setLocalError(errorMessage)

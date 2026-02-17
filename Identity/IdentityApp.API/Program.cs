@@ -72,6 +72,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IDoctorProfileService, DoctorProfileService>();
+builder.Services.AddScoped<IIdentityEmailService, IdentityEmailService>();
 
 // Register Repository Layer
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();

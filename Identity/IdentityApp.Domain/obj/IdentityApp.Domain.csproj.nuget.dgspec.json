@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "d:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\IdentityApp.Domain.csproj": {}
+    "D:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\IdentityApp.Domain.csproj": {}
   },
   "projects": {
-    "d:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\IdentityApp.Domain.csproj": {
+    "D:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\IdentityApp.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "d:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\IdentityApp.Domain.csproj",
+        "projectUniqueName": "D:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\IdentityApp.Domain.csproj",
         "projectName": "IdentityApp.Domain",
-        "projectPath": "d:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\IdentityApp.Domain.csproj",
+        "projectPath": "D:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\IdentityApp.Domain.csproj",
         "packagesPath": "C:\\Users\\Duma\\.nuget\\packages\\",
-        "outputPath": "d:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\obj\\",
+        "outputPath": "D:\\Duma\\appointment-app\\Identity\\IdentityApp.Domain\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
