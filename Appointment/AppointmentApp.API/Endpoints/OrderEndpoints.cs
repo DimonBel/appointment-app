@@ -18,8 +18,8 @@ public static class OrderEndpoints
     public static void MapOrderEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/orders")
-            .WithTags("Orders");
-        // .RequireAuthorization(); // Temporarily disabled for testing
+            .WithTags("Orders")
+            .RequireAuthorization();
 
         // Get all orders for current user
         group.MapGet("/", async (
@@ -305,7 +305,7 @@ public static class OrderEndpoints
                     ? await identityServiceClient.GetUserByIdAsync(order.ProfessionalId, accessToken)
                     : null;
 
-                var targetEmail = identityClientUser?.Email ?? clientUser?.Email;
+                var targetEmail = ResolvePreferredEmail(identityClientUser?.Email, clientUser?.Email);
                 var actorUserId = TryGetUserId(context.User);
                 var doctorNameFromClaims = actorUserId == order.ProfessionalId
                     ? ResolvePreferredDisplayName(ResolveDisplayName(context.User, string.Empty))
@@ -383,7 +383,7 @@ public static class OrderEndpoints
                     ? await identityServiceClient.GetUserByIdAsync(order.ProfessionalId, accessToken)
                     : null;
 
-                var targetEmail = identityClientUser?.Email ?? clientUser?.Email;
+                var targetEmail = ResolvePreferredEmail(identityClientUser?.Email, clientUser?.Email);
                 var actorUserId = TryGetUserId(context.User);
                 var doctorNameFromClaims = actorUserId == order.ProfessionalId
                     ? ResolvePreferredDisplayName(ResolveDisplayName(context.User, string.Empty))
@@ -462,7 +462,7 @@ public static class OrderEndpoints
                     ? await identityServiceClient.GetUserByIdAsync(order.ProfessionalId, accessToken)
                     : null;
 
-                var targetEmail = identityClientUser?.Email ?? clientUser?.Email;
+                var targetEmail = ResolvePreferredEmail(identityClientUser?.Email, clientUser?.Email);
                 var actorUserId = TryGetUserId(context.User);
                 var doctorNameFromClaims = actorUserId == order.ProfessionalId
                     ? ResolvePreferredDisplayName(ResolveDisplayName(context.User, string.Empty))
@@ -670,6 +670,27 @@ public static class OrderEndpoints
 
         var extracted = title.Substring(marker.Length).Trim();
         return ResolvePreferredDisplayName(extracted);
+    }
+
+    private static bool IsShadowEmail(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return true;
+        return email.EndsWith("@shadow.local", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? ResolvePreferredEmail(string? primaryEmail, string? fallbackEmail)
+    {
+        if (!IsShadowEmail(primaryEmail))
+        {
+            return primaryEmail;
+        }
+
+        if (!IsShadowEmail(fallbackEmail))
+        {
+            return fallbackEmail;
+        }
+
+        return null;
     }
 
     private static object ToOrderStatusResponse(Order order)

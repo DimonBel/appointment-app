@@ -3,8 +3,10 @@ import { useSelector, useDispatch } from 'react-redux'
 import { notificationHubService } from '../services/signalRService'
 import {
   addNotification,
+  setUnreadCount,
 } from '../store/slices/notificationsSlice'
 import { addFriendId } from '../store/slices/friendsSlice'
+import { notificationService } from '../services/notificationService'
 
 /**
  * Hook that connects to the NotificationHub via SignalR
@@ -15,6 +17,8 @@ export function useNotificationHub() {
   const dispatch = useDispatch()
   const token = useSelector((state) => state.auth.token)
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated)
+  const userId = useSelector((state) => state.auth.user?.id)
+  const notifications = useSelector((state) => state.notifications.notifications)
   const connectedRef = useRef(false)
   const toastTimeoutRef = useRef(null)
   const toastRef = useRef(null)
@@ -223,20 +227,24 @@ export function useNotificationHub() {
   useEffect(() => {
     if (!isAuthenticated || !token) return
 
+    const normalizeIncomingNotification = (notification) => {
+      const normalizedType = typeof notification?.type === 'number'
+        ? (typeByValue[notification.type] || notification.type)
+        : notification?.type
+
+      return {
+        ...notification,
+        type: normalizedType,
+      }
+    }
+
     const connectHub = async () => {
       if (connectedRef.current) return
       try {
         const hubUrl = import.meta.env.VITE_NOTIFICATION_HUB_URL || '/notificationhub'
         
         notificationHubService.on('ReceiveNotification', (notification) => {
-          const normalizedType = typeof notification?.type === 'number'
-            ? (typeByValue[notification.type] || notification.type)
-            : notification?.type
-
-          const normalizedNotification = {
-            ...notification,
-            type: normalizedType,
-          }
+          const normalizedNotification = normalizeIncomingNotification(notification)
 
           // Add to Redux store (addNotification already increments unreadCount)
           dispatch(addNotification(normalizedNotification))
@@ -284,4 +292,40 @@ export function useNotificationHub() {
       }
     }
   }, [isAuthenticated, token])
+
+  useEffect(() => {
+    if (!isAuthenticated || !token || !userId) return
+
+    let cancelled = false
+
+    const pollMissedNotifications = async () => {
+      try {
+        const unread = await notificationService.getUnreadNotifications(userId, token)
+        const unreadList = Array.isArray(unread) ? unread : []
+        const existingIds = new Set((Array.isArray(notifications) ? notifications : []).map((n) => n?.id))
+
+        unreadList
+          .slice()
+          .sort((a, b) => new Date(a?.createdAt || 0).getTime() - new Date(b?.createdAt || 0).getTime())
+          .forEach((item) => {
+            if (!item?.id || existingIds.has(item.id)) return
+            dispatch(addNotification(item))
+          })
+
+        if (!cancelled) {
+          dispatch(setUnreadCount(unreadList.length))
+        }
+      } catch {
+        // Ignore polling errors; SignalR still handles realtime path
+      }
+    }
+
+    pollMissedNotifications()
+    const intervalId = setInterval(pollMissedNotifications, 12000)
+
+    return () => {
+      cancelled = true
+      clearInterval(intervalId)
+    }
+  }, [isAuthenticated, token, userId, notifications, dispatch])
 }

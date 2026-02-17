@@ -17,6 +17,11 @@ const notificationsSlice = createSlice({
       state.isLoading = false
     },
     addNotification: (state, action) => {
+      const incomingId = action.payload?.id
+      if (incomingId && state.notifications.some((n) => n.id === incomingId)) {
+        return
+      }
+
       state.notifications.unshift(action.payload)
       const status = action.payload?.status
       const isRead = status === 'Read' || status === 2

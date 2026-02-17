@@ -1,11 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useDispatch } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Calendar, CheckCircle2, AlertCircle, Mail } from 'lucide-react'
 import { authService } from '../../services/authService'
+import { setCredentials } from '../../store/slices/authSlice'
 
 export const VerifyEmail = () => {
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const location = useLocation()
 
@@ -25,6 +30,20 @@ export const VerifyEmail = () => {
 
       try {
         const response = await authService.confirmEmail(userId, token)
+        const authPayload = response?.response
+        if (authPayload?.accessToken && authPayload?.refreshToken && authPayload?.user) {
+          dispatch(setCredentials({
+            user: authPayload.user,
+            accessToken: authPayload.accessToken,
+            refreshToken: authPayload.refreshToken,
+          }))
+
+          setMessage(response?.message || 'Email confirmed successfully. Redirecting...')
+          setStatus('success')
+          setTimeout(() => navigate('/'), 700)
+          return
+        }
+
         setMessage(response?.message || 'Email confirmed successfully. You can now sign in.')
         setStatus('success')
       } catch (error) {
@@ -35,7 +54,7 @@ export const VerifyEmail = () => {
     }
 
     verify()
-  }, [userId, token])
+  }, [userId, token, dispatch, navigate])
 
   const statusIcon = useMemo(() => {
     if (status === 'success') return <CheckCircle2 size={18} className="text-green-600" />

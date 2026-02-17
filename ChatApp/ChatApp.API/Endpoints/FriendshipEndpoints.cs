@@ -130,7 +130,7 @@ public static class FriendshipEndpoints
                 try
                 {
                     var accepter = await chatService.GetUserByIdAsync(currentUserId.Value);
-                    var accepterName = accepter?.UserName ?? "Someone";
+                    var accepterName = ResolveDisplayName(httpContext.User, accepter?.UserName ?? "Someone");
 
                     var httpClient = httpClientFactory.CreateClient("NotificationService");
                     var eventPayload = JsonSerializer.Serialize(new
@@ -192,7 +192,7 @@ public static class FriendshipEndpoints
                 try
                 {
                     var decliner = await chatService.GetUserByIdAsync(currentUserId.Value);
-                    var declinerName = decliner?.UserName ?? "Someone";
+                    var declinerName = ResolveDisplayName(httpContext.User, decliner?.UserName ?? "Someone");
 
                     var httpClient = httpClientFactory.CreateClient("NotificationService");
                     var eventPayload = JsonSerializer.Serialize(new

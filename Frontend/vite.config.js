@@ -54,6 +54,10 @@ export default defineConfig({
       '/api/roles': {
         target: 'http://localhost:5005',
         changeOrigin: true,
+      },
+      '/api/admin': {
+        target: 'http://localhost:5005',
+        changeOrigin: true,
       }
     }
   }

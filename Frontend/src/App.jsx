@@ -14,6 +14,7 @@ import { Profile } from './pages/Profile'
 import { Settings } from './pages/Settings'
 import { DoctorProfile } from './pages/DoctorProfile'
 import { Notifications } from './pages/notifications/Notifications'
+import { AdminPanel } from './pages/admin/AdminPanel'
 import { useNotificationHub } from './hooks/useNotificationHub'
 import './App.css'
 
@@ -69,6 +70,7 @@ function App() {
                 <Route path="/doctor-profile" element={<DoctorProfile />} />
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/admin" element={<AdminPanel />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </MainContent>

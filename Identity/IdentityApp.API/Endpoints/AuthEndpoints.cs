@@ -59,7 +59,7 @@ public static class AuthEndpoints
         // Role management
         var roleGroup = app.MapGroup("/api/roles")
             .WithTags("Roles")
-            .RequireAuthorization();
+            .RequireAuthorization("AdminOnly");
 
         roleGroup.MapGet("/", GetAllRolesAsync)
             .WithName("GetAllRoles")
@@ -129,9 +129,9 @@ public static class AuthEndpoints
         [FromQuery] string token,
         IAuthService authService)
     {
-        var (success, message) = await authService.ConfirmEmailAsync(userId, token);
+        var (success, message, response) = await authService.ConfirmEmailAsync(userId, token);
         return success
-            ? Results.Ok(new { message })
+            ? Results.Ok(new { message, response })
             : Results.BadRequest(new { message });
     }
 

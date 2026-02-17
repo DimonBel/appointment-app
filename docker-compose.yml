@@ -102,6 +102,7 @@ services:
       - Jwt__AccessTokenExpirationMinutes=${JWT_ACCESS_EXPIRATION:-30}
       - Jwt__RefreshTokenExpirationDays=${JWT_REFRESH_EXPIRATION:-7}
       - NotificationService__BaseUrl=http://notification-service:5003
+      - Frontend__PublicBaseUrl=${FRONTEND_PUBLIC_BASE_URL:-http://localhost}
       - IdentityService__PublicBaseUrl=${IDENTITY_PUBLIC_BASE_URL:-http://localhost:5005}
       - Smtp__Host=${SMTP_HOST:-mail.kubzle.com}
       - Smtp__Port=${SMTP_PORT:-587}
@@ -112,6 +113,12 @@ services:
       - Smtp__SecureSocket=${SMTP_SECURE_SOCKET:-StartTls}
       - Smtp__UseSsl=false
       - Smtp__UseStartTls=true
+      - SeedAdmin__Email=${SEED_ADMIN_EMAIL:-admin@appointment-app.com}
+      - SeedAdmin__Password=${SEED_ADMIN_PASSWORD:-Admin123!}
+      - SeedAdmin__UserName=${SEED_ADMIN_USERNAME:-admin}
+      - SeedAdmin__FirstName=${SEED_ADMIN_FIRSTNAME:-System}
+      - SeedAdmin__LastName=${SEED_ADMIN_LASTNAME:-Admin}
+      - SeedAdmin__ResetPasswordOnStartup=${SEED_ADMIN_RESET_PASSWORD_ON_STARTUP:-false}
     ports:
       - "5005:5005"
     depends_on:
