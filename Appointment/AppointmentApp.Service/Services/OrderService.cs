@@ -29,6 +29,7 @@ public class OrderService : IOrderService
     {
         var normalizedScheduledDateTime = NormalizeToUtc(scheduledDateTime);
 
+        // Check if client user exists, if not create a minimal shadow user
         var existingClient = await _userManager.FindByIdAsync(clientId.ToString());
         if (existingClient == null)
         {
@@ -106,6 +107,11 @@ public class OrderService : IOrderService
     public async Task<Order?> GetOrderByIdAsync(Guid orderId)
     {
         return await _orderRepository.GetByIdAsync(orderId);
+    }
+
+    public async Task<IEnumerable<Order>> GetAllOrdersAsync(OrderStatus? status = null, int page = 1, int pageSize = 100, string? sortBy = null, bool descending = false)
+    {
+        return await _orderRepository.GetAllAsync(status, page, pageSize, sortBy, descending);
     }
 
     public async Task<IEnumerable<Order>> GetOrdersByClientAsync(Guid clientId, OrderStatus? status = null, int page = 1, int pageSize = 20)

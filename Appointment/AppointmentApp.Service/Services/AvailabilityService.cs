@@ -56,6 +56,11 @@ public class AvailabilityService : IAvailabilityService
         return await _availabilityRepository.GetByIdAsync(availabilityId);
     }
 
+    public async Task<IEnumerable<Availability>> GetAllAvailabilitiesAsync()
+    {
+        return await _availabilityRepository.GetAllAsync();
+    }
+
     public async Task<IEnumerable<Availability>> GetAvailabilitiesByProfessionalAsync(Guid professionalId)
     {
         return await _availabilityRepository.GetByProfessionalAsync(professionalId);

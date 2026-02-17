@@ -26,6 +26,34 @@ public class OrderRepository : IOrderRepository
             .FirstOrDefaultAsync(o => o.Id == id);
     }
 
+    public async Task<IEnumerable<Order>> GetAllAsync(OrderStatus? status = null, int page = 1, int pageSize = 100, string? sortBy = null, bool descending = false)
+    {
+        var query = _context.Orders
+            .Include(o => o.Client)
+            .Include(o => o.Professional)
+            .Include(o => o.DomainConfiguration)
+            .AsQueryable();
+
+        if (status.HasValue)
+        {
+            query = query.Where(o => o.Status == status.Value);
+        }
+
+        query = sortBy?.ToLower() switch
+        {
+            "scheduled" => descending ? query.OrderByDescending(o => o.ScheduledDateTime) : query.OrderBy(o => o.ScheduledDateTime),
+            "client" => descending ? query.OrderByDescending(o => o.Client.FirstName) : query.OrderBy(o => o.Client.FirstName),
+            "doctor" => descending ? query.OrderByDescending(o => o.Professional.FirstName) : query.OrderBy(o => o.Professional.FirstName),
+            "status" => descending ? query.OrderByDescending(o => o.Status) : query.OrderBy(o => o.Status),
+            _ => query.OrderByDescending(o => o.ScheduledDateTime)
+        };
+
+        return await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
     public async Task<Order> CreateAsync(Order order)
     {
         _context.Orders.Add(order);

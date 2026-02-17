@@ -2,6 +2,7 @@ using AppointmentApp.API.DTOs;
 using AppointmentApp.Domain.Entity;
 using AppointmentApp.Domain.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AppointmentApp.API.Endpoints;
 
@@ -12,6 +13,25 @@ public static class ProfessionalEndpoints
         var group = app.MapGroup("/api/professionals")
             .WithTags("Professionals");
             // .RequireAuthorization(); // Temporarily disabled for testing
+
+        // Get current user's professional profile
+        group.MapGet("/me", async (
+            [FromServices] IProfessionalService professionalService,
+            HttpContext context) =>
+        {
+            var userId = GetUserIdFromContext(context);
+            if (!userId.HasValue)
+            {
+                return Results.Unauthorized();
+            }
+
+            var professional = await professionalService.GetProfessionalByUserIdAsync(userId.Value);
+            if (professional == null) return Results.NotFound();
+            var responseDto = MapToProfessionalResponseDto(professional);
+            return Results.Ok(responseDto);
+        })
+        .WithName("GetMyProfessionalProfile")
+        .WithOpenApi();
 
         // Create professional
         group.MapPost("/", async (
@@ -124,6 +144,15 @@ public static class ProfessionalEndpoints
         })
         .WithName("DeleteProfessional")
         .WithOpenApi();
+    }
+
+    private static Guid? GetUserIdFromContext(HttpContext context)
+    {
+        var claimValue = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? context.User.FindFirstValue("sub")
+            ?? context.User.FindFirstValue("nameid");
+
+        return Guid.TryParse(claimValue, out var userId) ? userId : null;
     }
 
     private static ProfessionalResponseDto MapToProfessionalResponseDto(Professional professional)

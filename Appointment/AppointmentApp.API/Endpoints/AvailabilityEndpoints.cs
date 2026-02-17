@@ -33,8 +33,19 @@ public static class AvailabilityEndpoints
         .WithName("CreateAvailability")
         .WithOpenApi();
 
+        // Get all availabilities for management panel (MUST be before /{id} route)
+        group.MapGet("/all", async (
+            [FromServices] IAvailabilityService availabilityService) =>
+        {
+            var availabilities = await availabilityService.GetAllAvailabilitiesAsync();
+            var responseDtos = availabilities.Select(MapToAvailabilityResponseDto);
+            return Results.Ok(responseDtos);
+        })
+        .WithName("GetAllAvailabilities")
+        .WithOpenApi();
+
         // Get availability by ID
-        group.MapGet("/{id}", async (
+        group.MapGet("/{id:guid}", async (
             Guid id,
             [FromServices] IAvailabilityService availabilityService) =>
         {

@@ -16,6 +16,24 @@ class AppointmentService {
     return response.data
   }
 
+  async getAllOrdersForManagement(token, status = null, page = 1, pageSize = 100, sortBy = null, descending = false) {
+    const response = await requestWithAuthRetry(
+      {
+        method: 'get',
+        url: `${API_URL}/orders/all`,
+        params: {
+          ...(status !== null ? { status } : {}),
+          page,
+          pageSize,
+          ...(sortBy ? { sortBy } : {}),
+          descending,
+        },
+      },
+      token
+    )
+    return response.data
+  }
+
   async getOrdersByClient(clientId, token, status = null, page = 1, pageSize = 100) {
     const response = await requestWithAuthRetry(
       {
@@ -195,6 +213,17 @@ class AppointmentService {
       {
         method: 'get',
         url: `${API_URL}/availabilities/professional/${professionalId}`,
+      },
+      token
+    )
+    return response.data
+  }
+
+  async getAllAvailabilities(token) {
+    const response = await requestWithAuthRetry(
+      {
+        method: 'get',
+        url: `${API_URL}/availabilities/all`,
       },
       token
     )

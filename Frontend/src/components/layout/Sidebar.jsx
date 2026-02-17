@@ -17,7 +17,7 @@ export const Sidebar = ({ activeItem, onNavigate }) => {
     { id: 'notifications', label: 'Notifications', Icon: Bell, path: '/notifications', badge: unreadCount > 0 ? unreadCount : null },
     { id: 'profile', label: 'Profile', Icon: User, path: '/profile' },
     ...(isProfessional ? [{ id: 'doctor-profile', label: 'Professional Profile', Icon: Stethoscope, path: '/doctor-profile' }] : []),
-    ...(isManagement ? [{ id: 'management', label: 'Management Panel', Icon: Briefcase, path: '/management' }] : []),
+    ...(isManagement || isAdmin ? [{ id: 'management', label: 'Management Panel', Icon: Briefcase, path: '/management' }] : []),
     ...(isAdmin ? [{ id: 'admin', label: 'Admin Panel', Icon: Shield, path: '/admin' }] : []),
     { id: 'settings', label: 'Settings', Icon: Settings, path: '/settings' }
   ]

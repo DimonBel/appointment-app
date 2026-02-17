@@ -22,6 +22,60 @@ public static class OrderEndpoints
             .WithTags("Orders")
             .RequireAuthorization();
 
+        // Get all orders (for management panel)
+        group.MapGet("/all", async (
+            [FromServices] IOrderService orderService,
+            [FromServices] IIdentityServiceClient identityServiceClient,
+            [FromServices] UserManager<AppIdentityUser> userManager,
+            HttpContext context,
+            [FromQuery] OrderStatus? status = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 100,
+            [FromQuery] string? sortBy = null,
+            [FromQuery] bool descending = false) =>
+        {
+            var orders = await orderService.GetAllOrdersAsync(status, page, pageSize, sortBy, descending);
+            
+            // Enrich orders with Identity service data
+            var accessToken = context.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
+            var enrichedOrders = orders.Select(order =>
+            {
+                var orderDict = new Dictionary<string, object?>
+                {
+                    ["id"] = order.Id,
+                    ["clientId"] = order.ClientId,
+                    ["professionalId"] = order.ProfessionalId,
+                    ["status"] = order.Status,
+                    ["scheduledDateTime"] = order.ScheduledDateTime,
+                    ["durationMinutes"] = order.DurationMinutes,
+                    ["title"] = order.Title,
+                    ["description"] = order.Description,
+                    ["notes"] = order.Notes,
+                    ["createdAt"] = order.CreatedAt,
+                    ["updatedAt"] = order.UpdatedAt,
+                    ["client"] = null,
+                    ["professional"] = null
+                };
+
+                if (!string.IsNullOrWhiteSpace(accessToken))
+                {
+                    var identityClient = identityServiceClient.GetUserByIdAsync(order.ClientId, accessToken);
+                    var identityProfessional = identityServiceClient.GetUserByIdAsync(order.ProfessionalId, accessToken);
+                    
+                    Task.WaitAll(identityClient, identityProfessional);
+                    
+                    orderDict["client"] = identityClient.Result;
+                    orderDict["professional"] = identityProfessional.Result;
+                }
+
+                return orderDict;
+            }).ToList();
+            
+            return Results.Ok(enrichedOrders);
+        })
+        .WithName("GetAllOrdersForManagement")
+        .WithOpenApi();
+
         // Get all orders for current user
         group.MapGet("/", async (
             [FromServices] IOrderService orderService,
