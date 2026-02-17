@@ -3,6 +3,7 @@ using IdentityApp.Domain.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using IdentityApp.Domain.Entity;
 using Microsoft.AspNetCore.Mvc;
+using IdentityApp.API.DTOs;
 
 namespace IdentityApp.API.Endpoints;
 
@@ -15,6 +16,14 @@ public static class AuthEndpoints
 
         group.MapPost("/register", RegisterAsync)
             .WithName("Register")
+            .WithOpenApi()
+            .Produces<AuthResponseDto>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest);
+
+        group.MapPost("/register-with-avatar", RegisterWithAvatarAsync)
+            .WithName("RegisterWithAvatar")
+            .Accepts<IFormFile>("multipart/form-data")
+            .DisableAntiforgery()
             .WithOpenApi()
             .Produces<AuthResponseDto>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest);
@@ -94,6 +103,60 @@ public static class AuthEndpoints
         }
 
         return Results.Ok(response);
+    }
+
+    private static async Task<IResult> RegisterWithAvatarAsync(
+        [FromForm] RegisterWithAvatarDto model,
+        IAuthService authService,
+        IAvatarStorageService avatarStorageService)
+    {
+        if (model.Avatar is { Length: > 0 })
+        {
+            var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp", "image/gif" };
+            if (!allowedTypes.Contains(model.Avatar.ContentType, StringComparer.OrdinalIgnoreCase))
+            {
+                return Results.BadRequest(new { message = "Only JPG, PNG, WEBP and GIF files are allowed for avatar." });
+            }
+
+            const long maxAvatarSize = 5 * 1024 * 1024;
+            if (model.Avatar.Length > maxAvatarSize)
+            {
+                return Results.BadRequest(new { message = "Avatar file size must be less than 5MB." });
+            }
+        }
+
+        string? avatarUrl = null;
+        if (model.Avatar is { Length: > 0 })
+        {
+            await using var stream = model.Avatar.OpenReadStream();
+            avatarUrl = await avatarStorageService.UploadAvatarAsync(
+                stream,
+                model.Avatar.Length,
+                model.Avatar.FileName,
+                model.Avatar.ContentType,
+                model.Email);
+        }
+
+        var registerDto = new RegisterDto
+        {
+            Email = model.Email,
+            Password = model.Password,
+            UserName = model.UserName,
+            FirstName = model.FirstName,
+            LastName = model.LastName,
+            PhoneNumber = model.PhoneNumber,
+            Role = model.Role,
+            AvatarUrl = avatarUrl
+        };
+
+        var (success, message, response) = await authService.RegisterAsync(registerDto);
+
+        if (!success)
+        {
+            return Results.BadRequest(new { message });
+        }
+
+        return Results.Ok(new { message, response, avatarUrl });
     }
 
     private static async Task<IResult> LoginAsync(

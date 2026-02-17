@@ -1,8 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
-namespace IdentityApp.Domain.DTOs;
+namespace IdentityApp.API.DTOs;
 
-public record RegisterDto
+public record RegisterWithAvatarDto
 {
     [Required]
     [EmailAddress]
@@ -19,8 +20,9 @@ public record RegisterDto
     public string? FirstName { get; init; }
     public string? LastName { get; init; }
     public string? PhoneNumber { get; init; }
-    public string? AvatarUrl { get; init; }
 
     [Required]
     public string Role { get; init; } = "User";
+
+    public IFormFile? Avatar { get; init; }
 }

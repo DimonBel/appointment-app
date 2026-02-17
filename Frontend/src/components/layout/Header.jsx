@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { Menu, Bell, House } from 'lucide-react'
 import { logout } from '../../store/slices/authSlice'
+import { Avatar } from '../ui/Avatar'
 
 export const Header = ({ onMenuClick, className = '' }) => {
   const user = useSelector((state) => state.auth.user)
@@ -48,9 +49,12 @@ export const Header = ({ onMenuClick, className = '' }) => {
         </button>
         
         <div className="flex items-center gap-3 ml-4 pl-4 border-l border-white/20">
-          <div className="w-8 h-8 rounded-full bg-primary-accent flex items-center justify-center text-sm font-semibold">
-            {user?.firstName?.[0]}{user?.lastName?.[0]}
-          </div>
+          <Avatar
+            src={user?.avatarUrl}
+            alt={`${user?.firstName || ''} ${user?.lastName || ''}`.trim()}
+            size={32}
+            className="ring-1 ring-white/20"
+          />
           <div className="hidden sm:block">
             <p className="text-[14px] font-medium">{user?.firstName} {user?.lastName}</p>
             <p className="text-[12px] text-gray-300">{user?.email}</p>

@@ -11,18 +11,27 @@ class AuthService {
     return response.data
   }
 
-  async register(email, password, firstName, lastName, role = 'User') {
+  async register(email, password, firstName, lastName, role = 'User', avatarFile = null) {
     // Generate username from email and ensure backend min length (3)
     const emailPrefix = (email.split('@')[0] || '').replace(/[^a-zA-Z0-9._-]/g, '')
     const userName = emailPrefix.length >= 3 ? emailPrefix : `user${Math.random().toString(36).slice(2, 8)}`
-    
-    const response = await axios.post(`${API_URL}/register`, {
-      email,
-      password,
-      userName,
-      firstName,
-      lastName,
-      role,
+
+    const formData = new FormData()
+    formData.append('email', email)
+    formData.append('password', password)
+    formData.append('userName', userName)
+    formData.append('firstName', firstName || '')
+    formData.append('lastName', lastName || '')
+    formData.append('role', role)
+
+    if (avatarFile) {
+      formData.append('avatar', avatarFile)
+    }
+
+    const response = await axios.post(`${API_URL}/register-with-avatar`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
     })
     return response.data
   }

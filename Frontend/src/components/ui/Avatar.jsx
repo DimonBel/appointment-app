@@ -8,6 +8,10 @@ export const Avatar = ({
   fallback = null
 }) => {
   const [imageError, setImageError] = React.useState(false)
+
+  React.useEffect(() => {
+    setImageError(false)
+  }, [src])
   
   const handleError = () => {
     setImageError(true)

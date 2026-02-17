@@ -19,6 +19,7 @@ export const Register = () => {
   })
   const [localError, setLocalError] = useState('')
   const [loading, setLocalLoading] = useState(false)
+  const [avatarFile, setAvatarFile] = useState(null)
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
@@ -52,7 +53,8 @@ export const Register = () => {
         formData.password,
         formData.firstName,
         formData.lastName,
-        formData.role
+        formData.role,
+        avatarFile
       )
 
       navigate('/verify-email', {
@@ -168,6 +170,17 @@ export const Register = () => {
             placeholder="john.doe@example.com"
             required
           />
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-text-primary mb-2">Avatar (optional)</label>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-accent bg-white"
+            />
+            <p className="text-xs text-text-secondary mt-1">Max size: 5MB</p>
+          </div>
 
           <Input
             label="Password"

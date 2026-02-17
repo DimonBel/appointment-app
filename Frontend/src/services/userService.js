@@ -48,6 +48,26 @@ class UserService {
 
     return this.getUserById(user.id, token)
   }
+
+  async uploadAvatar(userId, file, token) {
+    const identityApiBase = getIdentityApiBase()
+    const formData = new FormData()
+    formData.append('avatar', file)
+
+    const response = await requestWithAuthRetry(
+      {
+        method: 'post',
+        url: `${identityApiBase}/users/${userId}/avatar`,
+        data: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      },
+      token
+    )
+
+    return response.data
+  }
 }
 
 export const userService = new UserService()

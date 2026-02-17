@@ -85,6 +85,32 @@ services:
       timeout: 5s
       retries: 5
 
+  # MinIO Object Storage for avatars
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -f http://localhost:9000/minio/health/live || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   # Identity Service
   identity-service:
     build:
@@ -104,6 +130,12 @@ services:
       - NotificationService__BaseUrl=http://notification-service:5003
       - Frontend__PublicBaseUrl=${FRONTEND_PUBLIC_BASE_URL:-http://localhost}
       - IdentityService__PublicBaseUrl=${IDENTITY_PUBLIC_BASE_URL:-http://localhost:5005}
+      - Minio__Endpoint=${MINIO_ENDPOINT:-minio:9000}
+      - Minio__AccessKey=${MINIO_ROOT_USER:-minioadmin}
+      - Minio__SecretKey=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - Minio__Bucket=${MINIO_BUCKET:-avatars}
+      - Minio__UseSsl=${MINIO_USE_SSL:-false}
+      - Minio__PublicBaseUrl=${MINIO_PUBLIC_BASE_URL:-http://localhost:9000}
       - Smtp__Host=${SMTP_HOST:-mail.kubzle.com}
       - Smtp__Port=${SMTP_PORT:-587}
       - Smtp__Username=${SMTP_USERNAME:-Test-internship@rts.md}
@@ -123,6 +155,8 @@ services:
       - "5005:5005"
     depends_on:
       identity-db:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     networks:
       - app-network
@@ -275,3 +309,5 @@ volumes:
     name: chat-db-data
   notification-db-data:
     name: notification-db-data
+  minio-data:
+    name: minio-data

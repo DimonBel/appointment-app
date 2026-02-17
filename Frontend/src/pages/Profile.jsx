@@ -8,7 +8,7 @@ import { Input } from '../components/ui/Input'
 import { Avatar } from '../components/ui/Avatar'
 import { updateUser } from '../store/slices/authSlice'
 import { userService } from '../services/userService'
-import { User, Mail, Phone, MapPin, Calendar } from 'lucide-react'
+import { User, Mail, Phone, MapPin, Calendar, Camera } from 'lucide-react'
 
 export const Profile = () => {
   const user = useSelector((state) => state.auth.user)
@@ -27,6 +27,25 @@ export const Profile = () => {
   })
 
   const [isSaving, setIsSaving] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file || !user?.id || !token) return
+
+    try {
+      setIsUploadingAvatar(true)
+      const result = await userService.uploadAvatar(user.id, file, token)
+      const nextAvatarUrl = result?.avatarUrl
+      if (nextAvatarUrl) {
+        dispatch(updateUser({ avatarUrl: nextAvatarUrl }))
+        window.dispatchEvent(new CustomEvent('profile-updated'))
+      }
+    } finally {
+      setIsUploadingAvatar(false)
+      e.target.value = ''
+    }
+  }
 
   const handleChange = (e) => {
     setFormData({
@@ -102,12 +121,27 @@ export const Profile = () => {
         {/* Profile Card */}
         <Card>
           <CardContent className="text-center py-8">
-            <Avatar 
-              src={user?.avatarUrl}
-              alt={`${user?.firstName} ${user?.lastName}`}
-              size={120}
-              className="mx-auto mb-4"
-            />
+            <div className="relative w-30 h-30 mx-auto mb-4">
+              <Avatar 
+                src={user?.avatarUrl}
+                alt={`${user?.firstName} ${user?.lastName}`}
+                size={120}
+                className="mx-auto"
+              />
+              <label className="absolute bottom-1 right-1 w-9 h-9 rounded-full bg-primary-accent text-white flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity border-2 border-white">
+                <Camera size={16} />
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                  disabled={isUploadingAvatar}
+                />
+              </label>
+            </div>
+            {isUploadingAvatar && (
+              <p className="text-xs text-text-secondary -mt-2 mb-2">Uploading avatar...</p>
+            )}
             <h2 className="text-xl font-semibold text-text-primary">
               {user?.firstName} {user?.lastName}
             </h2>

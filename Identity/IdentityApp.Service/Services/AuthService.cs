@@ -52,6 +52,7 @@ public class AuthService : IAuthService
             FirstName = model.FirstName,
             LastName = model.LastName,
             PhoneNumber = model.PhoneNumber,
+            AvatarUrl = model.AvatarUrl,
             CreatedAt = DateTime.UtcNow,
             IsActive = true,
             EmailConfirmed = model.Role == "Admin" // Auto-confirm admin users
