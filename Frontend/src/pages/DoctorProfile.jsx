@@ -94,6 +94,8 @@ export const DoctorProfile = () => {
     } catch (err) {
       if (err.response?.status === 401) {
         setError('Unauthorized. Please login again.')
+      } else if (err.response?.status === 404 || err.response?.status === 500) {
+        setError('User profile not found. Please logout and login with a valid account.')
       } else {
         setError(err.response?.data?.message || 'Failed to load profile')
       }
@@ -112,12 +114,19 @@ export const DoctorProfile = () => {
     let professional = await appointmentService.getProfessionalByUserId(user.id, token)
 
     if (!professional) {
-      professional = await appointmentService.createProfessional({
-        userId: user.id,
-        title: 'Dr.',
-        qualifications: formData.qualifications || null,
-        specialization: formData.specialty || 'General',
-      }, token)
+      try {
+        professional = await appointmentService.createProfessional({
+          userId: user.id,
+          title: 'Dr.',
+          qualifications: formData.qualifications || null,
+          specialization: formData.specialty || 'General',
+        }, token)
+      } catch (err) {
+        if (err.response?.status === 500 || err.response?.status === 404) {
+          throw new Error('Unable to create professional profile. Your user account may have been removed. Please logout and login with a valid account.')
+        }
+        throw err
+      }
     }
 
     setProfessionalEntity(professional)
@@ -140,6 +149,9 @@ export const DoctorProfile = () => {
       setAvailabilityItems(items)
     } catch (err) {
       console.error('Failed to load professional availability', err)
+      if (err.message && err.message.includes('logout')) {
+        setError(err.message)
+      }
       setAvailabilityItems([])
     } finally {
       setAvailabilityLoading(false)

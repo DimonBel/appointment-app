@@ -263,28 +263,30 @@ export const ManagementPanel = () => {
     })
 
     // Create a mapping of userId to professionalId for matching
+    // Note: order.professionalId contains the userId (from Identity service), not the Professional entity ID
     const userIdToProfessionalId = {}
-    const professionalIdToProfessionalId = {}
     doctorSchedules.forEach((doctor) => {
-      const userIdKey = normalizeId(doctor.userId)
-      const professionalIdKey = normalizeId(doctor.id)
-
-      if (userIdKey) {
-        userIdToProfessionalId[userIdKey] = doctor.id
-      }
-
-      if (professionalIdKey) {
-        professionalIdToProfessionalId[professionalIdKey] = doctor.id
+      if (doctor.userId) {
+        // Store both as string and normalized lowercase for matching
+        userIdToProfessionalId[String(doctor.userId)] = doctor.id
+        const normalizedUserId = normalizeId(doctor.userId)
+        if (normalizedUserId) {
+          userIdToProfessionalId[normalizedUserId] = doctor.id
+        }
       }
     })
 
     todayOrders.forEach((order) => {
-      // Match by userId first, then by professional profile id fallback
-      const orderProfessionalKey = normalizeId(order.professionalId)
-      const professionalId = orderProfessionalKey
-        ? userIdToProfessionalId[orderProfessionalKey] ||
-          professionalIdToProfessionalId[orderProfessionalKey]
-        : null
+      // order.professionalId is a userId (from Identity service), match against userIdToProfessionalId
+      if (!order.professionalId) {
+        return
+      }
+
+      const orderUserId = String(order.professionalId)
+      const normalizedOrderUserId = normalizeId(order.professionalId)
+
+      // Try to match using both the original and normalized userId
+      const professionalId = userIdToProfessionalId[orderUserId] || userIdToProfessionalId[normalizedOrderUserId]
 
       if (professionalId && order.scheduledTime) {
         const startSlot = order.scheduledTime
