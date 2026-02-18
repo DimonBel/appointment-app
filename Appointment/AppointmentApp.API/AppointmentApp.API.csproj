@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Identity\Identity.API\Identity.API.csproj" />
     <ProjectReference Include="..\AppointmentApp.Domain\AppointmentApp.Domain.csproj" />
     <ProjectReference Include="..\AppointmentApp.Repository\AppointmentApp.Repository.csproj" />
     <ProjectReference Include="..\AppointmentApp.Service\AppointmentApp.Service.csproj" />

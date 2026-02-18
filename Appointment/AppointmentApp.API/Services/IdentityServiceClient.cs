@@ -1,4 +1,4 @@
-using AppointmentApp.API.DTOs.Identity;
+using Identity.API.DTOs;
 using System.Text.Json;
 
 namespace AppointmentApp.API.Services;

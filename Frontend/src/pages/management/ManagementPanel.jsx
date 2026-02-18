@@ -36,6 +36,23 @@ const TIME_SLOTS = [
 
 const ITEMS_PER_PAGE = 10
 
+const getDateKey = (date) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const getTimeSlot = (date) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${hours}:${minutes}`
+}
+
+const normalizeId = (value) => (value ? String(value).toLowerCase() : null)
+
 export const ManagementPanel = () => {
   const token = useSelector((state) => state.auth.token)
   const currentUser = useSelector((state) => state.auth.user)
@@ -48,6 +65,8 @@ export const ManagementPanel = () => {
   const [clientOrders, setClientOrders] = useState([])
   const [doctorSchedules, setDoctorSchedules] = useState([])
   const [selectedDate, setSelectedDate] = useState(new Date())
+  const [selectedAppointment, setSelectedAppointment] = useState(null)
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false)
 
   // Pagination and filtering
   const [currentPage, setCurrentPage] = useState(1)
@@ -59,19 +78,21 @@ export const ManagementPanel = () => {
   }, [isManagement, token, selectedDate, currentPage, statusFilter])
 
   const getDisplayName = (firstName, lastName, userName, fallback = 'User') => {
+    // Always prioritize userName/nickname as the primary display name
+    // This ensures the exact nickname from Identity service is displayed
+    if (userName && !userName.startsWith('user_') && !userName.startsWith('client_')) {
+      return userName
+    }
+
     const fullName = `${firstName || ''} ${lastName || ''}`.trim()
 
-    // Skip generic names and use userName instead
+    // Skip generic names and use fallback
     const genericNames = ['doctor profile', 'user profile', 'client', 'doctor', 'user', 'professional', 'client user']
     if (genericNames.includes(fullName.toLowerCase())) {
-      // Skip user_... format IDs and use fallback
-      if (userName && !userName.startsWith('user_') && !userName.startsWith('client_')) {
-        return userName
-      }
       return fallback
     }
 
-    return fullName || userName || fallback
+    return fullName || fallback
   }
 
   const loadManagementData = async () => {
@@ -104,8 +125,9 @@ export const ManagementPanel = () => {
 
       const schedulesWithProfessionals = professionalList.map((professional) => {
         const availList = groupedAvailabilities[professional.id] || []
-        // Use user from professional response or look up in usersById
-        const doctorUser = professional.user || usersById[professional.userId]
+        // Prioritize user data from Identity service (usersById) over local database (professional.user)
+        // This ensures we display the actual nicknames from Identity service, not generic usernames from local DB
+        const doctorUser = usersById[professional.userId] || professional.user
 
         const doctorName = getDisplayName(
           doctorUser?.firstName,
@@ -130,7 +152,22 @@ export const ManagementPanel = () => {
         }
       })
 
-      setDoctorSchedules(schedulesWithProfessionals)
+      // Filter out generic/shadow doctor entries (created when user doesn't exist in local DB)
+      const filteredSchedules = schedulesWithProfessionals.filter((doctor) => {
+        // Skip doctors with generic names from shadow users
+        const isGenericName = doctor.doctorName === 'Doctor' ||
+                            doctor.doctorName === 'Doctor Profile' ||
+                            doctor.doctorName === 'User' ||
+                            doctor.doctorName.startsWith('user_') ||
+                            doctor.doctorName.startsWith('client_')
+        // Also skip if the user data indicates it's a shadow user
+        const doctorUser = usersById[doctor.userId]
+        const isShadowUser = doctorUser?.firstName === 'Doctor' && doctorUser?.lastName === 'Profile'
+
+        return !isGenericName && !isShadowUser
+      })
+
+      setDoctorSchedules(filteredSchedules)
 
       // Build enriched orders - use data from order itself first
       const enrichedOrders = orders.map((order) => {
@@ -157,6 +194,7 @@ export const ManagementPanel = () => {
 
         return {
           id: order.id,
+          professionalId: order.professionalId,
           clientName,
           clientAvatar: clientData?.avatarUrl || clientData?.profilePictureUrl || null,
           serviceType: order.title || 'General consultation',
@@ -168,10 +206,22 @@ export const ManagementPanel = () => {
           doctorName,
           doctorAvatar: doctorData?.avatarUrl || doctorData?.profilePictureUrl || null,
           scheduledAt: scheduled ? scheduled.getTime() : 0,
-          scheduledDate: scheduled ? scheduled.toDateString() : null,
-          scheduledTime: scheduled ? scheduled.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null,
+          scheduledDate: getDateKey(scheduled),
+          scheduledTime: getTimeSlot(scheduled),
           durationMinutes: order.durationMinutes || 30,
         }
+      }).filter((order) => {
+        // Filter out orders with generic/shadow doctors
+        const isGenericDoctor = order.doctorName === 'Doctor' ||
+                               order.doctorName === 'Doctor Profile' ||
+                               order.doctorName === 'User' ||
+                               order.doctorName.startsWith('user_') ||
+                               order.doctorName.startsWith('client_')
+
+        const doctorData = usersById[order.professionalId]
+        const isShadowUser = doctorData?.firstName === 'Doctor' && doctorData?.lastName === 'Profile'
+
+        return !isGenericDoctor && !isShadowUser
       }).sort((left, right) => (left.scheduledAt || 0) - (right.scheduledAt || 0)) // Ascending: oldest first, newest last
 
       setClientOrders(enrichedOrders)
@@ -201,7 +251,8 @@ export const ManagementPanel = () => {
   const filteredOrders = clientOrders.filter((order) => activeStatuses.includes(order.status))
 
   const getScheduleMatrix = () => {
-    const todayOrders = filteredOrders.filter((order) => order.scheduledDate === selectedDate.toDateString())
+    const selectedDateKey = getDateKey(selectedDate)
+    const todayOrders = filteredOrders.filter((order) => order.scheduledDate === selectedDateKey)
     const matrix = {}
 
     doctorSchedules.forEach((doctor) => {
@@ -211,24 +262,51 @@ export const ManagementPanel = () => {
       })
     })
 
+    // Create a mapping of userId to professionalId for matching
+    const userIdToProfessionalId = {}
+    const professionalIdToProfessionalId = {}
+    doctorSchedules.forEach((doctor) => {
+      const userIdKey = normalizeId(doctor.userId)
+      const professionalIdKey = normalizeId(doctor.id)
+
+      if (userIdKey) {
+        userIdToProfessionalId[userIdKey] = doctor.id
+      }
+
+      if (professionalIdKey) {
+        professionalIdToProfessionalId[professionalIdKey] = doctor.id
+      }
+    })
+
     todayOrders.forEach((order) => {
-      const doctor = doctorSchedules.find((d) => d.doctorName === order.doctorName)
-      if (doctor && order.scheduledTime) {
+      // Match by userId first, then by professional profile id fallback
+      const orderProfessionalKey = normalizeId(order.professionalId)
+      const professionalId = orderProfessionalKey
+        ? userIdToProfessionalId[orderProfessionalKey] ||
+          professionalIdToProfessionalId[orderProfessionalKey]
+        : null
+
+      if (professionalId && order.scheduledTime) {
         const startSlot = order.scheduledTime
+        const slotIndex = TIME_SLOTS.indexOf(startSlot)
+        if (slotIndex < 0) {
+          return
+        }
+
         const durationSlots = Math.ceil(order.durationMinutes / 30)
 
         for (let i = 0; i < durationSlots; i++) {
-          const slotIndex = TIME_SLOTS.indexOf(startSlot)
           if (slotIndex + i < TIME_SLOTS.length) {
             const slotTime = TIME_SLOTS[slotIndex + i]
-            if (matrix[doctor.id]) {
-              matrix[doctor.id][slotTime] = {
+            if (matrix[professionalId]) {
+              matrix[professionalId][slotTime] = {
                 clientName: order.clientName,
                 status: order.status,
                 isFirstSlot: i === 0,
                 isLastSlot: i === durationSlots - 1,
                 totalSlots: durationSlots,
                 durationMinutes: order.durationMinutes,
+                appointment: order, // Include full appointment details
               }
             }
           }
@@ -365,26 +443,23 @@ export const ManagementPanel = () => {
                           <td className="py-2 pr-2 text-text-secondary font-medium whitespace-nowrap">{slot}</td>
                           {doctorSchedules.map((doctor) => {
                             const cellData = scheduleMatrix[doctor.id]?.[slot]
-                            
+
                             // Skip rendering if this slot is part of a multi-slot appointment (not the first slot)
                             if (cellData && !cellData.isFirstSlot) {
                               return null
                             }
-                            
+
+                            // Empty slot
                             if (!cellData) {
                               return (
                                 <td key={`${doctor.id}-${slot}`} className="py-2 px-2 border-l border-gray-100" />
                               )
                             }
 
-                            const borderRadius = cellData.totalSlots === 1
-                              ? 'rounded-md'
-                              : 'rounded-md'
-
+                            // Occupied slot - calculate rowSpan and styling
                             const statusColor = statusConfig[cellData.status]?.color || 'bg-gray-100 text-gray-700'
-                            
-                            // Calculate rowSpan based on duration (each slot is 30 minutes)
                             const rowSpan = cellData.totalSlots || 1
+                            const borderRadius = 'rounded-md'
 
                             return (
                               <td
@@ -393,16 +468,18 @@ export const ManagementPanel = () => {
                                 className={`py-1 px-2 border-l border-gray-100 align-top`}
                               >
                                 <div
-                                  className={`p-2 text-xs font-medium ${statusColor} ${borderRadius} flex items-center justify-center min-h-[${rowSpan * 40}px]`}
+                                  className={`p-2 text-xs font-medium ${statusColor} ${borderRadius} flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity`}
                                   style={{ minHeight: `${rowSpan * 40 - 16}px` }}
+                                  onClick={() => {
+                                    setSelectedAppointment(cellData.appointment)
+                                    setShowAppointmentModal(true)
+                                  }}
                                 >
                                   <div className="text-center">
-                                    <div className="font-semibold">{cellData.clientName}</div>
-                                    {rowSpan > 1 && (
-                                      <div className="text-[10px] mt-1 opacity-75">
-                                        {cellData.durationMinutes} min
-                                      </div>
-                                    )}
+                                    <div className="font-semibold underline decoration-dotted">{cellData.clientName}</div>
+                                    <div className="text-[10px] mt-1 opacity-75">
+                                      {cellData.durationMinutes} min
+                                    </div>
                                   </div>
                                 </div>
                               </td>
@@ -639,6 +716,80 @@ export const ManagementPanel = () => {
               </CardContent>
             </Card>
           )}
+        </div>
+      )}
+
+      {/* Appointment Details Modal */}
+      {showAppointmentModal && selectedAppointment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-text-primary">Appointment Details</h3>
+                <button
+                  onClick={() => {
+                    setShowAppointmentModal(false)
+                    setSelectedAppointment(null)
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-text-secondary">Client</p>
+                  <p className="font-medium text-text-primary flex items-center gap-2">
+                    <Avatar src={selectedAppointment.clientAvatar} alt={selectedAppointment.clientName} size={32} />
+                    {selectedAppointment.clientName}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-text-secondary">Doctor</p>
+                  <p className="font-medium text-text-primary flex items-center gap-2">
+                    <Avatar src={selectedAppointment.doctorAvatar} alt={selectedAppointment.doctorName} size={32} />
+                    {selectedAppointment.doctorName}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-text-secondary">Service</p>
+                  <p className="font-medium text-text-primary">{selectedAppointment.serviceType}</p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-text-secondary">Date & Time</p>
+                  <p className="font-medium text-text-primary">{selectedAppointment.timing}</p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-text-secondary">Duration</p>
+                  <p className="font-medium text-text-primary">{selectedAppointment.durationMinutes} minutes</p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-text-secondary">Status</p>
+                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${selectedAppointment.statusConfig.color}`}>
+                    {selectedAppointment.statusConfig.text}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => {
+                    setShowAppointmentModal(false)
+                    setSelectedAppointment(null)
+                  }}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </MainContent>

@@ -1,70 +1,44 @@
 using ChatApp.Domain.Entity;
 using ChatApp.Repository.Interfaces;
 using ChatApp.Postgres.Data;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace ChatApp.Postgres.Repositories;
 
 public class UserRepository : IUserRepository
 {
-    private readonly UserManager<AppIdentityUser> _userManager;
-    private readonly IMemoryCache _cache;
-    private const int CacheExpirationMinutes = 5;
+    private readonly AppDbContext _context;
 
-    public UserRepository(UserManager<AppIdentityUser> userManager, IMemoryCache cache)
+    public UserRepository(AppDbContext context)
     {
-        _userManager = userManager;
-        _cache = cache;
+        _context = context;
     }
 
     public async Task<User?> GetByIdAsync(Guid id)
     {
-        var cacheKey = $"user_{id}";
-        
-        // Try to get from cache first
-        if (_cache.TryGetValue(cacheKey, out User? cachedUser))
-        {
-            return cachedUser;
-        }
-        
-        // If not in cache, get from database
-        var identityUser = await _userManager.FindByIdAsync(id.ToString());
-        if (identityUser == null)
-        {
-            return null;
-        }
-        
-        var user = MapToUser(identityUser);
-        
-        // Store in cache for 5 minutes
-        var cacheOptions = new MemoryCacheEntryOptions
-        {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(CacheExpirationMinutes),
-            SlidingExpiration = TimeSpan.FromMinutes(2)
-        };
-        _cache.Set(cacheKey, user, cacheOptions);
-        
-        return user;
+        var identityUser = await _context.Users.FindAsync(id);
+        if (identityUser == null) return null;
+        return ConvertToUser(identityUser);
     }
 
     public async Task<User?> GetByEmailAsync(string email)
     {
-        var identityUser = await _userManager.FindByEmailAsync(email);
-        return identityUser != null ? MapToUser(identityUser) : null;
+        var identityUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (identityUser == null) return null;
+        return ConvertToUser(identityUser);
     }
 
     public async Task<User?> GetByUserNameAsync(string userName)
     {
-        var identityUser = await _userManager.FindByNameAsync(userName);
-        return identityUser != null ? MapToUser(identityUser) : null;
+        var identityUser = await _context.Users.FirstOrDefaultAsync(u => u.UserName == userName);
+        if (identityUser == null) return null;
+        return ConvertToUser(identityUser);
     }
 
     public async Task<IEnumerable<User>> GetAllAsync()
     {
-        var identityUsers = await _userManager.Users.OrderBy(u => u.UserName).ToListAsync();
-        return identityUsers.Select(MapToUser);
+        var identityUsers = await _context.Users.ToListAsync();
+        return identityUsers.Select(ConvertToUser);
     }
 
     public async Task<User> CreateAsync(User user)
@@ -74,67 +48,47 @@ public class UserRepository : IUserRepository
             Id = user.Id,
             UserName = user.UserName,
             Email = user.Email,
-            AvatarUrl = user.AvatarUrl ?? string.Empty,
+            AvatarUrl = user.AvatarUrl,
             CreatedAt = user.CreatedAt,
             IsOnline = user.IsOnline
         };
 
-        var result = await _userManager.CreateAsync(identityUser);
-        if (!result.Succeeded)
-        {
-            throw new Exception($"Failed to create user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
-        }
+        _context.Users.Add(identityUser);
+        await _context.SaveChangesAsync();
 
-        return MapToUser(identityUser);
+        return ConvertToUser(identityUser);
     }
 
     public async Task UpdateAsync(User user)
     {
-        var identityUser = await _userManager.FindByIdAsync(user.Id.ToString());
-        if (identityUser == null)
+        var identityUser = await _context.Users.FindAsync(user.Id);
+        if (identityUser != null)
         {
-            throw new Exception("User not found");
-        }
+            identityUser.UserName = user.UserName;
+            identityUser.Email = user.Email;
+            identityUser.AvatarUrl = user.AvatarUrl;
+            identityUser.IsOnline = user.IsOnline;
 
-        identityUser.UserName = user.UserName;
-        identityUser.Email = user.Email;
-        identityUser.AvatarUrl = user.AvatarUrl ?? string.Empty;
-        identityUser.IsOnline = user.IsOnline;
-
-        var result = await _userManager.UpdateAsync(identityUser);
-        if (!result.Succeeded)
-        {
-            throw new Exception($"Failed to update user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+            await _context.SaveChangesAsync();
         }
-        
-        // Invalidate cache after update
-        var cacheKey = $"user_{user.Id}";
-        _cache.Remove(cacheKey);
     }
 
     public async Task DeleteAsync(Guid id)
     {
-        var identityUser = await _userManager.FindByIdAsync(id.ToString());
+        var identityUser = await _context.Users.FindAsync(id);
         if (identityUser != null)
         {
-            var result = await _userManager.DeleteAsync(identityUser);
-            if (!result.Succeeded)
-            {
-                throw new Exception($"Failed to delete user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
-            }
-            
-            // Invalidate cache after delete
-            var cacheKey = $"user_{id}";
-            _cache.Remove(cacheKey);
+            _context.Users.Remove(identityUser);
+            await _context.SaveChangesAsync();
         }
     }
 
     public async Task<bool> ExistsAsync(Guid id)
     {
-        return await _userManager.Users.AnyAsync(u => u.Id == id);
+        return await _context.Users.AnyAsync(u => u.Id == id);
     }
 
-    private static User MapToUser(AppIdentityUser identityUser)
+    private static User ConvertToUser(AppIdentityUser identityUser)
     {
         return new User
         {

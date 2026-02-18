@@ -1,0 +1,401 @@
+{
+  "format": 1,
+  "restore": {
+    "/home/dumas/Desktop/Final-proj/Identity/Identity.API/Identity.API.csproj": {}
+  },
+  "projects": {
+    "/home/dumas/Desktop/Final-proj/Identity/Identity.API/Identity.API.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/dumas/Desktop/Final-proj/Identity/Identity.API/Identity.API.csproj",
+        "projectName": "Identity.API",
+        "projectPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.API/Identity.API.csproj",
+        "packagesPath": "/home/dumas/.nuget/packages/",
+        "outputPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.API/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/dumas/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "/usr/lib/dotnet/library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "/home/dumas/Desktop/Final-proj/Identity/Identity.Domain/Identity.Domain.csproj": {
+                "projectPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Domain/Identity.Domain.csproj"
+              },
+              "/home/dumas/Desktop/Final-proj/Identity/Identity.Postgres/Identity.Postgres.csproj": {
+                "projectPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Postgres/Identity.Postgres.csproj"
+              },
+              "/home/dumas/Desktop/Final-proj/Identity/Identity.Service/Identity.Service.csproj": {
+                "projectPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Service/Identity.Service.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.100"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Microsoft.AspNetCore.Identity": {
+              "target": "Package",
+              "version": "[2.3.0, )"
+            },
+            "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.AspNetCore.OpenApi": {
+              "target": "Package",
+              "version": "[9.0.11, )"
+            },
+            "Npgsql.EntityFrameworkCore.PostgreSQL": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.AspNetCore.App": {
+              "privateAssets": "none"
+            },
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.112/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/dumas/Desktop/Final-proj/Identity/Identity.Domain/Identity.Domain.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/dumas/Desktop/Final-proj/Identity/Identity.Domain/Identity.Domain.csproj",
+        "projectName": "Identity.Domain",
+        "projectPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Domain/Identity.Domain.csproj",
+        "packagesPath": "/home/dumas/.nuget/packages/",
+        "outputPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Domain/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/dumas/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "/usr/lib/dotnet/library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.100"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Microsoft.AspNetCore.Identity": {
+              "target": "Package",
+              "version": "[2.3.0, )"
+            },
+            "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.EntityFrameworkCore.Design": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Npgsql.EntityFrameworkCore.PostgreSQL": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.112/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/dumas/Desktop/Final-proj/Identity/Identity.Postgres/Identity.Postgres.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/dumas/Desktop/Final-proj/Identity/Identity.Postgres/Identity.Postgres.csproj",
+        "projectName": "Identity.Postgres",
+        "projectPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Postgres/Identity.Postgres.csproj",
+        "packagesPath": "/home/dumas/.nuget/packages/",
+        "outputPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Postgres/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/dumas/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "/usr/lib/dotnet/library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "/home/dumas/Desktop/Final-proj/Identity/Identity.Domain/Identity.Domain.csproj": {
+                "projectPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Domain/Identity.Domain.csproj"
+              },
+              "/home/dumas/Desktop/Final-proj/Identity/Identity.Repository/Identity.Repository.csproj": {
+                "projectPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Repository/Identity.Repository.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.100"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Npgsql.EntityFrameworkCore.PostgreSQL": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.112/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/dumas/Desktop/Final-proj/Identity/Identity.Repository/Identity.Repository.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/dumas/Desktop/Final-proj/Identity/Identity.Repository/Identity.Repository.csproj",
+        "projectName": "Identity.Repository",
+        "projectPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Repository/Identity.Repository.csproj",
+        "packagesPath": "/home/dumas/.nuget/packages/",
+        "outputPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Repository/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/dumas/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "/usr/lib/dotnet/library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "/home/dumas/Desktop/Final-proj/Identity/Identity.Domain/Identity.Domain.csproj": {
+                "projectPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Domain/Identity.Domain.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.100"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.112/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/dumas/Desktop/Final-proj/Identity/Identity.Service/Identity.Service.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/dumas/Desktop/Final-proj/Identity/Identity.Service/Identity.Service.csproj",
+        "projectName": "Identity.Service",
+        "projectPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Service/Identity.Service.csproj",
+        "packagesPath": "/home/dumas/.nuget/packages/",
+        "outputPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Service/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/dumas/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "/usr/lib/dotnet/library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "/home/dumas/Desktop/Final-proj/Identity/Identity.Domain/Identity.Domain.csproj": {
+                "projectPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Domain/Identity.Domain.csproj"
+              },
+              "/home/dumas/Desktop/Final-proj/Identity/Identity.Repository/Identity.Repository.csproj": {
+                "projectPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Repository/Identity.Repository.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.100"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Microsoft.AspNetCore.Authentication": {
+              "target": "Package",
+              "version": "[2.3.0, )"
+            },
+            "Microsoft.AspNetCore.Identity": {
+              "target": "Package",
+              "version": "[2.3.0, )"
+            },
+            "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.112/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

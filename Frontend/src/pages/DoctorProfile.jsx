@@ -265,9 +265,10 @@ export const DoctorProfile = () => {
       const normalizedFee = formData.consultationFee
         ? formData.consultationFee.toString().replace(',', '.')
         : null
-      
+
       const profileData = {
         ...formData,
+        userId: user?.id, // Include userId - required by backend API
         yearsOfExperience: parseInt(formData.yearsOfExperience) || 0,
         consultationFee: normalizedFee ? parseFloat(normalizedFee) : null,
       }
@@ -279,11 +280,12 @@ export const DoctorProfile = () => {
         await doctorProfileService.createProfile(profileData, token)
         setSuccess('Profile created successfully!')
       }
-      
+
       await fetchProfile()
       await fetchProfessionalAvailability()
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save profile')
+      console.error('Error saving profile:', err)
+      setError(err.response?.data?.message || err.message || 'Failed to save profile')
     } finally {
       setSaving(false)
     }

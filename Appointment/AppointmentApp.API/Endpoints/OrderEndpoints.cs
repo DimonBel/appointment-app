@@ -1,5 +1,5 @@
 using AppointmentApp.API.DTOs;
-using AppointmentApp.API.DTOs.Identity;
+using Identity.API.DTOs;
 using AppointmentApp.API.Services;
 using AppointmentApp.Domain.Entity;
 using AppointmentApp.Domain.Enums;

@@ -11,7 +11,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
     ports:
-      - "5432:5432"
+      - "5436:5432"
     volumes:
       - identity-db-data:/var/lib/postgresql/data
     networks:
@@ -128,7 +128,7 @@ services:
       - Jwt__AccessTokenExpirationMinutes=${JWT_ACCESS_EXPIRATION:-30}
       - Jwt__RefreshTokenExpirationDays=${JWT_REFRESH_EXPIRATION:-7}
       - NotificationService__BaseUrl=http://notification-service:5003
-      - Frontend__PublicBaseUrl=${FRONTEND_PUBLIC_BASE_URL:-http://localhost}
+      - Frontend__PublicBaseUrl=${FRONTEND_PUBLIC_BASE_URL:-http://localhost:8080}
       - IdentityService__PublicBaseUrl=${IDENTITY_PUBLIC_BASE_URL:-http://localhost:5005}
       - Minio__Endpoint=${MINIO_ENDPOINT:-minio:9000}
       - Minio__AccessKey=${MINIO_ROOT_USER:-minioadmin}
@@ -170,8 +170,8 @@ services:
   # Appointment Service
   appointment-service:
     build:
-      context: ./Appointment
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Appointment/Dockerfile
     container_name: appointment-service
     restart: unless-stopped
     environment:
@@ -280,7 +280,7 @@ services:
     container_name: frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "8080:80"
     depends_on:
       - identity-service
       - appointment-service

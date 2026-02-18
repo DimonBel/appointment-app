@@ -48,7 +48,7 @@ class DoctorProfileService {
   async createProfessionalProfile(profileData, token) {
     // Map field names to match backend expectations
     const mappedData = {
-      userId: profileData.userId,
+      userId: profileData.userId, // This is REQUIRED by the backend
       title: profileData.title || 'Dr.',
       qualifications: profileData.qualifications,
       specialization: profileData.specialty || profileData.specialization,
@@ -59,6 +59,11 @@ class DoctorProfileService {
 
     console.log('[createProfessionalProfile] Input profileData:', profileData)
     console.log('[createProfessionalProfile] Mapped data:', mappedData)
+
+    // Validate that userId is present
+    if (!mappedData.userId) {
+      throw new Error('userId is required to create a professional profile')
+    }
 
     // Only include fields that are actually provided (not null/undefined/empty string)
     const cleanData = {}
