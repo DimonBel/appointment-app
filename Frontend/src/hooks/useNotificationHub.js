@@ -242,7 +242,8 @@ export function useNotificationHub() {
       if (connectedRef.current) return
       try {
         const hubUrl = import.meta.env.VITE_NOTIFICATION_HUB_URL || '/notificationhub'
-        
+
+        // Register handlers before connecting
         notificationHubService.on('ReceiveNotification', (notification) => {
           const normalizedNotification = normalizeIncomingNotification(notification)
 
@@ -291,7 +292,7 @@ export function useNotificationHub() {
         clearTimeout(toastTimeoutRef.current)
       }
     }
-  }, [isAuthenticated, token])
+  }, [isAuthenticated, token, dispatch, showToast])
 
   useEffect(() => {
     if (!isAuthenticated || !token || !userId) return
