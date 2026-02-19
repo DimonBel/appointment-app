@@ -29,23 +29,7 @@ public class ProfessionalService : IProfessionalService
         var existingUser = await _userManager.FindByIdAsync(userId.ToString());
         if (existingUser == null)
         {
-            var shadowUser = new AppIdentityUser
-            {
-                Id = userId,
-                UserName = $"user_{userId:N}",
-                Email = $"user_{userId:N}@shadow.local",
-                FirstName = "Doctor",
-                LastName = "Profile",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            var createResult = await _userManager.CreateAsync(shadowUser);
-            if (!createResult.Succeeded)
-            {
-                var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
-                throw new InvalidOperationException($"Failed to create local appointment user: {errors}");
-            }
+            throw new InvalidOperationException($"User with ID {userId} not found. Please ensure the user exists in the Identity service before creating a professional profile.");
         }
 
         var professional = new Professional

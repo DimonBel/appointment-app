@@ -2,6 +2,7 @@ using AppointmentApp.API.DTOs;
 using AppointmentApp.Domain.Entity;
 using AppointmentApp.Domain.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AppointmentApp.API.Endpoints;
 
@@ -12,6 +13,25 @@ public static class ProfessionalEndpoints
         var group = app.MapGroup("/api/professionals")
             .WithTags("Professionals");
             // .RequireAuthorization(); // Temporarily disabled for testing
+
+        // Get current user's professional profile
+        group.MapGet("/me", async (
+            [FromServices] IProfessionalService professionalService,
+            HttpContext context) =>
+        {
+            var userId = GetUserIdFromContext(context);
+            if (!userId.HasValue)
+            {
+                return Results.Unauthorized();
+            }
+
+            var professional = await professionalService.GetProfessionalByUserIdAsync(userId.Value);
+            if (professional == null) return Results.NotFound();
+            var responseDto = MapToProfessionalResponseDto(professional);
+            return Results.Ok(responseDto);
+        })
+        .WithName("GetMyProfessionalProfile")
+        .WithOpenApi();
 
         // Create professional
         group.MapPost("/", async (
@@ -36,7 +56,8 @@ public static class ProfessionalEndpoints
                     dto.Bio);
             }
 
-            return Results.Created($"/api/professionals/{professional.Id}", professional);
+            var responseDto = MapToProfessionalResponseDto(professional);
+            return Results.Created($"/api/professionals/{professional.Id}", responseDto);
         })
         .WithName("CreateProfessional")
         .WithOpenApi();
@@ -47,7 +68,9 @@ public static class ProfessionalEndpoints
             [FromServices] IProfessionalService professionalService) =>
         {
             var professional = await professionalService.GetProfessionalByIdAsync(id);
-            return professional != null ? Results.Ok(professional) : Results.NotFound();
+            if (professional == null) return Results.NotFound();
+            var responseDto = MapToProfessionalResponseDto(professional);
+            return Results.Ok(responseDto);
         })
         .WithName("GetProfessionalById")
         .WithOpenApi();
@@ -58,7 +81,9 @@ public static class ProfessionalEndpoints
             [FromServices] IProfessionalService professionalService) =>
         {
             var professional = await professionalService.GetProfessionalByUserIdAsync(userId);
-            return professional != null ? Results.Ok(professional) : Results.NotFound();
+            if (professional == null) return Results.NotFound();
+            var responseDto = MapToProfessionalResponseDto(professional);
+            return Results.Ok(responseDto);
         })
         .WithName("GetProfessionalByUserId")
         .WithOpenApi();
@@ -71,7 +96,8 @@ public static class ProfessionalEndpoints
             [FromQuery] int pageSize = 20) =>
         {
             var professionals = await professionalService.GetAllProfessionalsAsync(onlyAvailable, page, pageSize);
-            return Results.Ok(professionals);
+            var responseDtos = professionals.Select(MapToProfessionalResponseDto);
+            return Results.Ok(responseDtos);
         })
         .WithName("GetAllProfessionals")
         .WithOpenApi();
@@ -90,7 +116,8 @@ public static class ProfessionalEndpoints
                 dto.HourlyRate,
                 dto.ExperienceYears,
                 dto.Bio);
-            return Results.Ok(professional);
+            var responseDto = MapToProfessionalResponseDto(professional);
+            return Results.Ok(responseDto);
         })
         .WithName("UpdateProfessional")
         .WithOpenApi();
@@ -117,6 +144,42 @@ public static class ProfessionalEndpoints
         })
         .WithName("DeleteProfessional")
         .WithOpenApi();
+    }
+
+    private static Guid? GetUserIdFromContext(HttpContext context)
+    {
+        var claimValue = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? context.User.FindFirstValue("sub")
+            ?? context.User.FindFirstValue("nameid");
+
+        return Guid.TryParse(claimValue, out var userId) ? userId : null;
+    }
+
+    private static ProfessionalResponseDto MapToProfessionalResponseDto(Professional professional)
+    {
+        return new ProfessionalResponseDto
+        {
+            Id = professional.Id,
+            UserId = professional.UserId,
+            Title = professional.Title,
+            Qualifications = professional.Qualifications,
+            Specialization = professional.Specialization,
+            HourlyRate = professional.HourlyRate,
+            ExperienceYears = professional.ExperienceYears,
+            Bio = professional.Bio,
+            IsAvailable = professional.IsAvailable,
+            CreatedAt = professional.CreatedAt,
+            UpdatedAt = professional.UpdatedAt,
+            User = professional.User != null ? new UserInfoDto
+            {
+                Id = professional.User.Id,
+                UserName = professional.User.UserName,
+                FirstName = professional.User.FirstName,
+                LastName = professional.User.LastName,
+                Email = professional.User.Email,
+                AvatarUrl = null // AvatarUrl is stored in a different service
+            } : null
+        };
     }
 }
 

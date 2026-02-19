@@ -2,7 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ChatApp.Domain\ChatApp.Domain.csproj" />
-    <ProjectReference Include="..\ChatApp.Repository\ChatApp.Repository.csproj" />
+    <ProjectReference Include="..\ChatApp.Postgres\ChatApp.Postgres.csproj" />
   </ItemGroup>
 
   <ItemGroup>

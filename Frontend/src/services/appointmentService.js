@@ -16,6 +16,40 @@ class AppointmentService {
     return response.data
   }
 
+  async getAllOrdersForManagement(token, status = null, page = 1, pageSize = 100, sortBy = null, descending = false) {
+    const response = await requestWithAuthRetry(
+      {
+        method: 'get',
+        url: `${API_URL}/orders/all`,
+        params: {
+          ...(status !== null ? { status } : {}),
+          page,
+          pageSize,
+          ...(sortBy ? { sortBy } : {}),
+          descending,
+        },
+      },
+      token
+    )
+    return response.data
+  }
+
+  async getOrdersByClient(clientId, token, status = null, page = 1, pageSize = 100) {
+    const response = await requestWithAuthRetry(
+      {
+        method: 'get',
+        url: `${API_URL}/orders/client/${clientId}`,
+        params: {
+          ...(status !== null ? { status } : {}),
+          page,
+          pageSize,
+        },
+      },
+      token
+    )
+    return response.data
+  }
+
   async createOrder(orderData, token) {
     const response = await requestWithAuthRetry(
       {
@@ -154,8 +188,65 @@ class AppointmentService {
     const response = await requestWithAuthRetry(
       {
         method: 'get',
-        url: `${API_URL}/availability/${professionalId}`,
+        url: `${API_URL}/availabilities/slots/${professionalId}`,
         params: { date },
+      },
+      token
+    )
+    return response.data
+  }
+
+  async getAvailabilitySlots(professionalId, date, token) {
+    const response = await requestWithAuthRetry(
+      {
+        method: 'get',
+        url: `${API_URL}/availabilities/slots/status/${professionalId}`,
+        params: { date },
+      },
+      token
+    )
+    return response.data
+  }
+
+  async getAvailabilitiesByProfessional(professionalId, token) {
+    const response = await requestWithAuthRetry(
+      {
+        method: 'get',
+        url: `${API_URL}/availabilities/professional/${professionalId}`,
+      },
+      token
+    )
+    return response.data
+  }
+
+  async getAllAvailabilities(token) {
+    const response = await requestWithAuthRetry(
+      {
+        method: 'get',
+        url: `${API_URL}/availabilities/all`,
+      },
+      token
+    )
+    return response.data
+  }
+
+  async createAvailability(availabilityData, token) {
+    const response = await requestWithAuthRetry(
+      {
+        method: 'post',
+        url: `${API_URL}/availabilities`,
+        data: availabilityData,
+      },
+      token
+    )
+    return response.data
+  }
+
+  async deleteAvailability(availabilityId, token) {
+    const response = await requestWithAuthRetry(
+      {
+        method: 'delete',
+        url: `${API_URL}/availabilities/${availabilityId}`,
       },
       token
     )

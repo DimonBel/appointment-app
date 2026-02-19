@@ -12,7 +12,6 @@ public class DoctorProfile
     public string? Qualifications { get; set; }
     public int YearsOfExperience { get; set; }
     public string? Services { get; set; } // JSON array of services offered
-    public string? WorkingHours { get; set; } // JSON object with schedule
     public decimal? ConsultationFee { get; set; }
     public string? Languages { get; set; } // JSON array of languages spoken
     public string? Address { get; set; }

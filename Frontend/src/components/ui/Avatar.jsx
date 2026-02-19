@@ -20,11 +20,11 @@ export const Avatar = ({
   // Extract initials from alt text
   const getInitials = () => {
     if (!alt) return '?'
-    const parts = alt.split(' ')
+    const parts = alt.trim().split(/\s+/).filter(Boolean)
     if (parts.length >= 2) {
       return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
     }
-    return alt[0].toUpperCase()
+    return alt.slice(0, 2).toUpperCase()
   }
   
   return (

@@ -7,9 +7,15 @@ class SignalRService {
   }
 
   async connect(accessToken, hubUrl) {
+    // If already connected, just return
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
       console.log('SignalR already connected')
       return
+    }
+
+    // If connection exists but not connected, stop it first
+    if (this.connection && this.connection.state !== signalR.HubConnectionState.Disconnected) {
+      await this.disconnect()
     }
 
     this.connection = new signalR.HubConnectionBuilder()
@@ -39,7 +45,10 @@ class SignalRService {
     if (this.connection) {
       await this.connection.stop()
       console.log('SignalR Disconnected')
+      this.connection = null
     }
+    // Clear all handlers
+    this.handlers.clear()
   }
 
   on(event, callback) {

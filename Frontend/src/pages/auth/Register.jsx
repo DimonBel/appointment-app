@@ -6,7 +6,7 @@ import { authService } from '../../services/authService'
 import { Input } from '../../components/ui/Input'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
-import { Calendar, UserCircle, Stethoscope } from 'lucide-react'
+import { Calendar, UserCircle, Stethoscope, Briefcase } from 'lucide-react'
 
 export const Register = () => {
   const [formData, setFormData] = useState({
@@ -96,7 +96,7 @@ export const Register = () => {
             <label className="block text-sm font-medium text-text-primary mb-3">
               I am registering as
             </label>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, role: 'User' })}
@@ -136,6 +136,27 @@ export const Register = () => {
                 <p className="font-medium text-text-primary">Doctor</p>
                 <p className="text-xs text-text-secondary mt-1">
                   Provide services
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, role: 'Management' })}
+                className={`p-4 border-2 rounded-lg transition-all ${
+                  formData.role === 'Management'
+                    ? 'border-primary-accent bg-primary-accent/10'
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                <Briefcase
+                  size={32}
+                  className={`mx-auto mb-2 ${
+                    formData.role === 'Management' ? 'text-primary-accent' : 'text-gray-400'
+                  }`}
+                />
+                <p className="font-medium text-text-primary">Management</p>
+                <p className="text-xs text-text-secondary mt-1">
+                  Monitor appointments
                 </p>
               </button>
             </div>

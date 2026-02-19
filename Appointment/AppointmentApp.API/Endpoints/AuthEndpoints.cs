@@ -1,4 +1,4 @@
-using AppointmentApp.API.DTOs.Identity;
+using Identity.API.DTOs;
 using AppointmentApp.API.Services;
 using Microsoft.AspNetCore.Mvc;
 

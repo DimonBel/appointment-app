@@ -2,21 +2,14 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-# Copy all project files
-COPY ["AppointmentApp.API/AppointmentApp.API.csproj", "AppointmentApp.API/"]
-COPY ["AppointmentApp.Domain/AppointmentApp.Domain.csproj", "AppointmentApp.Domain/"]
-COPY ["AppointmentApp.Service/AppointmentApp.Service.csproj", "AppointmentApp.Service/"]
-COPY ["AppointmentApp.Repository/AppointmentApp.Repository.csproj", "AppointmentApp.Repository/"]
-COPY ["AppointmentApp.Postgres/AppointmentApp.Postgres.csproj", "AppointmentApp.Postgres/"]
-
-# Restore dependencies
-RUN dotnet restore "AppointmentApp.API/AppointmentApp.API.csproj"
-
-# Copy all source files
+# Copy the entire source directory to preserve relative paths
 COPY . .
 
+# Restore dependencies
+RUN dotnet restore "Appointment/AppointmentApp.API/AppointmentApp.API.csproj"
+
 # Build and publish in one step
-WORKDIR "/src/AppointmentApp.API"
+WORKDIR "/src/Appointment/AppointmentApp.API"
 RUN dotnet publish "AppointmentApp.API.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Runtime stage

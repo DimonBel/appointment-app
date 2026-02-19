@@ -22,6 +22,19 @@ public class AvailabilityRepository : IAvailabilityRepository
             .FirstOrDefaultAsync(a => a.Id == id);
     }
 
+    public async Task<IEnumerable<Availability>> GetAllAsync()
+    {
+        return await _context.Availabilities
+            .Include(a => a.Professional)
+                .ThenInclude(p => p.User)
+            .Include(a => a.Slots)
+            .Where(a => a.IsActive)
+            .OrderBy(a => a.ProfessionalId)
+            .ThenBy(a => a.DayOfWeek)
+            .ThenBy(a => a.StartTime)
+            .ToListAsync();
+    }
+
     public async Task<Availability> CreateAsync(Availability availability)
     {
         _context.Availabilities.Add(availability);

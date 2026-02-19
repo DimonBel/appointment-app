@@ -17,7 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ChatApp.Service\ChatApp.Service.csproj" />
-    <ProjectReference Include="..\ChatApp.Postgres\ChatApp.Postgres.csproj" />
+    <ProjectReference Include="..\ChatApp.Repository\ChatApp.Repository.csproj" />
   </ItemGroup>
 
 </Project>

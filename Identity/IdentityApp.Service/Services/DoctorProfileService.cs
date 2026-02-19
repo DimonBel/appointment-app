@@ -76,7 +76,6 @@ public class DoctorProfileService : IDoctorProfileService
             Qualifications = dto.Qualifications,
             YearsOfExperience = dto.YearsOfExperience,
             Services = JsonSerializer.Serialize(dto.Services),
-            WorkingHours = dto.WorkingHours,
             ConsultationFee = dto.ConsultationFee,
             Languages = JsonSerializer.Serialize(dto.Languages),
             Address = dto.Address,
@@ -103,7 +102,6 @@ public class DoctorProfileService : IDoctorProfileService
         if (dto.Qualifications != null) profile.Qualifications = dto.Qualifications;
         profile.YearsOfExperience = dto.YearsOfExperience;
         if (dto.Services != null) profile.Services = JsonSerializer.Serialize(dto.Services);
-        if (dto.WorkingHours != null) profile.WorkingHours = dto.WorkingHours;
         if (dto.ConsultationFee.HasValue) profile.ConsultationFee = dto.ConsultationFee;
         if (dto.Languages != null) profile.Languages = JsonSerializer.Serialize(dto.Languages);
         if (dto.Address != null) profile.Address = dto.Address;
@@ -168,7 +166,6 @@ public class DoctorProfileService : IDoctorProfileService
             Qualifications = profile.Qualifications,
             YearsOfExperience = profile.YearsOfExperience,
             Services = services,
-            WorkingHours = profile.WorkingHours,
             ConsultationFee = profile.ConsultationFee,
             Languages = languages,
             Address = profile.Address,

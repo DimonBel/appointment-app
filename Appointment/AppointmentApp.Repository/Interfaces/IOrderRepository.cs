@@ -6,6 +6,7 @@ namespace AppointmentApp.Repository.Interfaces;
 public interface IOrderRepository
 {
     Task<Order?> GetByIdAsync(Guid id);
+    Task<IEnumerable<Order>> GetAllAsync(OrderStatus? status = null, int page = 1, int pageSize = 100, string? sortBy = null, bool descending = false);
     Task<Order> CreateAsync(Order order);
     Task<Order> UpdateAsync(Order order);
     Task<bool> DeleteAsync(Guid id);

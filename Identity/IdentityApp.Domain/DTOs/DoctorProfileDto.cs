@@ -12,7 +12,6 @@ public record DoctorProfileDto
     public string? Qualifications { get; init; }
     public int YearsOfExperience { get; init; }
     public List<string> Services { get; init; } = new();
-    public string? WorkingHours { get; init; }
     public decimal? ConsultationFee { get; init; }
     public List<string> Languages { get; init; } = new();
     public string? Address { get; init; }
@@ -40,7 +39,6 @@ public record CreateDoctorProfileDto
     public string? Qualifications { get; init; }
     public int YearsOfExperience { get; init; }
     public List<string> Services { get; init; } = new();
-    public string? WorkingHours { get; init; }
     public decimal? ConsultationFee { get; init; }
     public List<string> Languages { get; init; } = new();
     public string? Address { get; init; }
@@ -55,7 +53,6 @@ public record UpdateDoctorProfileDto
     public string? Qualifications { get; init; }
     public int YearsOfExperience { get; init; }
     public List<string> Services { get; init; } = new();
-    public string? WorkingHours { get; init; }
     public decimal? ConsultationFee { get; init; }
     public List<string> Languages { get; init; } = new();
     public string? Address { get; init; }

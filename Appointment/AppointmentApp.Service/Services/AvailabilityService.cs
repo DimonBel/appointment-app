@@ -56,6 +56,11 @@ public class AvailabilityService : IAvailabilityService
         return await _availabilityRepository.GetByIdAsync(availabilityId);
     }
 
+    public async Task<IEnumerable<Availability>> GetAllAvailabilitiesAsync()
+    {
+        return await _availabilityRepository.GetAllAsync();
+    }
+
     public async Task<IEnumerable<Availability>> GetAvailabilitiesByProfessionalAsync(Guid professionalId)
     {
         return await _availabilityRepository.GetByProfessionalAsync(professionalId);
@@ -86,8 +91,22 @@ public class AvailabilityService : IAvailabilityService
         return await _availabilityRepository.DeleteAsync(availabilityId);
     }
 
+    public async Task<IEnumerable<AvailabilitySlot>> GetSlotsByDateAsync(Guid professionalId, DateTime date)
+    {
+        var existingSlots = (await _availabilitySlotRepository.GetSlotsByDateAsync(professionalId, date)).ToList();
+
+        if (existingSlots.Count == 0)
+        {
+            await GenerateSlotsForDateAsync(professionalId, date);
+            existingSlots = (await _availabilitySlotRepository.GetSlotsByDateAsync(professionalId, date)).ToList();
+        }
+
+        return existingSlots;
+    }
+
     public async Task<IEnumerable<AvailabilitySlot>> GetAvailableSlotsAsync(Guid professionalId, DateTime date)
     {
+        await GetSlotsByDateAsync(professionalId, date);
         return await _availabilitySlotRepository.GetAvailableSlotsAsync(professionalId, date);
     }
 
@@ -106,7 +125,8 @@ public class AvailabilityService : IAvailabilityService
     public async Task<IEnumerable<AvailabilitySlot>> GenerateSlotsForDateAsync(Guid professionalId, DateTime date)
     {
         var availabilities = await _availabilityRepository.GetByProfessionalAsync(professionalId);
-        var dayOfWeek = date.DayOfWeek;
+        var dateUtc = date.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(date, DateTimeKind.Utc) : date;
+        var dayOfWeek = dateUtc.DayOfWeek;
 
         var matchingAvailabilities = availabilities
             .Where(a => a.DayOfWeek == dayOfWeek && a.IsActive)
@@ -116,9 +136,9 @@ public class AvailabilityService : IAvailabilityService
 
         foreach (var availability in matchingAvailabilities)
         {
-            if (availability.StartDate.HasValue && date < availability.StartDate.Value.Date)
+            if (availability.StartDate.HasValue && dateUtc < availability.StartDate.Value.Date)
                 continue;
-            if (availability.EndDate.HasValue && date > availability.EndDate.Value.Date)
+            if (availability.EndDate.HasValue && dateUtc > availability.EndDate.Value.Date)
                 continue;
 
             var slotDuration = TimeSpan.FromMinutes(30);
@@ -126,15 +146,15 @@ public class AvailabilityService : IAvailabilityService
 
             while (currentTime.Add(slotDuration) <= availability.EndTime)
             {
-                var existingSlot = await _availabilitySlotRepository.GetSlotByDateTimeAsync(professionalId, date.Date.Add(currentTime));
-                
+                var existingSlot = await _availabilitySlotRepository.GetSlotByDateTimeAsync(professionalId, dateUtc.Date.Add(currentTime));
+
                 if (existingSlot == null)
                 {
                     var slot = new AvailabilitySlot
                     {
                         Id = Guid.NewGuid(),
                         AvailabilityId = availability.Id,
-                        SlotDate = date.Date,
+                        SlotDate = dateUtc.Date,
                         StartTime = currentTime,
                         EndTime = currentTime.Add(slotDuration),
                         IsAvailable = true,

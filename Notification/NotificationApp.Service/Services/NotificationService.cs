@@ -51,6 +51,11 @@ public class NotificationService : INotificationService
         return await _notificationRepository.GetUnreadCountAsync(userId);
     }
 
+    public async Task<IEnumerable<Notification>> GetUnreadByUserIdAsync(Guid userId, int page = 1, int pageSize = 20)
+    {
+        return await _notificationRepository.GetUnreadByUserIdAsync(userId, page, pageSize);
+    }
+
     public async Task MarkAsReadAsync(Guid id)
     {
         var notification = await _notificationRepository.GetByIdAsync(id);

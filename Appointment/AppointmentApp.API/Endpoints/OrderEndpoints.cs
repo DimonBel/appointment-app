@@ -1,5 +1,5 @@
 using AppointmentApp.API.DTOs;
-using AppointmentApp.API.DTOs.Identity;
+using Identity.API.DTOs;
 using AppointmentApp.API.Services;
 using AppointmentApp.Domain.Entity;
 using AppointmentApp.Domain.Enums;
@@ -7,6 +7,7 @@ using AppointmentApp.Domain.Interfaces;
 using AppointmentApp.Repository.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -20,6 +21,60 @@ public static class OrderEndpoints
         var group = app.MapGroup("/api/orders")
             .WithTags("Orders")
             .RequireAuthorization();
+
+        // Get all orders (for management panel)
+        group.MapGet("/all", async (
+            [FromServices] IOrderService orderService,
+            [FromServices] IIdentityServiceClient identityServiceClient,
+            [FromServices] UserManager<AppIdentityUser> userManager,
+            HttpContext context,
+            [FromQuery] OrderStatus? status = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 100,
+            [FromQuery] string? sortBy = null,
+            [FromQuery] bool descending = false) =>
+        {
+            var orders = await orderService.GetAllOrdersAsync(status, page, pageSize, sortBy, descending);
+            
+            // Enrich orders with Identity service data
+            var accessToken = context.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
+            var enrichedOrders = orders.Select(order =>
+            {
+                var orderDict = new Dictionary<string, object?>
+                {
+                    ["id"] = order.Id,
+                    ["clientId"] = order.ClientId,
+                    ["professionalId"] = order.ProfessionalId,
+                    ["status"] = order.Status,
+                    ["scheduledDateTime"] = order.ScheduledDateTime,
+                    ["durationMinutes"] = order.DurationMinutes,
+                    ["title"] = order.Title,
+                    ["description"] = order.Description,
+                    ["notes"] = order.Notes,
+                    ["createdAt"] = order.CreatedAt,
+                    ["updatedAt"] = order.UpdatedAt,
+                    ["client"] = null,
+                    ["professional"] = null
+                };
+
+                if (!string.IsNullOrWhiteSpace(accessToken))
+                {
+                    var identityClient = identityServiceClient.GetUserByIdAsync(order.ClientId, accessToken);
+                    var identityProfessional = identityServiceClient.GetUserByIdAsync(order.ProfessionalId, accessToken);
+                    
+                    Task.WaitAll(identityClient, identityProfessional);
+                    
+                    orderDict["client"] = identityClient.Result;
+                    orderDict["professional"] = identityProfessional.Result;
+                }
+
+                return orderDict;
+            }).ToList();
+            
+            return Results.Ok(enrichedOrders);
+        })
+        .WithName("GetAllOrdersForManagement")
+        .WithOpenApi();
 
         // Get all orders for current user
         group.MapGet("/", async (
@@ -57,14 +112,31 @@ public static class OrderEndpoints
                 return Results.Unauthorized();
             }
 
-            var order = await orderService.CreateOrderAsync(
-                clientId.Value,
-                dto.ProfessionalId,
-                dto.ScheduledDateTime,
-                dto.DurationMinutes,
-                dto.Title,
-                dto.Description,
-                dto.DomainConfigurationId);
+            Order order;
+            try
+            {
+                order = await orderService.CreateOrderAsync(
+                    clientId.Value,
+                    dto.ProfessionalId,
+                    dto.ScheduledDateTime,
+                    dto.DurationMinutes,
+                    dto.Title,
+                    dto.Description,
+                    dto.DomainConfigurationId);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { message = ex.Message });
+            }
+            catch (DbUpdateException ex)
+            {
+                var message = ex.InnerException?.Message ?? ex.Message;
+                return Results.BadRequest(new { message = message });
+            }
 
             var localUser = await userManager.FindByIdAsync(clientId.Value.ToString());
             var accessToken = context.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
@@ -290,7 +362,19 @@ public static class OrderEndpoints
                 }
             }
 
-            var order = await approvalService.ApproveOrderAsync(id, dto.Reason, approvedByUserId);
+            Order order;
+            try
+            {
+                order = await approvalService.ApproveOrderAsync(id, dto.Reason, approvedByUserId);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { message = ex.Message });
+            }
 
             try
             {

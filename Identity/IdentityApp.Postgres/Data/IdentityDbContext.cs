@@ -57,7 +57,6 @@ public class IdentityDbContext : IdentityDbContext<AppIdentityUser, AppIdentityR
             entity.Property(e => e.Bio).HasMaxLength(2000);
             entity.Property(e => e.Qualifications).HasMaxLength(1000);
             entity.Property(e => e.Services).HasMaxLength(1000);
-            entity.Property(e => e.WorkingHours).HasMaxLength(1000);
             entity.Property(e => e.Languages).HasMaxLength(500);
             entity.Property(e => e.Address).HasMaxLength(500);
             entity.Property(e => e.City).HasMaxLength(100);
@@ -127,6 +126,14 @@ public class IdentityDbContext : IdentityDbContext<AppIdentityUser, AppIdentityR
                 Name = "Jurist",
                 NormalizedName = "JURIST",
                 Description = "Legal professional role",
+                ConcurrencyStamp = Guid.NewGuid().ToString()
+            },
+            new AppIdentityRole
+            {
+                Id = Guid.Parse("77777777-7777-7777-7777-777777777777"),
+                Name = "Management",
+                NormalizedName = "MANAGEMENT",
+                Description = "Management role for appointment operations oversight",
                 ConcurrencyStamp = Guid.NewGuid().ToString()
             }
         };

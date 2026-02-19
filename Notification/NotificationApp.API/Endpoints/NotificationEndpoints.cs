@@ -47,6 +47,17 @@ public static class NotificationEndpoints
             return Results.Ok(new { count });
         }).WithName("GetUnreadCount");
 
+        // GET /api/notifications/unread?userId={userId}
+        group.MapGet("/unread", async (Guid? userId, HttpContext httpContext, INotificationService service, int page = 1, int pageSize = 20) =>
+        {
+            var resolvedUserId = ResolveUserId(httpContext, userId);
+            if (!resolvedUserId.HasValue) return Results.BadRequest(new { error = "userId is required." });
+
+            var notifications = await service.GetUnreadByUserIdAsync(resolvedUserId.Value, page, pageSize);
+            var dtos = notifications.Select(MapToDto);
+            return Results.Ok(dtos);
+        }).WithName("GetUnreadNotifications");
+
         // POST /api/notifications
         group.MapPost("/", async (CreateNotificationDto dto, INotificationService service) =>
         {

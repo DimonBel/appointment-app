@@ -55,12 +55,28 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<AvailabilitySlot>> GetAvailableSlotsAsync(Guid professionalId, DateTime date)
+    public async Task<IEnumerable<AvailabilitySlot>> GetSlotsByDateAsync(Guid professionalId, DateTime date)
     {
+        var dateUtc = NormalizeToUtc(date);
+
         return await _context.AvailabilitySlots
             .Include(s => s.Availability)
-            .Where(s => s.Availability.ProfessionalId == professionalId
-                        && s.SlotDate.Date == date.Date
+            .Where(s => s.Availability != null
+                        && s.Availability.ProfessionalId == professionalId
+                        && s.SlotDate.Date == dateUtc.Date)
+            .OrderBy(s => s.StartTime)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<AvailabilitySlot>> GetAvailableSlotsAsync(Guid professionalId, DateTime date)
+    {
+        var dateUtc = NormalizeToUtc(date);
+
+        return await _context.AvailabilitySlots
+            .Include(s => s.Availability)
+            .Where(s => s.Availability != null
+                        && s.Availability.ProfessionalId == professionalId
+                        && s.SlotDate.Date == dateUtc.Date
                         && s.IsAvailable)
             .OrderBy(s => s.StartTime)
             .ToListAsync();
@@ -68,15 +84,16 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
 
     public async Task<AvailabilitySlot?> GetSlotByDateTimeAsync(Guid professionalId, DateTime dateTime)
     {
-        var date = dateTime.Date;
-        var time = dateTime.TimeOfDay;
+        var dateTimeUtc = NormalizeToUtc(dateTime);
+        var date = dateTimeUtc.Date;
+        var time = dateTimeUtc.TimeOfDay;
 
         return await _context.AvailabilitySlots
             .Include(s => s.Availability)
-            .Where(s => s.Availability.ProfessionalId == professionalId
+            .Where(s => s.Availability != null
+                        && s.Availability.ProfessionalId == professionalId
                         && s.SlotDate.Date == date
-                        && s.StartTime <= time
-                        && s.EndTime > time)
+                        && s.StartTime == time)
             .FirstOrDefaultAsync();
     }
 
@@ -87,13 +104,64 @@ public class AvailabilitySlotRepository : IAvailabilitySlotRepository
 
     public async Task<bool> IsSlotAvailableAsync(Guid professionalId, DateTime dateTime, int durationMinutes)
     {
-        var slot = await GetSlotByDateTimeAsync(professionalId, dateTime);
-        if (slot == null || !slot.IsAvailable)
+        if (durationMinutes <= 0)
         {
             return false;
         }
 
-        var requestedEndTime = dateTime.TimeOfDay.Add(TimeSpan.FromMinutes(durationMinutes));
-        return requestedEndTime <= slot.EndTime;
+        var dateTimeUtc = NormalizeToUtc(dateTime);
+        var requestedStartTime = dateTimeUtc.TimeOfDay;
+        var requestedEndTime = requestedStartTime.Add(TimeSpan.FromMinutes(durationMinutes));
+
+        var daySlots = (await GetSlotsByDateAsync(professionalId, dateTimeUtc.Date))
+            .Where(s => s.IsAvailable)
+            .OrderBy(s => s.StartTime)
+            .ToList();
+
+        if (daySlots.Count == 0)
+        {
+            return false;
+        }
+
+        var slotAtStart = daySlots.FirstOrDefault(s => s.StartTime == requestedStartTime);
+        if (slotAtStart == null)
+        {
+            return false;
+        }
+
+        var overlappingSlots = daySlots
+            .Where(s => s.StartTime >= requestedStartTime && s.StartTime < requestedEndTime)
+            .OrderBy(s => s.StartTime)
+            .ToList();
+
+        if (overlappingSlots.Count == 0)
+        {
+            return false;
+        }
+
+        for (var index = 1; index < overlappingSlots.Count; index++)
+        {
+            if (overlappingSlots[index - 1].EndTime != overlappingSlots[index].StartTime)
+            {
+                return false;
+            }
+        }
+
+        return overlappingSlots.Last().EndTime >= requestedEndTime;
+    }
+
+    private static DateTime NormalizeToUtc(DateTime dateTime)
+    {
+        if (dateTime.Kind == DateTimeKind.Utc)
+        {
+            return dateTime;
+        }
+
+        if (dateTime.Kind == DateTimeKind.Local)
+        {
+            return dateTime.ToUniversalTime();
+        }
+
+        return DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
     }
 }

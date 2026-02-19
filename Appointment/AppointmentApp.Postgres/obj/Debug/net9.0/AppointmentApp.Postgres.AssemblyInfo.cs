@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AppointmentApp.Postgres")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3acc0ffe60f0aa51c8cfae1f2d5ebb6e6ccbf3cf")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4f164ad2ffc58e6147e869ea0f96784edd3fb258")]
 [assembly: System.Reflection.AssemblyProductAttribute("AppointmentApp.Postgres")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AppointmentApp.Postgres")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
