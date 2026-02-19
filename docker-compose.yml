@@ -85,7 +85,28 @@ services:
       timeout: 5s
       retries: 5
 
-  # MinIO Object Storage for avatars
+  # PostgreSQL Database for Document Service
+  document-db:
+    image: postgres:16-alpine
+    container_name: document-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DOCUMENT_DB_NAME:-DocumentDb}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
+    ports:
+      - "5437:5432"
+    volumes:
+      - document-db-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO Object Storage for avatars and documents
   minio:
     image: minio/minio:latest
     container_name: minio
@@ -272,6 +293,41 @@ services:
       retries: 3
       start_period: 40s
 
+  # Document Service
+  document-service:
+    build:
+      context: ./Document
+      dockerfile: Dockerfile
+    container_name: document-service
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5004
+      - ConnectionStrings__DefaultConnection=Host=document-db;Port=5432;Database=${DOCUMENT_DB_NAME:-DocumentDb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
+      - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
+      - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
+      - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
+      - Minio__Endpoint=${MINIO_ENDPOINT:-minio:9000}
+      - Minio__AccessKey=${MINIO_ROOT_USER:-minioadmin}
+      - Minio__SecretKey=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - Minio__UseSSL=${MINIO_USE_SSL:-false}
+      - Minio__Bucket=${MINIO_BUCKET:-documents}
+    ports:
+      - "5004:5004"
+    depends_on:
+      document-db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5004/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   # Frontend (React + Nginx)
   frontend:
     build:
@@ -286,6 +342,7 @@ services:
       - appointment-service
       - chat-service
       - notification-service
+      - document-service
     networks:
       - app-network
     healthcheck:
@@ -309,5 +366,7 @@ volumes:
     name: chat-db-data
   notification-db-data:
     name: notification-db-data
+  document-db-data:
+    name: document-db-data
   minio-data:
     name: minio-data

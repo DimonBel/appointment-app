@@ -6,7 +6,8 @@ import { Loader } from '../../components/ui/Loader'
 import { Avatar } from '../../components/ui/Avatar'
 import { appointmentService } from '../../services/appointmentService'
 import { userService } from '../../services/userService'
-import { Users, CalendarCheck, ShieldOff, Clock, UserRound, Grid3x3, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Filter, X } from 'lucide-react'
+import { DocumentManagement } from './DocumentManagement'
+import { Users, CalendarCheck, ShieldOff, Clock, UserRound, Grid3x3, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Filter, X, FileText } from 'lucide-react'
 
 const statusConfig = {
   0: { text: 'Pending', color: 'bg-yellow-100 text-yellow-800' },
@@ -395,6 +396,17 @@ export const ManagementPanel = () => {
               <UserRound size={18} />
               Doctors Availability
             </button>
+            <button
+              onClick={() => setActiveTab('documents')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                activeTab === 'documents'
+                  ? 'bg-primary-dark text-white shadow-md'
+                  : 'bg-white border border-gray-300 text-text-secondary hover:bg-gray-50'
+              }`}
+            >
+              <FileText size={18} />
+              Documents
+            </button>
           </div>
 
           {activeTab === 'schedule' && (
@@ -718,6 +730,8 @@ export const ManagementPanel = () => {
               </CardContent>
             </Card>
           )}
+
+          {activeTab === 'documents' && <DocumentManagement />}
         </div>
       )}
 

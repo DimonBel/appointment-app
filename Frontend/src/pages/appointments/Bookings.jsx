@@ -6,16 +6,39 @@ import { Button } from '../../components/ui/Button'
 import { StatusBadge } from '../../components/ui/Badge'
 import { Avatar } from '../../components/ui/Avatar'
 import { Loader } from '../../components/ui/Loader'
+import FileUpload from '../../components/ui/FileUpload'
 import { appointmentService } from '../../services/appointmentService'
 import { userService } from '../../services/userService'
-import { Calendar, Clock, MapPin, Phone } from 'lucide-react'
+import documentService from '../../services/documentService'
+import { Calendar, Clock, MapPin, Phone, Paperclip, X } from 'lucide-react'
 
 export const Bookings = () => {
   const [activeTab, setActiveTab] = useState('upcoming')
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
   const [actionLoadingId, setActionLoadingId] = useState(null)
+  const [appointmentDocuments, setAppointmentDocuments] = useState({})
+  const [showFileUploadForId, setShowFileUploadForId] = useState(null)
+  const [loadingDocuments, setLoadingDocuments] = useState({})
   const token = useSelector((state) => state.auth.token)
+
+  useEffect(() => {
+    fetchAppointments()
+  }, [activeTab, token])
+
+  const fetchAppointmentDocuments = async (appointmentId) => {
+    if (appointmentDocuments[appointmentId]) return
+
+    setLoadingDocuments((prev) => ({ ...prev, [appointmentId]: true }))
+    try {
+      const docs = await documentService.getDocumentsByLinkedEntity('Order', appointmentId, {}, token)
+      setAppointmentDocuments((prev) => ({ ...prev, [appointmentId]: Array.isArray(docs) ? docs : [] }))
+    } catch (error) {
+      console.error('Error fetching appointment documents:', error)
+    } finally {
+      setLoadingDocuments((prev) => ({ ...prev, [appointmentId]: false }))
+    }
+  }
 
   useEffect(() => {
     fetchAppointments()
@@ -253,18 +276,81 @@ export const Bookings = () => {
                   </div>
 
                   {activeTab === 'upcoming' && (
-                    <div className="flex gap-2 mt-4">
-                      <Button size="sm" variant="primary" onClick={() => handleReschedule(appointment)} disabled={actionLoadingId === appointment.id}>
-                        Reschedule
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleCancel(appointment)} disabled={actionLoadingId === appointment.id}>
-                        Cancel
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleComplete(appointment)} disabled={actionLoadingId === appointment.id}>
-                        <Phone size={16} className="mr-1" />
-                        Complete
-                      </Button>
-                    </div>
+                    <>
+                      <div className="flex gap-2 mt-4">
+                        <Button size="sm" variant="primary" onClick={() => handleReschedule(appointment)} disabled={actionLoadingId === appointment.id}>
+                          Reschedule
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleCancel(appointment)} disabled={actionLoadingId === appointment.id}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleComplete(appointment)} disabled={actionLoadingId === appointment.id}>
+                          <Phone size={16} className="mr-1" />
+                          Complete
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => {
+                            setShowFileUploadForId(showFileUploadForId === appointment.id ? null : appointment.id)
+                            if (!appointmentDocuments[appointment.id]) {
+                              fetchAppointmentDocuments(appointment.id)
+                            }
+                          }}
+                          className={showFileUploadForId === appointment.id ? 'bg-primary-accent text-white' : ''}
+                        >
+                          <Paperclip size={16} className="mr-1" />
+                          Attachments
+                        </Button>
+                      </div>
+
+                      {showFileUploadForId === appointment.id && (
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <FileUpload
+                            onFileUploaded={(file) => {
+                              if (file) {
+                                setAppointmentDocuments((prev) => ({
+                                  ...prev,
+                                  [appointment.id]: [...(prev[appointment.id] || []), file]
+                                }))
+                              }
+                            }}
+                            documentType="BookingFile"
+                            linkedEntityType="Order"
+                            linkedEntityId={appointment.id}
+                            disabled={false}
+                          />
+
+                          {appointmentDocuments[appointment.id] && appointmentDocuments[appointment.id].length > 0 && (
+                            <div className="mt-4">
+                              <p className="text-sm font-medium text-text-primary mb-2">Attached Files:</p>
+                              <div className="space-y-2">
+                                {appointmentDocuments[appointment.id].map((doc) => (
+                                  <div key={doc.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                                    <span className="text-lg">{documentService.getFileIcon(doc.contentType)}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm text-text-primary truncate">{doc.originalFileName}</p>
+                                      <p className="text-xs text-text-secondary">{documentService.formatFileSize(doc.fileSize)}</p>
+                                    </div>
+                                    <Button
+                                      size="xs"
+                                      variant="ghost"
+                                      onClick={() => documentService.downloadAndSave(doc.id, doc.originalFileName, token)}
+                                    >
+                                      Download
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {loadingDocuments[appointment.id] && (
+                            <div className="mt-2 text-sm text-text-secondary">Loading attachments...</div>
+                          )}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </CardContent>

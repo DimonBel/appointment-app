@@ -1,0 +1,16 @@
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Repository/bin/Debug/net9.0/DocumentApp.Repository.deps.json
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Repository/bin/Debug/net9.0/DocumentApp.Repository.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Repository/bin/Debug/net9.0/DocumentApp.Repository.pdb
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Repository/bin/Debug/net9.0/DocumentApp.Domain.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Repository/bin/Debug/net9.0/DocumentApp.Domain.pdb
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Repository/obj/Debug/net9.0/DocumentApp.Repository.csproj.AssemblyReference.cache
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Repository/obj/Debug/net9.0/DocumentApp.Repository.GeneratedMSBuildEditorConfig.editorconfig
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Repository/obj/Debug/net9.0/DocumentApp.Repository.AssemblyInfoInputs.cache
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Repository/obj/Debug/net9.0/DocumentApp.Repository.AssemblyInfo.cs
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Repository/obj/Debug/net9.0/DocumentApp.Repository.csproj.CoreCompileInputs.cache
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Repository/obj/Debug/net9.0/DocumentApp.Repository.sourcelink.json
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Repository/obj/Debug/net9.0/Document.25B26B1C.Up2Date
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Repository/obj/Debug/net9.0/DocumentApp.Repository.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Repository/obj/Debug/net9.0/refint/DocumentApp.Repository.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Repository/obj/Debug/net9.0/DocumentApp.Repository.pdb
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Repository/obj/Debug/net9.0/ref/DocumentApp.Repository.dll

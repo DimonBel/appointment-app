@@ -47,8 +47,7 @@ class SignalRService {
       console.log('SignalR Disconnected')
       this.connection = null
     }
-    // Clear all handlers
-    this.handlers.clear()
+    // Don't clear handlers - they should persist for reconnects
   }
 
   on(event, callback) {

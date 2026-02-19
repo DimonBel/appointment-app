@@ -128,6 +128,7 @@ export function useNotificationHub() {
   }
 
   const showToast = (title, message, type) => {
+    console.log('showToast called:', { title, message, type })
     const safeTitle = normalizeMessageText(title)
     const safeMessage = normalizeMessageText(message)
 
@@ -243,8 +244,32 @@ export function useNotificationHub() {
       try {
         const hubUrl = import.meta.env.VITE_NOTIFICATION_HUB_URL || '/notificationhub'
 
-        // Register handlers before connecting
+        // Register handlers before connecting - register BOTH cases to handle server method name variations
         notificationHubService.on('ReceiveNotification', (notification) => {
+          console.log('ReceiveNotification handler called with:', notification)
+          const normalizedNotification = normalizeIncomingNotification(notification)
+
+          // Add to Redux store (addNotification already increments unreadCount)
+          dispatch(addNotification(normalizedNotification))
+
+          // Show toast
+          showToast(normalizedNotification.title, normalizedNotification.message, normalizedNotification.type)
+
+          // If friend request accepted, add to friend IDs
+          if (normalizedNotification.type === 'FriendRequestAccepted' && normalizedNotification.metadata) {
+            try {
+              const meta = typeof normalizedNotification.metadata === 'string'
+                ? JSON.parse(normalizedNotification.metadata)
+                : normalizedNotification.metadata
+              if (meta.senderId) {
+                dispatch(addFriendId(meta.senderId))
+              }
+            } catch { /* ignore */ }
+          }
+        })
+
+        notificationHubService.on('receivenotification', (notification) => {
+          console.log('receivenotification handler called with:', notification)
           const normalizedNotification = normalizeIncomingNotification(notification)
 
           // Add to Redux store (addNotification already increments unreadCount)

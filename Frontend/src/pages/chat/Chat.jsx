@@ -6,13 +6,15 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Avatar } from '../../components/ui/Avatar'
 import { Input } from '../../components/ui/Input'
+import FileUpload from '../../components/ui/FileUpload'
 import { chatService } from '../../services/chatService'
 import { friendService } from '../../services/friendService'
 import { chatHubService } from '../../services/signalRService'
+import documentService from '../../services/documentService'
 import { setChats, selectChat, addChat, updateChat, clearUnreadCount } from '../../store/slices/chatsSlice'
 import { addMessage, setMessages, deleteMessage } from '../../store/slices/messagesSlice'
 import { setFriendIds as setFriendIdsAction, addFriendId } from '../../store/slices/friendsSlice'
-import { Search, Send, MoreVertical, UserPlus, X, House, Clock, UserCheck, UserX } from 'lucide-react'
+import { Search, Send, MoreVertical, UserPlus, X, House, Clock, UserCheck, UserX, Paperclip } from 'lucide-react'
 
 export const Chat = () => {
   const navigate = useNavigate()
@@ -26,6 +28,8 @@ export const Chat = () => {
   const [searchMode, setSearchMode] = useState('all')
   const [searching, setSearching] = useState(false)
   const [sendingRequest, setSendingRequest] = useState(null) // userId currently sending request to
+  const [attachedFile, setAttachedFile] = useState(null)
+  const [showFileUpload, setShowFileUpload] = useState(false)
   const dispatch = useDispatch()
   
   const token = useSelector((state) => state.auth.token)
@@ -227,7 +231,7 @@ export const Chat = () => {
   }
 
   const handleSendMessage = async () => {
-    if (!message.trim() || !selectedChatId) return
+    if ((!message.trim() && !attachedFile) || !selectedChatId) return
 
     if (!canSendToSelectedChat) {
       alert('You can only send messages to friends. Send a friend request first!')
@@ -236,19 +240,35 @@ export const Chat = () => {
 
     const tempMessageId = Date.now().toString()
     try {
+      // Build message content with file attachment if present
+      let messageContent = message
+      if (attachedFile) {
+        const fileInfo = {
+          type: 'file',
+          fileName: attachedFile.originalFileName,
+          fileSize: attachedFile.fileSize,
+          contentType: attachedFile.contentType,
+          documentId: attachedFile.id,
+          downloadUrl: attachedFile.downloadUrl
+        }
+        messageContent = JSON.stringify({ text: message, file: fileInfo })
+      }
+
       const newMessage = {
         id: tempMessageId,
         chatId: selectedChatId,
         senderId: user.id,
-        content: message,
+        content: messageContent,
         timestamp: new Date().toISOString(),
         status: 'sending',
       }
 
       dispatch(addMessage(newMessage))
       setMessage('')
+      setAttachedFile(null)
+      setShowFileUpload(false)
 
-      await chatService.sendMessage(selectedChatId, message, token)
+      await chatService.sendMessage(selectedChatId, messageContent, token)
     } catch (error) {
       console.error('Error sending message:', error)
       dispatch(deleteMessage({ chatId: selectedChatId, messageId: tempMessageId }))
@@ -534,7 +554,46 @@ export const Chat = () => {
 
             {/* Message Input */}
             <div className="p-4 border-t border-gray-200">
+              {showFileUpload && (
+                <div className="mb-2">
+                  <FileUpload
+                    onFileUploaded={(file) => {
+                      setAttachedFile(file)
+                      setShowFileUpload(false)
+                    }}
+                    documentType="ChatFile"
+                    linkedEntityType="Chat"
+                    linkedEntityId={selectedChatId}
+                    disabled={!canSendToSelectedChat}
+                  />
+                </div>
+              )}
+              {attachedFile && (
+                <div className="mb-2 flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                  <span className="text-lg">{documentService.getFileIcon(attachedFile.contentType)}</span>
+                  <span className="text-sm text-text-primary flex-1 truncate">{attachedFile.originalFileName}</span>
+                  <span className="text-xs text-text-secondary">{documentService.formatFileSize(attachedFile.fileSize)}</span>
+                  <button
+                    onClick={() => setAttachedFile(null)}
+                    className="p-1 hover:bg-gray-200 rounded text-gray-500"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
               <div className="flex gap-2">
+                <button
+                  onClick={() => setShowFileUpload(!showFileUpload)}
+                  disabled={!canSendToSelectedChat}
+                  className={`p-2 rounded-lg transition-colors ${
+                    showFileUpload
+                      ? 'bg-primary-accent text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  } ${!canSendToSelectedChat ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  title="Attach file"
+                >
+                  <Paperclip size={20} />
+                </button>
                 <input
                   type="text"
                   placeholder="Type a message..."
@@ -544,7 +603,7 @@ export const Chat = () => {
                   disabled={!canSendToSelectedChat}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-accent"
                 />
-                <Button onClick={handleSendMessage} variant="primary" disabled={!canSendToSelectedChat}>
+                <Button onClick={handleSendMessage} variant="primary" disabled={!canSendToSelectedChat || (!message.trim() && !attachedFile)}>
                   <Send size={20} />
                 </Button>
               </div>
