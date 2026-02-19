@@ -324,67 +324,105 @@ export const DocumentManagement = () => {
 
       {/* Preview Modal */}
       {showPreviewModal && selectedDocument && previewUrl && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b">
-              <div className="flex items-center gap-2">
-                <FileText size={20} className="text-primary-dark" />
-                <h3 className="text-lg font-semibold text-text-primary truncate">
-                  {selectedDocument.originalFileName}
-                </h3>
+        <div className="fixed inset-0 bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-sm flex items-center justify-center z-50 p-4 md:p-8 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full max-h-[92vh] overflow-hidden border border-white/10 flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 md:p-6 border-b border-gray-100 bg-gradient-to-r from-white to-gray-50">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="flex-shrink-0 p-2.5 bg-gradient-to-br from-primary-accent to-primary-accent/80 rounded-xl shadow-lg">
+                  <FileText size={22} className="text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg md:text-xl font-bold text-gray-900 truncate leading-tight">
+                    {selectedDocument.originalFileName}
+                  </h3>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-accent/10 text-primary-accent border border-primary-accent/20">
+                      {selectedDocument.documentType}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {documentService.formatFileSize(selectedDocument.fileSize)}
+                    </span>
+                  </div>
+                </div>
               </div>
               <button
                 onClick={closePreviewModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="flex-shrink-0 p-2.5 hover:bg-gray-100 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 group"
               >
-                <X size={20} />
+                <X size={20} className="text-gray-500 group-hover:text-gray-700 transition-colors" />
               </button>
             </div>
 
-            <div className="p-4 overflow-auto max-h-[calc(90vh-120px)] flex items-center justify-center bg-gray-50">
-              {selectedDocument.contentType.startsWith('image/') && (
-                <img
-                  src={previewUrl}
-                  alt={selectedDocument.originalFileName}
-                  className="max-w-full max-h-[70vh] object-contain"
-                />
-              )}
-              {selectedDocument.contentType === 'application/pdf' && (
-                <iframe
-                  src={previewUrl}
-                  title={selectedDocument.originalFileName}
-                  className="w-full h-[70vh]"
-                />
-              )}
-              {selectedDocument.contentType.startsWith('video/') && (
-                <video
-                  src={previewUrl}
-                  controls
-                  className="max-w-full max-h-[70vh]"
-                />
-              )}
-              {selectedDocument.contentType.startsWith('audio/') && (
-                <audio src={previewUrl} controls className="w-full" />
-              )}
+            {/* Preview Content */}
+            <div className="flex-1 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100/50">
+              <div className="h-full p-4 md:p-6 flex items-center justify-center overflow-auto">
+                <div className="relative w-full h-full flex items-center justify-center bg-white rounded-2xl shadow-inner border border-gray-200/50">
+                  {selectedDocument.contentType.startsWith('image/') && (
+                    <img
+                      src={previewUrl}
+                      alt={selectedDocument.originalFileName}
+                      className="max-w-full max-h-[calc(92vh-220px)] object-contain rounded-lg"
+                    />
+                  )}
+                  {selectedDocument.contentType === 'application/pdf' && (
+                    <iframe
+                      src={previewUrl}
+                      title={selectedDocument.originalFileName}
+                      className="w-full h-[calc(92vh-220px)] rounded-lg"
+                    />
+                  )}
+                  {selectedDocument.contentType.startsWith('video/') && (
+                    <video
+                      src={previewUrl}
+                      controls
+                      className="max-w-full max-h-[calc(92vh-220px)] rounded-lg shadow-lg"
+                    />
+                  )}
+                  {selectedDocument.contentType.startsWith('audio/') && (
+                    <div className="w-full max-w-md p-8">
+                      <div className="flex items-center justify-center mb-6">
+                        <div className="p-6 bg-gradient-to-br from-primary-accent to-primary-accent/70 rounded-full shadow-2xl animate-pulse">
+                          <span className="text-5xl">🎵</span>
+                        </div>
+                      </div>
+                      <audio src={previewUrl} controls className="w-full" />
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 border-t bg-gray-50">
-              <div className="text-sm text-text-secondary">
-                Size: {documentService.formatFileSize(selectedDocument.fileSize)} | Type: {selectedDocument.contentType}
+            {/* Footer */}
+            <div className="flex items-center justify-between p-4 md:p-5 border-t border-gray-100 bg-white/80 backdrop-blur-sm">
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-2 text-gray-600">
+                  <FileText size={16} className="text-primary-accent" />
+                  <span className="font-medium">{selectedDocument.contentType}</span>
+                </div>
+                <span className="text-gray-300">|</span>
+                <span className="text-gray-500">
+                  {new Date(selectedDocument.createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                  })}
+                </span>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <button
                   onClick={() => handleDownload(selectedDocument)}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary-dark text-white rounded-lg hover:bg-primary-dark/90 transition-colors"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary-accent to-primary-accent/90 text-white font-medium rounded-xl hover:from-primary-accent hover:to-primary-accent transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg shadow-primary-accent/25"
                 >
-                  <Download size={16} />
-                  Download
+                  <Download size={18} />
+                  <span className="hidden sm:inline">Download</span>
                 </button>
                 <button
                   onClick={closePreviewModal}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-all duration-200 hover:scale-105 active:scale-95"
                 >
-                  Close
+                  <span className="hidden sm:inline">Close</span>
+                  <X size={18} className="sm:hidden" />
                 </button>
               </div>
             </div>

@@ -20,8 +20,8 @@ public interface IDocumentService
     Task<IEnumerable<Document>> GetDocumentsByOwnerAsync(Guid ownerId, int page = 1, int pageSize = 20);
     Task<IEnumerable<Document>> GetDocumentsByLinkedEntityAsync(LinkedEntityType entityType, Guid entityId);
     Task<IEnumerable<Document>> GetAllDocumentsAsync(int page = 1, int pageSize = 50, DocumentType? documentType = null);
-    Task<Stream> DownloadDocumentAsync(Guid id, Guid userId);
-    Task<bool> DeleteDocumentAsync(Guid id, Guid userId);
+    Task<Stream> DownloadDocumentAsync(Guid id, Guid userId, bool bypassAccessControl = false);
+    Task<bool> DeleteDocumentAsync(Guid id, Guid userId, bool bypassOwnershipCheck = false);
     Task<bool> GrantAccessAsync(Guid documentId, Guid userId, AccessControlType accessType, Guid grantedBy);
     Task<bool> RevokeAccessAsync(Guid documentId, Guid userId);
     Task<bool> HasAccessAsync(Guid documentId, Guid userId, AccessControlType requiredAccess);

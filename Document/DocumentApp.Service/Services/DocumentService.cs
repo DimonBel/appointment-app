@@ -93,7 +93,7 @@ public class DocumentService : IDocumentService
         return await _documentRepository.GetAllAsync(page, pageSize, documentType);
     }
 
-    public async Task<Stream> DownloadDocumentAsync(Guid id, Guid userId)
+    public async Task<Stream> DownloadDocumentAsync(Guid id, Guid userId, bool bypassAccessControl = false)
     {
         var document = await _documentRepository.GetByIdAsync(id);
         if (document == null)
@@ -102,7 +102,8 @@ public class DocumentService : IDocumentService
         }
 
         // Check access: owner always has access, others need explicit access
-        if (document.OwnerId != userId)
+        // Admin bypass is handled via bypassAccessControl parameter
+        if (!bypassAccessControl && document.OwnerId != userId)
         {
             var hasAccess = await _documentAccessRepository.HasAccessAsync(id, userId, AccessControlType.Download);
             if (!hasAccess)
@@ -114,7 +115,7 @@ public class DocumentService : IDocumentService
         return await _storageService.DownloadFileAsync(document.MinioPath, document.MinioBucket);
     }
 
-    public async Task<bool> DeleteDocumentAsync(Guid id, Guid userId)
+    public async Task<bool> DeleteDocumentAsync(Guid id, Guid userId, bool bypassOwnershipCheck = false)
     {
         var document = await _documentRepository.GetByIdAsync(id);
         if (document == null)
@@ -122,8 +123,8 @@ public class DocumentService : IDocumentService
             return false;
         }
 
-        // Only owner can delete
-        if (document.OwnerId != userId)
+        // Only owner can delete, unless bypassOwnershipCheck is true (for admins)
+        if (!bypassOwnershipCheck && document.OwnerId != userId)
         {
             throw new UnauthorizedAccessException("You don't have permission to delete this document");
         }

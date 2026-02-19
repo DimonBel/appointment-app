@@ -147,7 +147,15 @@ public static class DocumentEndpoints
                 return Results.NotFound();
             }
 
-            var stream = await documentService.DownloadDocumentAsync(id, userGuid);
+            // Check access - admins and management can download any document
+            var hasAccess = await documentService.HasAccessAsync(id, userGuid, AccessControlType.Download);
+            if (!hasAccess && !user.IsInRole("Admin") && !user.IsInRole("Management"))
+            {
+                return Results.Forbid();
+            }
+
+            var bypassAccessControl = user.IsInRole("Admin") || user.IsInRole("Management");
+            var stream = await documentService.DownloadDocumentAsync(id, userGuid, bypassAccessControl);
             return Results.File(stream, document.ContentType, document.OriginalFileName);
         }
         catch (UnauthorizedAccessException)
@@ -252,7 +260,16 @@ public static class DocumentEndpoints
                 return Results.Unauthorized();
             }
 
-            var result = await documentService.DeleteDocumentAsync(id, userGuid);
+            var document = await documentService.GetDocumentByIdAsync(id);
+            if (document == null)
+            {
+                return Results.NotFound();
+            }
+
+            // Check if user is owner or admin/management
+            var bypassOwnershipCheck = user.IsInRole("Admin") || user.IsInRole("Management");
+
+            var result = await documentService.DeleteDocumentAsync(id, userGuid, bypassOwnershipCheck);
             if (!result)
             {
                 return Results.NotFound();

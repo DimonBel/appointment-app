@@ -103,7 +103,7 @@ class DocumentService {
       url: `${DOCUMENT_API_BASE}/${documentId}/download`,
       responseType: 'blob'
     }, token)
-    return response
+    return response.data
   }
 
   /**

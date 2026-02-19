@@ -346,11 +346,11 @@ export const AdminPanel = () => {
             <CardTitle>Users by Role</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="flex flex-wrap justify-center gap-3 md:gap-4">
               {Object.entries(statistics.usersByRole).map(([role, count]) => (
-                <div key={role} className="text-center p-3 bg-gray-50 rounded-lg">
-                  <p className="text-lg font-bold text-text-primary">{count}</p>
-                  <p className="text-sm text-text-secondary">{role}</p>
+                <div key={role} className="flex-1 min-w-[120px] md:min-w-[140px] text-center p-3 md:p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 hover:shadow-md transition-shadow">
+                  <p className="text-xl md:text-2xl font-bold bg-gradient-to-r from-primary-dark to-primary-accent bg-clip-text text-transparent">{count}</p>
+                  <p className="text-sm text-text-secondary mt-1 font-medium">{role}</p>
                 </div>
               ))}
             </div>
