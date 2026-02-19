@@ -14,7 +14,7 @@ import documentService from '../../services/documentService'
 import { setChats, selectChat, addChat, updateChat, clearUnreadCount } from '../../store/slices/chatsSlice'
 import { addMessage, setMessages, deleteMessage } from '../../store/slices/messagesSlice'
 import { setFriendIds as setFriendIdsAction, addFriendId } from '../../store/slices/friendsSlice'
-import { Search, Send, MoreVertical, UserPlus, X, House, Clock, UserCheck, UserX, Paperclip } from 'lucide-react'
+import { Search, Send, MoreVertical, UserPlus, X, House, Clock, UserCheck, UserX, Paperclip, Download } from 'lucide-react'
 
 export const Chat = () => {
   const navigate = useNavigate()
@@ -531,25 +531,63 @@ export const Chat = () => {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex ${msg.senderId === user.id ? 'justify-end' : 'justify-start'}`}
-                >
+              {messages.map((msg) => {
+                let content = msg.content
+                let fileInfo = null
+                let displayText = content
+
+                // Try to parse JSON content for file attachments
+                try {
+                  const parsed = JSON.parse(content)
+                  if (parsed.file && typeof parsed.file === 'object') {
+                    fileInfo = parsed.file
+                    displayText = parsed.text || ''
+                  }
+                } catch {
+                  // Content is plain text, use as-is
+                }
+
+                return (
                   <div
-                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
-                      msg.senderId === user.id
-                        ? 'bg-primary-accent text-white'
-                        : 'bg-gray-100 text-text-primary'
-                    }`}
+                    key={msg.id}
+                    className={`flex ${msg.senderId === user.id ? 'justify-end' : 'justify-start'}`}
                   >
-                    <p className="text-sm">{msg.content}</p>
-                    <span className="text-xs opacity-70 mt-1 block">
-                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                    <div
+                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                        msg.senderId === user.id
+                          ? 'bg-primary-accent text-white'
+                          : 'bg-gray-100 text-text-primary'
+                      }`}
+                    >
+                      {displayText && <p className="text-sm mb-2">{displayText}</p>}
+                      {fileInfo && (
+                        <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg ${
+                          msg.senderId === user.id
+                            ? 'bg-white/20'
+                            : 'bg-gray-200'
+                        }`}>
+                          <span className="text-lg">{documentService.getFileIcon(fileInfo.contentType)}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{fileInfo.fileName}</p>
+                            <p className="text-xs opacity-70">{documentService.formatFileSize(fileInfo.fileSize)}</p>
+                          </div>
+                          <a
+                            href={fileInfo.downloadUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1 hover:bg-white/20 rounded"
+                            title="Download file"
+                          >
+                            <Download size={16} />
+                          </a>
+                        </div>
+                      )}
+                      <span className="text-xs opacity-70 mt-1 block">
+                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )})}
             </div>
 
             {/* Message Input */}

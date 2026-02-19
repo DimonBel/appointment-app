@@ -84,10 +84,11 @@ class DocumentService {
    * @returns {Promise<Object>} Document info
    */
   async getDocument(documentId, token) {
-    return await requestWithAuthRetry({
+    const response = await requestWithAuthRetry({
       method: 'get',
       url: `${DOCUMENT_API_BASE}/${documentId}`
     }, token)
+    return response.data
   }
 
   /**
@@ -115,11 +116,12 @@ class DocumentService {
    * @returns {Promise<Array>} List of documents
    */
   async getAllDocuments(params = {}, token) {
-    return await requestWithAuthRetry({
+    const response = await requestWithAuthRetry({
       method: 'get',
       url: DOCUMENT_API_BASE,
       params
     }, token)
+    return response.data
   }
 
   /**
@@ -132,11 +134,12 @@ class DocumentService {
    * @returns {Promise<Array>} List of documents
    */
   async getDocumentsByOwner(ownerId, params = {}, token) {
-    return await requestWithAuthRetry({
+    const response = await requestWithAuthRetry({
       method: 'get',
       url: `${DOCUMENT_API_BASE}/owner/${ownerId}`,
       params
     }, token)
+    return response.data
   }
 
   /**
@@ -147,10 +150,11 @@ class DocumentService {
    * @returns {Promise<Array>} List of documents
    */
   async getDocumentsByLinkedEntity(entityType, entityId, token) {
-    return await requestWithAuthRetry({
+    const response = await requestWithAuthRetry({
       method: 'get',
       url: `${DOCUMENT_API_BASE}/linked/${entityType}/${entityId}`
     }, token)
+    return response.data
   }
 
   /**
