@@ -1,0 +1,16 @@
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Repository/bin/Debug/net9.0/AutomationApp.Repository.deps.json
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Repository/bin/Debug/net9.0/AutomationApp.Repository.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Repository/bin/Debug/net9.0/AutomationApp.Repository.pdb
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Repository/bin/Debug/net9.0/AutomationApp.Domain.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Repository/bin/Debug/net9.0/AutomationApp.Domain.pdb
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Repository/obj/Debug/net9.0/AutomationApp.Repository.csproj.AssemblyReference.cache
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Repository/obj/Debug/net9.0/AutomationApp.Repository.GeneratedMSBuildEditorConfig.editorconfig
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Repository/obj/Debug/net9.0/AutomationApp.Repository.AssemblyInfoInputs.cache
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Repository/obj/Debug/net9.0/AutomationApp.Repository.AssemblyInfo.cs
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Repository/obj/Debug/net9.0/AutomationApp.Repository.csproj.CoreCompileInputs.cache
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Repository/obj/Debug/net9.0/AutomationApp.Repository.sourcelink.json
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Repository/obj/Debug/net9.0/Automati.84FFF296.Up2Date
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Repository/obj/Debug/net9.0/AutomationApp.Repository.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Repository/obj/Debug/net9.0/refint/AutomationApp.Repository.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Repository/obj/Debug/net9.0/AutomationApp.Repository.pdb
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Repository/obj/Debug/net9.0/ref/AutomationApp.Repository.dll
