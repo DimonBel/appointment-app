@@ -157,6 +157,8 @@ services:
       - "9001:9001"
     volumes:
       - minio-data:/data
+      - ./minio-entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["/entrypoint.sh"]
     networks:
       - app-network
     healthcheck:
@@ -348,7 +350,7 @@ services:
       - Minio__AccessKey=${MINIO_ROOT_USER:-minioadmin}
       - Minio__SecretKey=${MINIO_ROOT_PASSWORD:-minioadmin}
       - Minio__UseSSL=${MINIO_USE_SSL:-false}
-      - Minio__Bucket=${MINIO_BUCKET:-documents}
+      - Minio__Bucket=${MINIO_BUCKET_DOCUMENTS:-documents}
     ports:
       - "5004:5004"
     depends_on:

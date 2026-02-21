@@ -12,10 +12,13 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
+# Copy .env file for build-time environment variables
+COPY .env ./
+
 # Copy all source files
 COPY . .
 
-# Build the React app for production
+# Build the React app for production (Vite will use .env variables)
 RUN npm run build
 
 # ----------------------------
