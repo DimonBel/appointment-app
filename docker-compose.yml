@@ -1,19 +1,21 @@
 services:
   # Ollama LLM Service for AI Assistant
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama-data:/root/.ollama
-    networks:
-      - app-network
-    environment:
-      - OLLAMA_KEEP_ALIVE=-1
-      - OLLAMA_NUM_PARALLEL=2
-    command: serve
+  # To run this container independently for testing: docker-compose up ollama
+  # After starting, pull a model: docker exec -it ollama ollama pull llama-3.1-8b
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: ollama
+  #   restart: unless-stopped
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama-data:/root/.ollama
+  #   networks:
+  #     - app-network
+  #   environment:
+  #     - OLLAMA_KEEP_ALIVE=-1
+  #     - OLLAMA_NUM_PARALLEL=2
+  #   command: serve
 
   # PostgreSQL Database for Identity Service
   identity-db:
