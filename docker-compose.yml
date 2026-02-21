@@ -1,4 +1,20 @@
 services:
+  # Ollama LLM Service for AI Assistant
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - app-network
+    environment:
+      - OLLAMA_KEEP_ALIVE=-1
+      - OLLAMA_NUM_PARALLEL=2
+    command: serve
+
   # PostgreSQL Database for Identity Service
   identity-db:
     image: postgres:16-alpine
@@ -104,26 +120,26 @@ services:
       timeout: 5s
       retries: 5
 
-  # # PostgreSQL Database for Automation Service (DISABLED - source code missing)
-  # automation-db:
-  #   image: postgres:16-alpine
-  #   container_name: automation-db
-  #   restart: unless-stopped
-  #   environment:
-  #     POSTGRES_DB: ${AUTOMATION_DB_NAME:-automationdb}
-  #     POSTGRES_USER: ${POSTGRES_USER:-postgres}
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
-  #   ports:
-  #     - "5438:5432"
-  #   volumes:
-  #     - automation-db-data:/var/lib/postgresql/data
-  #   networks:
-  #     - app-network
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
+  # PostgreSQL Database for Automation Service
+  automation-db:
+    image: postgres:16-alpine
+    container_name: automation-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${AUTOMATION_DB_NAME:-automationdb}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
+    ports:
+      - "5438:5432"
+    volumes:
+      - automation-db-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # MinIO Object Storage for avatars and documents
   minio:
@@ -347,40 +363,43 @@ services:
       retries: 3
       start_period: 40s
 
-  # # Automation Service (AI Assistant) - DISABLED: source code missing
-  # automation-service:
-  #   build:
-  #     context: ./Automation
-  #     dockerfile: Dockerfile
-  #   container_name: automation-service
-  #   restart: unless-stopped
-  #   environment:
-  #     - ASPNETCORE_ENVIRONMENT=Production
-  #     - ASPNETCORE_URLS=http://+:5006
-  #     - ConnectionStrings__DefaultConnection=Host=automation-db;Port=5432;Database=${AUTOMATION_DB_NAME:-automationdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
-  #     - IdentityService__BaseUrl=http://identity-service:5005
-  #     - AppointmentService__BaseUrl=http://appointment-service:5001
-  #     - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
-  #     - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
-  #     - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
-  #     - Groq__ApiKey=${GROQ_API_KEY}
-  #   ports:
-  #     - "5006:5006"
-  #   depends_on:
-  #     automation-db:
-  #       condition: service_healthy
-  #     identity-service:
-  #       condition: service_healthy
-  #     appointment-service:
-  #       condition: service_healthy
-  #   networks:
-  #     - app-network
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "curl -f http://localhost:5006/health || exit 1"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 40s
+  # Automation Service (AI Assistant)
+  automation-service:
+    build:
+      context: ./Automation
+      dockerfile: Dockerfile
+    container_name: automation-service
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5006
+      - ConnectionStrings__DefaultConnection=Host=automation-db;Port=5432;Database=${AUTOMATION_DB_NAME:-automationdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
+      - IdentityService__BaseUrl=http://identity-service:5005
+      - AppointmentService__BaseUrl=http://appointment-service:5001
+      - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
+      - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
+      - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
+      - Ollama__BaseUrl=http://ollama:11434
+      - Ollama__ModelName=llama-3.1-8b
+    ports:
+      - "5006:5006"
+    depends_on:
+      automation-db:
+        condition: service_healthy
+      identity-service:
+        condition: service_healthy
+      appointment-service:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5006/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # Frontend (React + Nginx)
   frontend:
@@ -397,6 +416,7 @@ services:
       - chat-service
       - notification-service
       - document-service
+      - automation-service
     networks:
       - app-network
     healthcheck:
@@ -426,3 +446,5 @@ volumes:
     name: automation-db-data
   minio-data:
     name: minio-data
+  ollama-data:
+    name: ollama-data
