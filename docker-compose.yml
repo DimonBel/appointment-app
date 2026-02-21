@@ -365,43 +365,43 @@ services:
       retries: 3
       start_period: 40s
 
-  # Automation Service (AI Assistant)
-  automation-service:
-    build:
-      context: ./Automation
-      dockerfile: Dockerfile
-    container_name: automation-service
-    restart: unless-stopped
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:5006
-      - ConnectionStrings__DefaultConnection=Host=automation-db;Port=5432;Database=${AUTOMATION_DB_NAME:-automationdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
-      - IdentityService__BaseUrl=http://identity-service:5005
-      - AppointmentService__BaseUrl=http://appointment-service:5001
-      - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
-      - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
-      - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
-      - Ollama__BaseUrl=http://ollama:11434
-      - Ollama__ModelName=llama-3.1-8b
-    ports:
-      - "5006:5006"
-    depends_on:
-      automation-db:
-        condition: service_healthy
-      identity-service:
-        condition: service_healthy
-      appointment-service:
-        condition: service_healthy
-      ollama:
-        condition: service_started
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5006/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+  # Automation Service (AI Assistant) - DISABLED (depends on ollama service)
+  # automation-service:
+  #   build:
+  #     context: ./Automation
+  #     dockerfile: Dockerfile
+  #   container_name: automation-service
+  #   restart: unless-stopped
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Production
+  #     - ASPNETCORE_URLS=http://+:5006
+  #     - ConnectionStrings__DefaultConnection=Host=automation-db;Port=5432;Database=${AUTOMATION_DB_NAME:-automationdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
+  #     - IdentityService__BaseUrl=http://identity-service:5005
+  #     - AppointmentService__BaseUrl=http://appointment-service:5001
+  #     - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
+  #     - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
+  #     - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
+  #     - Ollama__BaseUrl=http://ollama:11434
+  #     - Ollama__ModelName=llama-3.1-8b
+  #   ports:
+  #     - "5006:5006"
+  #   depends_on:
+  #     automation-db:
+  #       condition: service_healthy
+  #     identity-service:
+  #       condition: service_healthy
+  #     appointment-service:
+  #       condition: service_healthy
+  #     ollama:
+  #       condition: service_started
+  #   networks:
+  #     - app-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -f http://localhost:5006/health || exit 1"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 40s
 
   # Frontend (React + Nginx)
   frontend:
@@ -418,7 +418,7 @@ services:
       - chat-service
       - notification-service
       - document-service
-      - automation-service
+      # - automation-service  # DISABLED (depends on ollama service)
     networks:
       - app-network
     healthcheck:
