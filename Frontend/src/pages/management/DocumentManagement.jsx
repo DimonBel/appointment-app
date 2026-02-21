@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '../../components/ui/Card'
 import { Loader } from '../../components/ui/Loader'
 import { Avatar } from '../../components/ui/Avatar'
@@ -18,6 +19,7 @@ const DOCUMENT_TYPE_OPTIONS = [
 const ITEMS_PER_PAGE = 20
 
 export const DocumentManagement = () => {
+  const navigate = useNavigate()
   const token = useSelector((state) => state.auth.token)
   const currentUser = useSelector((state) => state.auth.user)
 
@@ -26,9 +28,6 @@ export const DocumentManagement = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [documentTypeFilter, setDocumentTypeFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedDocument, setSelectedDocument] = useState(null)
-  const [showPreviewModal, setShowPreviewModal] = useState(false)
-  const [previewUrl, setPreviewUrl] = useState(null)
 
   useEffect(() => {
     loadDocuments()
@@ -64,21 +63,7 @@ export const DocumentManagement = () => {
   }
 
   const handlePreview = async (document) => {
-    if (!documentService.canPreview(document.contentType)) {
-      alert('This file type cannot be previewed. Please download it.')
-      return
-    }
-
-    try {
-      const blob = await documentService.downloadDocument(document.id, token)
-      const url = window.URL.createObjectURL(blob)
-      setPreviewUrl(url)
-      setSelectedDocument(document)
-      setShowPreviewModal(true)
-    } catch (error) {
-      console.error('Failed to preview document:', error)
-      alert('Failed to preview document')
-    }
+    navigate('/document-preview', { state: { document } })
   }
 
   const handleDelete = async (document) => {
@@ -93,15 +78,6 @@ export const DocumentManagement = () => {
       console.error('Failed to delete document:', error)
       alert('Failed to delete document')
     }
-  }
-
-  const closePreviewModal = () => {
-    if (previewUrl) {
-      window.URL.revokeObjectURL(previewUrl)
-      setPreviewUrl(null)
-    }
-    setShowPreviewModal(false)
-    setSelectedDocument(null)
   }
 
   const filteredDocuments = documents.filter((doc) => {
@@ -321,114 +297,6 @@ export const DocumentManagement = () => {
           </>
         )}
       </CardContent>
-
-      {/* Preview Modal */}
-      {showPreviewModal && selectedDocument && previewUrl && (
-        <div className="fixed inset-0 bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-sm flex items-center justify-center z-50 p-4 md:p-8 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full max-h-[92vh] overflow-hidden border border-white/10 flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between p-5 md:p-6 border-b border-gray-100 bg-gradient-to-r from-white to-gray-50">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="flex-shrink-0 p-2.5 bg-gradient-to-br from-primary-accent to-primary-accent/80 rounded-xl shadow-lg">
-                  <FileText size={22} className="text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg md:text-xl font-bold text-gray-900 truncate leading-tight">
-                    {selectedDocument.originalFileName}
-                  </h3>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-accent/10 text-primary-accent border border-primary-accent/20">
-                      {selectedDocument.documentType}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {documentService.formatFileSize(selectedDocument.fileSize)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={closePreviewModal}
-                className="flex-shrink-0 p-2.5 hover:bg-gray-100 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 group"
-              >
-                <X size={20} className="text-gray-500 group-hover:text-gray-700 transition-colors" />
-              </button>
-            </div>
-
-            {/* Preview Content */}
-            <div className="flex-1 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100/50">
-              <div className="h-full p-4 md:p-6 flex items-center justify-center overflow-auto">
-                <div className="relative w-full h-full flex items-center justify-center bg-white rounded-2xl shadow-inner border border-gray-200/50">
-                  {selectedDocument.contentType.startsWith('image/') && (
-                    <img
-                      src={previewUrl}
-                      alt={selectedDocument.originalFileName}
-                      className="max-w-full max-h-[calc(92vh-220px)] object-contain rounded-lg"
-                    />
-                  )}
-                  {selectedDocument.contentType === 'application/pdf' && (
-                    <iframe
-                      src={previewUrl}
-                      title={selectedDocument.originalFileName}
-                      className="w-full h-[calc(92vh-220px)] rounded-lg"
-                    />
-                  )}
-                  {selectedDocument.contentType.startsWith('video/') && (
-                    <video
-                      src={previewUrl}
-                      controls
-                      className="max-w-full max-h-[calc(92vh-220px)] rounded-lg shadow-lg"
-                    />
-                  )}
-                  {selectedDocument.contentType.startsWith('audio/') && (
-                    <div className="w-full max-w-md p-8">
-                      <div className="flex items-center justify-center mb-6">
-                        <div className="p-6 bg-gradient-to-br from-primary-accent to-primary-accent/70 rounded-full shadow-2xl animate-pulse">
-                          <span className="text-5xl">🎵</span>
-                        </div>
-                      </div>
-                      <audio src={previewUrl} controls className="w-full" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between p-4 md:p-5 border-t border-gray-100 bg-white/80 backdrop-blur-sm">
-              <div className="flex items-center gap-4 text-sm">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <FileText size={16} className="text-primary-accent" />
-                  <span className="font-medium">{selectedDocument.contentType}</span>
-                </div>
-                <span className="text-gray-300">|</span>
-                <span className="text-gray-500">
-                  {new Date(selectedDocument.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                  })}
-                </span>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => handleDownload(selectedDocument)}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary-accent to-primary-accent/90 text-white font-medium rounded-xl hover:from-primary-accent hover:to-primary-accent transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg shadow-primary-accent/25"
-                >
-                  <Download size={18} />
-                  <span className="hidden sm:inline">Download</span>
-                </button>
-                <button
-                  onClick={closePreviewModal}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-all duration-200 hover:scale-105 active:scale-95"
-                >
-                  <span className="hidden sm:inline">Close</span>
-                  <X size={18} className="sm:hidden" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </Card>
   )
 }

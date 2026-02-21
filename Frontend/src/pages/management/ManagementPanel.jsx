@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useSelector } from 'react-redux'
+import { useLocation } from 'react-router-dom'
 import { MainContent, SectionHeader } from '../../components/layout/MainContent'
 import { Card, CardContent } from '../../components/ui/Card'
 import { Loader } from '../../components/ui/Loader'
@@ -55,6 +56,7 @@ const getTimeSlot = (date) => {
 const normalizeId = (value) => (value ? String(value).toLowerCase() : null)
 
 export const ManagementPanel = () => {
+  const location = useLocation()
   const token = useSelector((state) => state.auth.token)
   const currentUser = useSelector((state) => state.auth.user)
   const isAdmin = currentUser?.roles?.includes('Admin')
@@ -64,6 +66,13 @@ export const ManagementPanel = () => {
   const [loadError, setLoadError] = useState('')
   const [activeTab, setActiveTab] = useState('schedule')
   const [clientOrders, setClientOrders] = useState([])
+
+  // Handle activeTab from navigation state (e.g., when returning from DocumentPreview)
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab)
+    }
+  }, [location.state])
   const [doctorSchedules, setDoctorSchedules] = useState([])
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedAppointment, setSelectedAppointment] = useState(null)
