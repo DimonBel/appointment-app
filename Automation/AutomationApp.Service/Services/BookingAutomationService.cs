@@ -91,7 +91,7 @@ public class BookingAutomationService : IBookingAutomationService
         return await _draftRepository.UpdateAsync(draft);
     }
 
-    public async Task<BookingDraft> SubmitBookingDraftAsync(Guid draftId)
+    public async Task<BookingDraft> SubmitBookingDraftAsync(Guid draftId, string? accessToken = null)
     {
         var draft = await _draftRepository.GetByIdAsync(draftId);
         if (draft == null)
@@ -103,7 +103,7 @@ public class BookingAutomationService : IBookingAutomationService
         draft.Status = BookingDraftStatus.Submitted;
 
         // Submit to Appointment Service
-        var result = await SubmitToAppointmentServiceAsync(draft);
+        var result = await SubmitToAppointmentServiceAsync(draft, accessToken);
         if (result.HasValue)
         {
             draft.FinalOrderId = result.Value.OrderId;
@@ -143,7 +143,7 @@ public class BookingAutomationService : IBookingAutomationService
                draft.ProfessionalId.HasValue;
     }
 
-    private async Task<(Guid? OrderId, Guid? DoctorUserId, string? ClientName)? > SubmitToAppointmentServiceAsync(BookingDraft draft)
+    private async Task<(Guid? OrderId, Guid? DoctorUserId, string? ClientName)? > SubmitToAppointmentServiceAsync(BookingDraft draft, string? accessToken)
     {
         var appointmentServiceUrl = _configuration["AppointmentService:BaseUrl"] ?? "http://appointment-service:5001";
         var identityServiceUrl = _configuration["IdentityService:BaseUrl"] ?? "http://identity-service:5005";
@@ -151,7 +151,11 @@ public class BookingAutomationService : IBookingAutomationService
         try
         {
             // Get auth token
-            var token = await GetAuthTokenAsync(identityServiceUrl);
+            var token = accessToken;
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                token = await GetAuthTokenAsync(identityServiceUrl);
+            }
             if (string.IsNullOrEmpty(token))
                 return null;
 
@@ -207,7 +211,7 @@ public class BookingAutomationService : IBookingAutomationService
         return Task.FromResult<string?>("automation-service-token");
     }
 
-    public async Task<List<ProfessionalInfo>> GetAvailableProfessionalsAsync()
+    public async Task<List<ProfessionalInfo>> GetAvailableProfessionalsAsync(string? accessToken = null)
     {
         if (_memoryCache.TryGetValue<List<ProfessionalInfo>>(AvailableProfessionalsCacheKey, out var cachedProfessionals) && cachedProfessionals != null)
         {
@@ -219,7 +223,11 @@ public class BookingAutomationService : IBookingAutomationService
 
         try
         {
-            var token = await GetAuthTokenAsync(identityServiceUrl);
+            var token = accessToken;
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                token = await GetAuthTokenAsync(identityServiceUrl);
+            }
             if (string.IsNullOrEmpty(token))
                 return new List<ProfessionalInfo>();
 
@@ -266,19 +274,70 @@ public class BookingAutomationService : IBookingAutomationService
                             return null;
                         }
 
-                        var firstName = GetNestedProperty(prof, "user", "firstName");
-                        var lastName = GetNestedProperty(prof, "user", "lastName");
+                        string? GetAnyNestedProperty(JsonElement element, string[] parents, string child)
+                        {
+                            foreach (var parent in parents)
+                            {
+                                var value = GetNestedProperty(element, parent, child);
+                                if (!string.IsNullOrWhiteSpace(value))
+                                {
+                                    return value;
+                                }
+                            }
+
+                            var topLevel = GetProperty(element, child);
+                            return string.IsNullOrWhiteSpace(topLevel) ? null : topLevel;
+                        }
+
+                        Guid? GetGuidProperty(JsonElement element, params string[] propertyNames)
+                        {
+                            foreach (var propertyName in propertyNames)
+                            {
+                                var stringValue = GetProperty(element, propertyName);
+                                if (!string.IsNullOrWhiteSpace(stringValue) && Guid.TryParse(stringValue, out var parsed))
+                                {
+                                    return parsed;
+                                }
+                            }
+
+                            return null;
+                        }
+
+                        var firstName = GetAnyNestedProperty(prof, new[] { "user", "userInfo", "doctor", "professionalUser" }, "firstName");
+                        var lastName = GetAnyNestedProperty(prof, new[] { "user", "userInfo", "doctor", "professionalUser" }, "lastName");
                         var specialization = GetProperty(prof, "specialization");
                         var title = GetProperty(prof, "title");
-                        var userIdStr = GetProperty(prof, "userId");
-                        var idStr = GetProperty(prof, "id");
+                        var userId = GetGuidProperty(prof, "userId", "doctorUserId");
+                        var professionalId = GetGuidProperty(prof, "id", "professionalId");
 
-                        Console.WriteLine($"Professional: ID={idStr}, UserID={userIdStr}, FirstName={firstName}, LastName={lastName}, Title={title}, Specialization={specialization}");
+                        Console.WriteLine($"Professional: ID={professionalId}, UserID={userId}, FirstName={firstName}, LastName={lastName}, Title={title}, Specialization={specialization}");
+
+                        if (!professionalId.HasValue || !userId.HasValue)
+                        {
+                            continue;
+                        }
+
+                        if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
+                        {
+                            var identityUser = await GetUserSummaryAsync(identityServiceUrl, token, userId.Value);
+                            if (identityUser != null)
+                            {
+                                if (string.IsNullOrWhiteSpace(firstName))
+                                {
+                                    firstName = identityUser.Value.FirstName;
+                                }
+
+                                if (string.IsNullOrWhiteSpace(lastName))
+                                {
+                                    lastName = identityUser.Value.LastName;
+                                }
+                            }
+                        }
                         
                         result.Add(new ProfessionalInfo
                         {
-                            Id = Guid.Parse(idStr ?? Guid.Empty.ToString()),
-                            UserId = Guid.Parse(userIdStr ?? Guid.Empty.ToString()),
+                            Id = professionalId.Value,
+                            UserId = userId.Value,
                             Title = title,
                             Specialization = specialization,
                             Qualifications = GetProperty(prof, "qualifications"),
@@ -287,7 +346,7 @@ public class BookingAutomationService : IBookingAutomationService
                             IsAvailable = prof.TryGetProperty("isAvailable", out var avail) ? avail.GetBoolean() : false,
                             FirstName = firstName,
                             LastName = lastName,
-                            Email = GetNestedProperty(prof, "user", "email")
+                            Email = GetAnyNestedProperty(prof, new[] { "user", "userInfo", "doctor", "professionalUser" }, "email")
                         });
                     }
                     _memoryCache.Set(AvailableProfessionalsCacheKey, result, TimeSpan.FromSeconds(45));
@@ -303,7 +362,7 @@ public class BookingAutomationService : IBookingAutomationService
         return new List<ProfessionalInfo>();
     }
 
-    public async Task<List<DomainConfigurationInfo>> GetDomainConfigurationsAsync()
+    public async Task<List<DomainConfigurationInfo>> GetDomainConfigurationsAsync(string? accessToken = null)
     {
         if (_memoryCache.TryGetValue<List<DomainConfigurationInfo>>(DomainConfigurationsCacheKey, out var cachedConfigs) && cachedConfigs != null)
         {
@@ -315,7 +374,11 @@ public class BookingAutomationService : IBookingAutomationService
 
         try
         {
-            var token = await GetAuthTokenAsync(identityServiceUrl);
+            var token = accessToken;
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                token = await GetAuthTokenAsync(identityServiceUrl);
+            }
             if (string.IsNullOrEmpty(token))
                 return new List<DomainConfigurationInfo>();
 
@@ -434,6 +497,48 @@ public class BookingAutomationService : IBookingAutomationService
         }
 
         return null;
+    }
+
+    private async Task<(string FirstName, string LastName)? > GetUserSummaryAsync(string identityServiceUrl, string token, Guid userId)
+    {
+        try
+        {
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
+            var response = await _httpClient.GetAsync($"{identityServiceUrl}/api/users/{userId}");
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            var user = JsonSerializer.Deserialize<JsonElement>(content);
+
+            string? firstName = null;
+            string? lastName = null;
+
+            if (user.TryGetProperty("firstName", out var fn) && fn.ValueKind == JsonValueKind.String)
+            {
+                firstName = fn.GetString();
+            }
+
+            if (user.TryGetProperty("lastName", out var ln) && ln.ValueKind == JsonValueKind.String)
+            {
+                lastName = ln.GetString();
+            }
+
+            if (string.IsNullOrWhiteSpace(firstName) && string.IsNullOrWhiteSpace(lastName))
+            {
+                return null;
+            }
+
+            return (firstName ?? string.Empty, lastName ?? string.Empty);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private class OrderResponse

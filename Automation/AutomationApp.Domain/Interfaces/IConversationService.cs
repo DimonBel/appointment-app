@@ -34,10 +34,10 @@ public interface IBookingAutomationService
     Task<BookingDraft?> GetBookingDraftAsync(Guid draftId);
     Task<BookingDraft?> GetBookingDraftByConversationIdAsync(Guid conversationId);
     Task<BookingDraft> UpdateBookingDraftAsync(Guid draftId, Guid? professionalId = null, string? serviceType = null, DateTime? preferredDateTime = null, string? clientNotes = null);
-    Task<BookingDraft> SubmitBookingDraftAsync(Guid draftId);
+    Task<BookingDraft> SubmitBookingDraftAsync(Guid draftId, string? accessToken = null);
     Task<BookingDraft> CancelBookingDraftAsync(Guid draftId);
-    Task<List<ProfessionalInfo>> GetAvailableProfessionalsAsync();
-    Task<List<DomainConfigurationInfo>> GetDomainConfigurationsAsync();
+    Task<List<ProfessionalInfo>> GetAvailableProfessionalsAsync(string? accessToken = null);
+    Task<List<DomainConfigurationInfo>> GetDomainConfigurationsAsync(string? accessToken = null);
 }
 
 public class DomainConfigurationInfo

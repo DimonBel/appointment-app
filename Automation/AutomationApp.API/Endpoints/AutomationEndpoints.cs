@@ -217,6 +217,10 @@ public static class AutomationEndpoints
         }
 
         Conversation? conversation;
+        var authHeader = httpContext.Request.Headers.Authorization.ToString();
+        var accessToken = authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            ? authHeader["Bearer ".Length..].Trim()
+            : null;
 
         // Use existing conversation or create new one
         if (request.ConversationId.HasValue)
@@ -250,10 +254,10 @@ public static class AutomationEndpoints
         }
 
         // Fetch available professionals
-        var availableProfessionals = await bookingService.GetAvailableProfessionalsAsync();
+        var availableProfessionals = await bookingService.GetAvailableProfessionalsAsync(accessToken);
         
         // Fetch domain configurations (service types)
-        var domainConfigurations = await bookingService.GetDomainConfigurationsAsync();
+        var domainConfigurations = await bookingService.GetDomainConfigurationsAsync(accessToken);
 
         var contextData = conversation.ContextData ?? new Dictionary<string, object>();
         var normalizedInput = (request.SelectedOption ?? request.Message ?? string.Empty).Trim();
@@ -266,6 +270,7 @@ public static class AutomationEndpoints
 
         LLMResponse llmResponse;
         var finalResponseText = string.Empty;
+        var streamedViaSignalRChunks = false;
 
         if (deterministicResult != null)
         {
@@ -280,12 +285,7 @@ public static class AutomationEndpoints
 
             finalResponseText = deterministicResult.ResponseText;
 
-            await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ReceiveStreamChunk", new
-            {
-                chunk = finalResponseText,
-                isComplete = false,
-                conversationId = conversation.Id
-            });
+            streamedViaSignalRChunks = false;
         }
         else
         {
@@ -306,6 +306,7 @@ public static class AutomationEndpoints
                     }
 
                     streamedResponseBuilder.Append(chunk);
+                    streamedViaSignalRChunks = true;
                     await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ReceiveStreamChunk", new
                     {
                         chunk,
@@ -347,12 +348,15 @@ public static class AutomationEndpoints
             }
         }
 
-        await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ReceiveStreamChunk", new
+        if (streamedViaSignalRChunks)
         {
-            chunk = string.Empty,
-            isComplete = true,
-            conversationId = conversation.Id
-        });
+            await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ReceiveStreamChunk", new
+            {
+                chunk = string.Empty,
+                isComplete = true,
+                conversationId = conversation.Id
+            });
+        }
 
         // Send typing indicator off via SignalR
         await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("TypingIndicator", false);
@@ -385,7 +389,7 @@ public static class AutomationEndpoints
         Guid? finalOrderId = null;
         if (llmResponse.SuggestedNextState == ConversationState.BookingComplete && bookingDraft != null)
         {
-            var submittedDraft = await bookingService.SubmitBookingDraftAsync(bookingDraft.Id);
+            var submittedDraft = await bookingService.SubmitBookingDraftAsync(bookingDraft.Id, accessToken);
             isBookingComplete = true;
             finalOrderId = submittedDraft.FinalOrderId;
 
@@ -644,7 +648,22 @@ public static class AutomationEndpoints
         var firstName = (professional.FirstName ?? string.Empty).Trim();
         var lastName = (professional.LastName ?? string.Empty).Trim();
         var combined = $"{firstName} {lastName}".Trim();
-        return string.IsNullOrWhiteSpace(combined) ? "Doctor" : combined;
+        if (!string.IsNullOrWhiteSpace(combined))
+        {
+            return combined;
+        }
+
+        if (!string.IsNullOrWhiteSpace(professional.Email) && professional.Email!.Contains('@'))
+        {
+            return professional.Email.Split('@')[0];
+        }
+
+        if (!string.IsNullOrWhiteSpace(professional.Specialization))
+        {
+            return $"Doctor {professional.Specialization.Trim()}";
+        }
+
+        return "Doctor";
     }
 
     private static List<string> BuildDayOptions()
