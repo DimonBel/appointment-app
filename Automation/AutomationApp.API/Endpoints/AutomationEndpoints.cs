@@ -343,15 +343,6 @@ public static class AutomationEndpoints
             }
         }
 
-        // Update conversation state
-        if (llmResponse.SuggestedNextState.HasValue)
-        {
-            await conversationService.UpdateConversationStateAsync(conversation.Id, llmResponse.SuggestedNextState.Value);
-            
-            // Broadcast state change via SignalR
-            await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ConversationStateChanged", llmResponse.SuggestedNextState.ToString());
-        }
-
         // Update context with extracted data
         if (llmResponse.ExtractedData != null && llmResponse.ExtractedData.Count > 0)
         {
@@ -367,6 +358,44 @@ public static class AutomationEndpoints
             {
                 await UpdateBookingDraftFromExtractedData(bookingService, bookingDraft.Id, llmResponse.ExtractedData);
             }
+        }
+
+        var effectiveSuggestedOptions = llmResponse.SuggestedOptions;
+        bool isBookingComplete = false;
+        Guid? finalOrderId = null;
+        var effectiveNextState = llmResponse.SuggestedNextState;
+
+        // If this turn completes a booking, submit first and only then emit the final assistant message.
+        if (llmResponse.SuggestedNextState == ConversationState.BookingComplete && bookingDraft != null)
+        {
+            try
+            {
+                var submittedDraft = await bookingService.SubmitBookingDraftAsync(bookingDraft.Id, accessToken);
+                finalOrderId = submittedDraft.FinalOrderId;
+
+                if (!finalOrderId.HasValue)
+                {
+                    throw new InvalidOperationException("Booking submission returned no order id.");
+                }
+
+                isBookingComplete = true;
+                await SendNotificationToProfessionalAsync(bookingDraft.ProfessionalId, bookingDraft.UserId, finalOrderId.Value);
+            }
+            catch
+            {
+                isBookingComplete = false;
+                finalOrderId = null;
+                effectiveNextState = ConversationState.SelectingTimeSlot;
+                finalResponseText = "I couldn't create the booking for that time slot. Please choose another available time.";
+                effectiveSuggestedOptions = new List<string> { "Change time" };
+            }
+        }
+
+        // Update conversation state after submit outcome is finalized
+        if (effectiveNextState.HasValue)
+        {
+            await conversationService.UpdateConversationStateAsync(conversation.Id, effectiveNextState.Value);
+            await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ConversationStateChanged", effectiveNextState.ToString());
         }
 
         if (streamedViaSignalRChunks)
@@ -387,7 +416,7 @@ public static class AutomationEndpoints
             conversation.Id,
             finalResponseText,
             false,
-            llmResponse.SuggestedOptions);
+            effectiveSuggestedOptions);
 
         // Broadcast complete AI response via SignalR with options
         await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ReceiveMessage", new
@@ -399,66 +428,19 @@ public static class AutomationEndpoints
                 content = finalResponseText,
                 isFromUser = false,
                 sentAt = aiMessage.SentAt,
-                suggestedOptions = llmResponse.SuggestedOptions
+                suggestedOptions = effectiveSuggestedOptions
             },
-            currentState = llmResponse.SuggestedNextState?.ToString() ?? conversation.State.ToString(),
+            currentState = effectiveNextState?.ToString() ?? conversation.State.ToString(),
             extractedData = llmResponse.ExtractedData
         });
-
-        // Check if booking should be submitted
-        bool isBookingComplete = false;
-        Guid? finalOrderId = null;
-        if (llmResponse.SuggestedNextState == ConversationState.BookingComplete && bookingDraft != null)
-        {
-            try
-            {
-                var submittedDraft = await bookingService.SubmitBookingDraftAsync(bookingDraft.Id, accessToken);
-                isBookingComplete = true;
-                finalOrderId = submittedDraft.FinalOrderId;
-
-                // Send notification to the professional (doctor)
-                if (finalOrderId.HasValue)
-                {
-                    await SendNotificationToProfessionalAsync(bookingDraft.ProfessionalId, bookingDraft.UserId, finalOrderId.Value);
-                }
-            }
-            catch
-            {
-                isBookingComplete = false;
-                finalOrderId = null;
-
-                await conversationService.UpdateConversationStateAsync(conversation.Id, ConversationState.SelectingTimeSlot);
-
-                var failureMessage = await conversationService.AddMessageAsync(
-                    conversation.Id,
-                    "I couldn't create the booking for that time slot. Please choose another available time.",
-                    false,
-                    new List<string> { "Change time" });
-
-                await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ReceiveMessage", new
-                {
-                    message = new
-                    {
-                        id = failureMessage.Id,
-                        conversationId = conversation.Id,
-                        content = failureMessage.Content,
-                        isFromUser = false,
-                        sentAt = failureMessage.SentAt,
-                        suggestedOptions = failureMessage.SuggestedOptions
-                    },
-                    currentState = ConversationState.SelectingTimeSlot.ToString(),
-                    extractedData = new Dictionary<string, object>()
-                });
-            }
-        }
 
         var response = new SendMessageResponse
         {
             ConversationId = conversation.Id,
             MessageId = aiMessage.Id,
             ResponseText = finalResponseText,
-            SuggestedOptions = llmResponse.SuggestedOptions,
-            CurrentState = llmResponse.SuggestedNextState?.ToString() ?? conversation.State.ToString(),
+            SuggestedOptions = effectiveSuggestedOptions,
+            CurrentState = effectiveNextState?.ToString() ?? conversation.State.ToString(),
             IsBookingComplete = isBookingComplete,
             OrderId = finalOrderId
         };
