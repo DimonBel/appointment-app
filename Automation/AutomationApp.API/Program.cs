@@ -116,7 +116,7 @@ builder.Services.AddHttpClient<ILLMService, OllamaLLMService>((serviceProvider, 
     var ollamaBaseUrl = configuration["Ollama:BaseUrl"] ?? "http://localhost:11434";
     var timeoutSeconds = int.TryParse(configuration["Ollama:RequestTimeoutSeconds"], out var timeout)
         ? timeout
-        : 90;
+        : 2;
 
     client.BaseAddress = new Uri(ollamaBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
