@@ -40,6 +40,16 @@ public class ConversationService : IConversationService
         return await _conversationRepository.GetActiveByUserIdAsync(userId);
     }
 
+    public async Task<IEnumerable<Conversation>> GetConversationsByUserIdAsync(Guid userId)
+    {
+        return await _conversationRepository.GetByUserIdAsync(userId);
+    }
+
+    public async Task DeleteConversationAsync(Guid conversationId)
+    {
+        await _conversationRepository.DeleteAsync(conversationId);
+    }
+
     public async Task<ConversationMessage> AddMessageAsync(Guid conversationId, string content, bool isFromUser, List<string>? suggestedOptions = null, string? selectedOption = null)
     {
         var message = new ConversationMessage

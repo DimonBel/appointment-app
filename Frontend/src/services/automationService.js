@@ -61,6 +61,14 @@ export const automationService = {
     return response.data
   },
 
+  // Delete conversation
+  async deleteConversation(conversationId) {
+    await requestWithAuthRetry({
+      method: 'delete',
+      url: `${AUTOMATION_BASE_URL}/conversations/${conversationId}`
+    })
+  },
+
   // Send a message to the AI
   async sendMessage(message, conversationId = null, selectedOption = null) {
     const response = await requestWithAuthRetry({

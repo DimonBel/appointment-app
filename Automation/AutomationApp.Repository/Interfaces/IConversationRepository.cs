@@ -6,6 +6,7 @@ public interface IConversationRepository
 {
     Task<Conversation?> GetByIdAsync(Guid id);
     Task<Conversation?> GetActiveByUserIdAsync(Guid userId);
+    Task<IEnumerable<Conversation>> GetByUserIdAsync(Guid userId);
     Task<IEnumerable<Conversation>> GetAllAsync();
     Task<Conversation> AddAsync(Conversation conversation);
     Task<Conversation> UpdateAsync(Conversation conversation);

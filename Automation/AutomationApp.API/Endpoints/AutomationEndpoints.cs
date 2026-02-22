@@ -47,6 +47,11 @@ public static class AutomationEndpoints
             .WithOpenApi()
             .WithSummary("Get all messages in a conversation");
 
+        group.MapDelete("/conversations/{id}", DeleteConversationAsync)
+            .WithName("DeleteConversation")
+            .WithOpenApi()
+            .WithSummary("Delete a conversation");
+
         group.MapPost("/conversations/send", SendMessageAsync)
             .WithName("SendMessage")
             .WithOpenApi()
@@ -168,16 +173,9 @@ public static class AutomationEndpoints
             return Results.Unauthorized();
         }
 
-        // Get all conversations for user (need to implement this in service)
-        // For now, return just the active one
-        var conversations = new List<object>();
-        var activeConversation = await conversationService.GetActiveConversationByUserIdAsync(userGuid);
-        if (activeConversation != null)
-        {
-            conversations.Add(MapToConversationDTO(activeConversation));
-        }
-
-        return Results.Ok(conversations);
+        var conversations = await conversationService.GetConversationsByUserIdAsync(userGuid);
+        var dto = conversations.Select(MapToConversationDTO).ToList();
+        return Results.Ok(dto);
     }
 
     private static async Task<IResult> GetConversationMessagesAsync(
@@ -200,6 +198,27 @@ public static class AutomationEndpoints
         var messages = await conversationService.GetConversationMessagesAsync(id);
         var messageDtos = messages.Select(MapToMessageDTO).ToList();
         return Results.Ok(messageDtos);
+    }
+
+    private static async Task<IResult> DeleteConversationAsync(
+        Guid id,
+        IConversationService conversationService,
+        HttpContext httpContext)
+    {
+        var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userGuid))
+        {
+            return Results.Unauthorized();
+        }
+
+        var conversation = await conversationService.GetConversationByIdAsync(id);
+        if (conversation == null || conversation.UserId != userGuid)
+        {
+            return Results.NotFound();
+        }
+
+        await conversationService.DeleteConversationAsync(id);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> SendMessageAsync(
@@ -1076,10 +1095,21 @@ public static class AutomationEndpoints
 
     private static ConversationDTO MapToConversationDTO(Conversation conversation)
     {
+        var titleSource = conversation.Messages
+            .OrderBy(m => m.SentAt)
+            .Select(m => m.Content)
+            .FirstOrDefault(c => !string.IsNullOrWhiteSpace(c));
+
+        var title = string.IsNullOrWhiteSpace(titleSource)
+            ? "New conversation"
+            : titleSource.Length > 60 ? titleSource[..60] + "..." : titleSource;
+
         return new ConversationDTO
         {
             Id = conversation.Id,
             UserId = conversation.UserId,
+            Title = title,
+            CreatedAt = conversation.StartedAt,
             State = conversation.State.ToString(),
             DetectedIntent = conversation.DetectedIntent?.ToString(),
             StartedAt = conversation.StartedAt,

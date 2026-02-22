@@ -28,6 +28,15 @@ public class ConversationRepository : IConversationRepository
             .FirstOrDefaultAsync(c => c.UserId == userId && c.IsActive);
     }
 
+    public async Task<IEnumerable<Conversation>> GetByUserIdAsync(Guid userId)
+    {
+        return await _context.Conversations
+            .Include(c => c.Messages)
+            .Where(c => c.UserId == userId)
+            .OrderByDescending(c => c.LastActivityAt ?? c.StartedAt)
+            .ToListAsync();
+    }
+
     public async Task<IEnumerable<Conversation>> GetAllAsync()
     {
         return await _context.Conversations

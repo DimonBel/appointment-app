@@ -8,6 +8,8 @@ public interface IConversationService
     Task<Conversation> CreateConversationAsync(Guid userId);
     Task<Conversation?> GetConversationByIdAsync(Guid conversationId);
     Task<Conversation?> GetActiveConversationByUserIdAsync(Guid userId);
+    Task<IEnumerable<Conversation>> GetConversationsByUserIdAsync(Guid userId);
+    Task DeleteConversationAsync(Guid conversationId);
     Task<ConversationMessage> AddMessageAsync(Guid conversationId, string content, bool isFromUser, List<string>? suggestedOptions = null, string? selectedOption = null);
     Task<IEnumerable<ConversationMessage>> GetConversationMessagesAsync(Guid conversationId);
     Task<Conversation> UpdateConversationStateAsync(Guid conversationId, ConversationState newState);

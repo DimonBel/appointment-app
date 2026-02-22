@@ -341,6 +341,25 @@ export const AIAssistant = () => {
     }
   }
 
+  const handleDeleteConversation = async (convId) => {
+    try {
+      await automationService.deleteConversation(convId)
+      const updatedConversations = conversations.filter(conv => conv.id !== convId)
+      setConversations(updatedConversations)
+
+      if (conversationId === convId) {
+        if (updatedConversations.length > 0) {
+          await handleSelectConversation(updatedConversations[0].id)
+        } else {
+          await handleNewChat()
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete conversation:', error)
+      setError('Unable to delete conversation. Please try again.')
+    }
+  }
+
   const handleNewBooking = () => {
     handleNewChat()
   }
@@ -382,14 +401,18 @@ export const AIAssistant = () => {
               <div className="flex-1 min-w-0">
                 <p className="text-sm truncate">{conv.title || 'New conversation'}</p>
                 <p className="text-xs text-gray-500">
-                  {new Date(conv.createdAt).toLocaleDateString()}
+                  {new Date(conv.startedAt || conv.createdAt).toLocaleDateString()}
                 </p>
               </div>
               <button
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDeleteConversation(conv.id)
+                }}
                 className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-600 rounded transition-opacity"
+                title="Delete chat"
               >
-                <MoreVertical size={16} />
+                <Trash2 size={16} />
               </button>
             </button>
           ))}
