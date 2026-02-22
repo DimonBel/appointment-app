@@ -15,6 +15,7 @@ export const DocumentPreview = () => {
 
   useEffect(() => {
     const docData = location.state?.document
+    console.log('DocumentPreview received document data:', docData)
     if (!docData) {
       setError('No document data provided')
       setLoading(false)
@@ -28,6 +29,9 @@ export const DocumentPreview = () => {
   const loadDocumentPreview = async (doc) => {
     setLoading(true)
     try {
+      console.log('Attempting to preview document:', doc)
+      console.log('Document ID:', doc.id, 'Type:', doc.contentType)
+      
       if (!documentService.canPreview(doc.contentType)) {
         setError('This file type cannot be previewed. Please download it.')
         setLoading(false)
@@ -39,7 +43,8 @@ export const DocumentPreview = () => {
       setPreviewUrl(url)
     } catch (err) {
       console.error('Failed to load document:', err)
-      setError('Failed to load document')
+      console.error('Error response:', err.response?.data)
+      setError(`Failed to load document: ${err.response?.data?.message || err.message}`)
     } finally {
       setLoading(false)
     }
@@ -59,7 +64,12 @@ export const DocumentPreview = () => {
     if (previewUrl) {
       window.URL.revokeObjectURL(previewUrl)
     }
-    navigate('/management', { state: { activeTab: 'documents' } })
+    const returnUrl = location.state?.returnUrl
+    if (returnUrl) {
+      navigate(returnUrl)
+    } else {
+      navigate('/management', { state: { activeTab: 'documents' } })
+    }
   }
 
   if (error) {

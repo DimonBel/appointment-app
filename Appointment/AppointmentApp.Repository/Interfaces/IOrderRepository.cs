@@ -12,5 +12,6 @@ public interface IOrderRepository
     Task<bool> DeleteAsync(Guid id);
     Task<IEnumerable<Order>> GetByClientAsync(Guid clientId, OrderStatus? status = null, int page = 1, int pageSize = 20);
     Task<IEnumerable<Order>> GetByProfessionalAsync(Guid professionalId, OrderStatus? status = null, int page = 1, int pageSize = 20);
+    Task<IEnumerable<AppIdentityUser>> GetClientsByProfessionalAsync(Guid professionalId);
     Task<bool> ExistsAsync(Guid id);
 }

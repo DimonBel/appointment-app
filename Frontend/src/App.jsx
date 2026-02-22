@@ -13,6 +13,7 @@ import { Chat } from './pages/chat/Chat'
 import { Profile } from './pages/Profile'
 import { Settings } from './pages/Settings'
 import { DoctorProfile } from './pages/DoctorProfile'
+import { DoctorPanel } from './pages/doctor/DoctorPanel'
 import { Notifications } from './pages/notifications/Notifications'
 import { AdminPanel } from './pages/admin/AdminPanel'
 import { ManagementPanel } from './pages/management/ManagementPanel'
@@ -71,6 +72,7 @@ function App() {
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/doctor-profile" element={<DoctorProfile />} />
+                <Route path="/doctor-panel" element={<DoctorPanel />} />
                 <Route path="/management" element={<ManagementPanel />} />
                 <Route path="/document-preview" element={<DocumentPreview />} />
                 <Route path="/notifications" element={<Notifications />} />

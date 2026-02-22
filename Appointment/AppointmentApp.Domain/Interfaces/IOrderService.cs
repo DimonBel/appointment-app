@@ -10,6 +10,7 @@ public interface IOrderService
     Task<IEnumerable<Order>> GetAllOrdersAsync(OrderStatus? status = null, int page = 1, int pageSize = 100, string? sortBy = null, bool descending = false);
     Task<IEnumerable<Order>> GetOrdersByClientAsync(Guid clientId, OrderStatus? status = null, int page = 1, int pageSize = 20);
     Task<IEnumerable<Order>> GetOrdersByProfessionalAsync(Guid professionalId, OrderStatus? status = null, int page = 1, int pageSize = 20);
+    Task<IEnumerable<AppIdentityUser>> GetClientsByProfessionalAsync(Guid professionalId);
     Task<Order> UpdateOrderAsync(Guid orderId, string? title = null, string? description = null, string? notes = null);
     Task<Order> CancelOrderAsync(Guid orderId, string? reason = null, Guid? cancelledByUserId = null);
     Task<Order> RescheduleOrderAsync(Guid orderId, DateTime newScheduledDateTime, string? notes = null);

@@ -1,12 +1,12 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { Calendar, Users, MessageCircle, User, Settings, Stethoscope, Bell, Shield, Briefcase, Bot } from 'lucide-react'
+import { Calendar, Users, MessageCircle, User, Settings, Stethoscope, Bell, Shield, Briefcase, Bot, Users2 } from 'lucide-react'
 
 export const Sidebar = ({ activeItem, onNavigate }) => {
   const user = useSelector((state) => state.auth.user)
   const unreadCount = useSelector((state) => state.notifications?.unreadCount || 0)
-  const isProfessional = user?.roles?.includes('Professional') || false
+  const isProfessional = user?.roles?.includes('Professional') || user?.roles?.includes('Doctor') || false
   const isAdmin = user?.roles?.includes('Admin') || false
   const isManagement = user?.roles?.includes('Management') || false
 
@@ -18,6 +18,7 @@ export const Sidebar = ({ activeItem, onNavigate }) => {
     { id: 'ai-assistant', label: 'AI Assistant', Icon: Bot, path: '/ai-assistant' },
     { id: 'profile', label: 'Profile', Icon: User, path: '/profile' },
     ...(isProfessional ? [{ id: 'doctor-profile', label: 'Professional Profile', Icon: Stethoscope, path: '/doctor-profile' }] : []),
+    ...(isProfessional ? [{ id: 'doctor-panel', label: 'Doctor Panel', Icon: Users2, path: '/doctor-panel' }] : []),
     ...(isManagement || isAdmin ? [{ id: 'management', label: 'Management Panel', Icon: Briefcase, path: '/management' }] : []),
     ...(isAdmin ? [{ id: 'admin', label: 'Admin Panel', Icon: Shield, path: '/admin' }] : []),
     { id: 'settings', label: 'Settings', Icon: Settings, path: '/settings' }

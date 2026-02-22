@@ -112,9 +112,17 @@ public static class DocumentEndpoints
                 return Results.NotFound();
             }
 
-            // Check access
+            // Check access - admins and management can view any document
             var hasAccess = await documentService.HasAccessAsync(id, userGuid, AccessControlType.View);
-            if (!hasAccess && !user.IsInRole("Admin") && !user.IsInRole("Management"))
+            
+            // Professionals can view:
+            // 1. Documents linked to orders
+            // 2. BookingFile documents
+            var canViewAsProfessional = user.IsInRole("Doctor") || user.IsInRole("Professional");
+            var isLinkedToOrder = document.LinkedEntityType == LinkedEntityType.Order;
+            var isBookingFile = document.DocumentType == DocumentType.BookingFile;
+            
+            if (!hasAccess && !user.IsInRole("Admin") && !user.IsInRole("Management") && !(canViewAsProfessional && (isLinkedToOrder || isBookingFile)))
             {
                 return Results.Forbid();
             }
@@ -148,13 +156,21 @@ public static class DocumentEndpoints
             }
 
             // Check access - admins and management can download any document
+            var bypassAccessControl = user.IsInRole("Admin") || user.IsInRole("Management");
             var hasAccess = await documentService.HasAccessAsync(id, userGuid, AccessControlType.Download);
-            if (!hasAccess && !user.IsInRole("Admin") && !user.IsInRole("Management"))
+            
+            // Professionals can download:
+            // 1. Documents linked to orders (since they can only access documents from their own clients)
+            // 2. BookingFile documents (these are uploaded by clients for appointments)
+            var canDownloadAsProfessional = user.IsInRole("Doctor") || user.IsInRole("Professional");
+            var isLinkedToOrder = document.LinkedEntityType == LinkedEntityType.Order;
+            var isBookingFile = document.DocumentType == DocumentType.BookingFile;
+            
+            if (!hasAccess && !bypassAccessControl && !(canDownloadAsProfessional && (isLinkedToOrder || isBookingFile)))
             {
                 return Results.Forbid();
             }
 
-            var bypassAccessControl = user.IsInRole("Admin") || user.IsInRole("Management");
             var stream = await documentService.DownloadDocumentAsync(id, userGuid, bypassAccessControl);
             return Results.File(stream, document.ContentType, document.OriginalFileName);
         }

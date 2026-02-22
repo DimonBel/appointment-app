@@ -287,6 +287,55 @@ public static class OrderEndpoints
         .WithName("GetOrdersByProfessional")
         .WithOpenApi();
 
+        // Get clients by professional (for doctor panel)
+        group.MapGet("/professional/{professionalId}/clients", async (
+            Guid professionalId,
+            [FromServices] IOrderRepository orderRepository,
+            [FromServices] IIdentityServiceClient identityServiceClient,
+            HttpContext context) =>
+        {
+            var clients = await orderRepository.GetClientsByProfessionalAsync(professionalId);
+            
+            // Enrich clients with Identity service data
+            var accessToken = context.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
+            var enrichedClients = new List<object>();
+
+            foreach (var client in clients)
+            {
+                var clientDict = new Dictionary<string, object?>
+                {
+                    ["id"] = client.Id,
+                    ["userName"] = client.UserName,
+                    ["email"] = client.Email,
+                    ["firstName"] = client.FirstName,
+                    ["lastName"] = client.LastName,
+                    ["phoneNumber"] = client.PhoneNumber,
+                    ["avatarUrl"] = null,
+                    ["isActive"] = client.IsActive,
+                    ["isOnline"] = false,
+                    ["createdAt"] = client.CreatedAt
+                };
+
+                if (!string.IsNullOrWhiteSpace(accessToken))
+                {
+                    var identityUser = await identityServiceClient.GetUserByIdAsync(client.Id, accessToken);
+                    if (identityUser != null)
+                    {
+                        clientDict["avatarUrl"] = identityUser.AvatarUrl;
+                        clientDict["firstName"] = identityUser.FirstName ?? client.FirstName;
+                        clientDict["lastName"] = identityUser.LastName ?? client.LastName;
+                        clientDict["isOnline"] = identityUser.IsOnline;
+                    }
+                }
+
+                enrichedClients.Add(clientDict);
+            }
+            
+            return Results.Ok(enrichedClients);
+        })
+        .WithName("GetClientsByProfessional")
+        .WithOpenApi();
+
         // Update order
         group.MapPut("/{id}", async (
             Guid id,

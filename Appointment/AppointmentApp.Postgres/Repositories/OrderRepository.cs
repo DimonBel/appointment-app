@@ -120,4 +120,17 @@ public class OrderRepository : IOrderRepository
     {
         return await _context.Orders.AnyAsync(o => o.Id == id);
     }
+
+    public async Task<IEnumerable<AppIdentityUser>> GetClientsByProfessionalAsync(Guid professionalId)
+    {
+        var clientIds = await _context.Orders
+            .Where(o => o.ProfessionalId == professionalId)
+            .Select(o => o.ClientId)
+            .Distinct()
+            .ToListAsync();
+
+        return await _context.Users
+            .Where(u => clientIds.Contains(u.Id))
+            .ToListAsync();
+    }
 }

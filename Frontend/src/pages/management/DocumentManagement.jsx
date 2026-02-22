@@ -63,7 +63,7 @@ export const DocumentManagement = () => {
   }
 
   const handlePreview = async (document) => {
-    navigate('/document-preview', { state: { document } })
+    navigate('/document-preview', { state: { document, returnUrl: '/management' } })
   }
 
   const handleDelete = async (document) => {
