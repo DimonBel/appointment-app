@@ -6,6 +6,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
+using System.Globalization;
 
 namespace AutomationApp.Service.Services;
 
@@ -437,6 +438,91 @@ public class BookingAutomationService : IBookingAutomationService
         }
 
         return new List<DomainConfigurationInfo>();
+    }
+
+    public async Task<List<AvailableSlotInfo>> GetAvailableSlotsAsync(Guid professionalId, DateTime date, string? accessToken = null)
+    {
+        var appointmentServiceUrl = _configuration["AppointmentService:BaseUrl"] ?? "http://appointment-service:5001";
+        var identityServiceUrl = _configuration["IdentityService:BaseUrl"] ?? "http://identity-service:5005";
+
+        try
+        {
+            var token = accessToken;
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                token = await GetAuthTokenAsync(identityServiceUrl);
+            }
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return new List<AvailableSlotInfo>();
+            }
+
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
+            var response = await _httpClient.GetAsync($"{appointmentServiceUrl}/api/availabilities/slots/{professionalId}?date={date:yyyy-MM-dd}");
+            if (!response.IsSuccessStatusCode)
+            {
+                return new List<AvailableSlotInfo>();
+            }
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+            var slots = JsonSerializer.Deserialize<List<JsonElement>>(responseContent);
+            if (slots == null || slots.Count == 0)
+            {
+                return new List<AvailableSlotInfo>();
+            }
+
+            var result = new List<AvailableSlotInfo>();
+            foreach (var slot in slots)
+            {
+                var isAvailable = slot.TryGetProperty("isAvailable", out var availableProp) && availableProp.GetBoolean();
+                if (!isAvailable)
+                {
+                    continue;
+                }
+
+                var startTimeText = slot.TryGetProperty("startTime", out var startProp) ? startProp.GetString() : null;
+                var endTimeText = slot.TryGetProperty("endTime", out var endProp) ? endProp.GetString() : null;
+                var slotDateText = slot.TryGetProperty("slotDate", out var dateProp) ? dateProp.GetString() : null;
+
+                if (string.IsNullOrWhiteSpace(startTimeText) || !TimeSpan.TryParse(startTimeText, CultureInfo.InvariantCulture, out var startTime))
+                {
+                    continue;
+                }
+
+                var endTime = TimeSpan.Zero;
+                if (!string.IsNullOrWhiteSpace(endTimeText))
+                {
+                    TimeSpan.TryParse(endTimeText, CultureInfo.InvariantCulture, out endTime);
+                }
+
+                var slotDate = date.Date;
+                if (!string.IsNullOrWhiteSpace(slotDateText) && DateTime.TryParse(slotDateText, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedSlotDate))
+                {
+                    slotDate = parsedSlotDate.Date;
+                }
+
+                var label = DateTime.Today.Add(startTime).ToString("hh:mm tt", CultureInfo.InvariantCulture);
+                result.Add(new AvailableSlotInfo
+                {
+                    SlotDate = slotDate,
+                    StartTime = startTime,
+                    EndTime = endTime,
+                    DisplayLabel = label
+                });
+            }
+
+            return result
+                .OrderBy(s => s.StartTime)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching available slots for professional {ProfessionalId} on {Date}", professionalId, date);
+            return new List<AvailableSlotInfo>();
+        }
     }
 
     private async Task<string?> GetClientNameAsync(string identityServiceUrl, string token, Guid userId)

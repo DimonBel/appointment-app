@@ -38,6 +38,15 @@ public interface IBookingAutomationService
     Task<BookingDraft> CancelBookingDraftAsync(Guid draftId);
     Task<List<ProfessionalInfo>> GetAvailableProfessionalsAsync(string? accessToken = null);
     Task<List<DomainConfigurationInfo>> GetDomainConfigurationsAsync(string? accessToken = null);
+    Task<List<AvailableSlotInfo>> GetAvailableSlotsAsync(Guid professionalId, DateTime date, string? accessToken = null);
+}
+
+public class AvailableSlotInfo
+{
+    public DateTime SlotDate { get; set; }
+    public TimeSpan StartTime { get; set; }
+    public TimeSpan EndTime { get; set; }
+    public string DisplayLabel { get; set; } = string.Empty;
 }
 
 public class DomainConfigurationInfo

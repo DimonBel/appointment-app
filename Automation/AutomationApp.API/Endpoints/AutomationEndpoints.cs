@@ -262,11 +262,13 @@ public static class AutomationEndpoints
         var contextData = conversation.ContextData ?? new Dictionary<string, object>();
         var normalizedInput = (request.SelectedOption ?? request.Message ?? string.Empty).Trim();
 
-        var deterministicResult = ProcessDeterministicBookingFlow(
+        var deterministicResult = await ProcessDeterministicBookingFlowAsync(
             normalizedInput,
             conversation.State,
             contextData,
-            availableProfessionals);
+            availableProfessionals,
+            bookingService,
+            accessToken);
 
         LLMResponse llmResponse;
         var finalResponseText = string.Empty;
@@ -389,14 +391,45 @@ public static class AutomationEndpoints
         Guid? finalOrderId = null;
         if (llmResponse.SuggestedNextState == ConversationState.BookingComplete && bookingDraft != null)
         {
-            var submittedDraft = await bookingService.SubmitBookingDraftAsync(bookingDraft.Id, accessToken);
-            isBookingComplete = true;
-            finalOrderId = submittedDraft.FinalOrderId;
-
-            // Send notification to the professional (doctor)
-            if (finalOrderId.HasValue)
+            try
             {
-                await SendNotificationToProfessionalAsync(bookingDraft.ProfessionalId, bookingDraft.UserId, finalOrderId.Value);
+                var submittedDraft = await bookingService.SubmitBookingDraftAsync(bookingDraft.Id, accessToken);
+                isBookingComplete = true;
+                finalOrderId = submittedDraft.FinalOrderId;
+
+                // Send notification to the professional (doctor)
+                if (finalOrderId.HasValue)
+                {
+                    await SendNotificationToProfessionalAsync(bookingDraft.ProfessionalId, bookingDraft.UserId, finalOrderId.Value);
+                }
+            }
+            catch
+            {
+                isBookingComplete = false;
+                finalOrderId = null;
+
+                await conversationService.UpdateConversationStateAsync(conversation.Id, ConversationState.SelectingTimeSlot);
+
+                var failureMessage = await conversationService.AddMessageAsync(
+                    conversation.Id,
+                    "I couldn't create the booking for that time slot. Please choose another available time.",
+                    false,
+                    new List<string> { "Change time" });
+
+                await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ReceiveMessage", new
+                {
+                    message = new
+                    {
+                        id = failureMessage.Id,
+                        conversationId = conversation.Id,
+                        content = failureMessage.Content,
+                        isFromUser = false,
+                        sentAt = failureMessage.SentAt,
+                        suggestedOptions = failureMessage.SuggestedOptions
+                    },
+                    currentState = ConversationState.SelectingTimeSlot.ToString(),
+                    extractedData = new Dictionary<string, object>()
+                });
             }
         }
 
@@ -414,11 +447,13 @@ public static class AutomationEndpoints
         return Results.Ok(response);
     }
 
-    private static DeterministicBookingResult? ProcessDeterministicBookingFlow(
+    private static async Task<DeterministicBookingResult?> ProcessDeterministicBookingFlowAsync(
         string input,
         ConversationState currentState,
         Dictionary<string, object> context,
-        List<ProfessionalInfo> professionals)
+        List<ProfessionalInfo> professionals,
+        IBookingAutomationService bookingService,
+        string? accessToken)
     {
         var text = (input ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(text))
@@ -530,6 +565,30 @@ public static class AutomationEndpoints
                     new Dictionary<string, object>());
             }
 
+            if (!TryGetGuidFromContext(context, "professionalId", out var selectedProfessionalId))
+            {
+                return new DeterministicBookingResult(
+                    "Please choose the doctor again.",
+                    professionals.Select(FormatDoctorOption).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                    ConversationState.SelectingProfessional,
+                    new Dictionary<string, object>());
+            }
+
+            var availableSlots = await bookingService.GetAvailableSlotsAsync(selectedProfessionalId, selectedDate, accessToken);
+            var timeOptions = availableSlots
+                .Select(s => s.DisplayLabel)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (timeOptions.Count == 0)
+            {
+                return new DeterministicBookingResult(
+                    $"No available time slots for {selectedDayLabel}. Please choose another day.",
+                    BuildDayOptions(),
+                    ConversationState.SelectingDateTime,
+                    new Dictionary<string, object>());
+            }
+
             var extracted = new Dictionary<string, object>
             {
                 ["selectedDayLabel"] = selectedDayLabel,
@@ -538,19 +597,19 @@ public static class AutomationEndpoints
 
             return new DeterministicBookingResult(
                 $"Great. Now choose the time for {selectedDayLabel}.",
-                BuildTimeOptions(),
+                timeOptions,
                 ConversationState.SelectingTimeSlot,
                 extracted);
         }
 
         if (currentState == ConversationState.SelectingTimeSlot)
         {
-            if (!TryResolveTime(text, out var timeLabel, out var timeOfDay))
+            if (!TryGetGuidFromContext(context, "professionalId", out var selectedProfessionalId))
             {
                 return new DeterministicBookingResult(
-                    "Please choose a time from the options.",
-                    BuildTimeOptions(),
-                    ConversationState.SelectingTimeSlot,
+                    "Please choose the doctor again.",
+                    professionals.Select(FormatDoctorOption).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                    ConversationState.SelectingProfessional,
                     new Dictionary<string, object>());
             }
 
@@ -564,18 +623,32 @@ public static class AutomationEndpoints
                     new Dictionary<string, object>());
             }
 
-            var appointmentLocal = selectedDate.Date.Add(timeOfDay);
+            var availableSlots = await bookingService.GetAvailableSlotsAsync(selectedProfessionalId, selectedDate, accessToken);
+            var matchedSlot = availableSlots.FirstOrDefault(s =>
+                string.Equals(s.DisplayLabel, text, StringComparison.OrdinalIgnoreCase)
+                || text.Contains(s.DisplayLabel, StringComparison.OrdinalIgnoreCase));
+
+            if (matchedSlot == null)
+            {
+                return new DeterministicBookingResult(
+                    "Please choose a time from the options.",
+                    availableSlots.Select(s => s.DisplayLabel).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                    ConversationState.SelectingTimeSlot,
+                    new Dictionary<string, object>());
+            }
+
+            var appointmentLocal = selectedDate.Date.Add(matchedSlot.StartTime);
             var professionalName = context.TryGetValue("professionalName", out var pn) ? pn?.ToString() ?? "the selected doctor" : "the selected doctor";
             var serviceType = context.TryGetValue("serviceType", out var sv) ? sv?.ToString() ?? "Consultation" : "Consultation";
 
             var extracted = new Dictionary<string, object>
             {
                 ["preferredDateTime"] = appointmentLocal,
-                ["timeLabel"] = timeLabel
+                ["timeLabel"] = matchedSlot.DisplayLabel
             };
 
             return new DeterministicBookingResult(
-                $"Please confirm your booking:\n- Specialty: {serviceType}\n- Doctor: {professionalName}\n- Date: {selectedDate:dddd, MMM dd}\n- Time: {timeLabel}\n\nReply with 'Yes, Confirm Appointment' to create it.",
+                $"Please confirm your booking:\n- Specialty: {serviceType}\n- Doctor: {professionalName}\n- Date: {selectedDate:dddd, MMM dd}\n- Time: {matchedSlot.DisplayLabel}\n\nReply with 'Yes, Confirm Appointment' to create it.",
                 new List<string> { "Yes, Confirm Appointment", "Change time", "Cancel" },
                 ConversationState.ConfirmingBooking,
                 extracted);
@@ -746,6 +819,30 @@ public static class AutomationEndpoints
         timeLabel = matched;
         time = parsed.TimeOfDay;
         return true;
+    }
+
+    private static bool TryGetGuidFromContext(Dictionary<string, object> context, string key, out Guid value)
+    {
+        value = Guid.Empty;
+        if (!context.TryGetValue(key, out var raw) || raw == null)
+        {
+            return false;
+        }
+
+        if (raw is Guid guid)
+        {
+            value = guid;
+            return true;
+        }
+
+        var asString = raw.ToString();
+        if (Guid.TryParse(asString, out var parsed))
+        {
+            value = parsed;
+            return true;
+        }
+
+        return false;
     }
 
     private sealed record DeterministicBookingResult(
