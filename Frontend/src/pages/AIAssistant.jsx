@@ -274,6 +274,13 @@ export const AIAssistant = () => {
     const messageToSend = (messageOverride ?? inputMessage).trim()
     if (!messageToSend || isLoading || isStreaming) return
 
+    const normalizedMessage = messageToSend.toLowerCase()
+    const wantsNewBooking = normalizedMessage.includes('book') || normalizedMessage.includes('appointment')
+    if (!conversationIdOverride && isBookingComplete && wantsNewBooking) {
+      await startNewBookingConversation()
+      return
+    }
+
     const effectiveConversationId = conversationIdOverride ?? conversationId
 
     sendInFlightRef.current = true
@@ -357,7 +364,12 @@ export const AIAssistant = () => {
   }
 
   const handleSelectOption = async (option) => {
-    if (typeof option === 'string' && option.trim().toLowerCase() === 'book another appointment') {
+    const normalizedOption = typeof option === 'string' ? option.trim().toLowerCase() : ''
+    const shouldStartFreshBooking =
+      normalizedOption === 'book another appointment'
+      || normalizedOption === 'book a new appointment'
+
+    if (shouldStartFreshBooking) {
       await startNewBookingConversation()
       return
     }
