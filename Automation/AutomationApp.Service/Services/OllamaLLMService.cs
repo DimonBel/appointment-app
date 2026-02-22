@@ -6,12 +6,14 @@ using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Configuration;
 using AutomationApp.Domain.Enums;
 using AutomationApp.Domain.Interfaces;
+using AutomationApp.Domain.Entity;
 
 namespace AutomationApp.Service.Services;
 
 public class OllamaLLMService : ILLMService
 {
     private readonly HttpClient _httpClient;
+    private readonly IConfiguration _configuration;
     private readonly string _baseUrl;
     private readonly string _modelName;
     private readonly int _numPredict;
@@ -21,6 +23,7 @@ public class OllamaLLMService : ILLMService
     public OllamaLLMService(HttpClient httpClient, IConfiguration configuration)
     {
         _httpClient = httpClient;
+        _configuration = configuration;
         _baseUrl = configuration["Ollama:BaseUrl"] ?? "http://localhost:11434";
         _modelName = configuration["Ollama:ModelName"] ?? "tinyllama";
         _numPredict = int.TryParse(configuration["Ollama:NumPredict"], out var numPredict) ? numPredict : 128;
@@ -48,6 +51,12 @@ public class OllamaLLMService : ILLMService
         var systemPrompt = BuildSystemPrompt(currentState, context, availableProfessionals, domainConfigurations);
         var contextInfo = BuildContextInfo(context, currentState);
         var shouldStream = onPartialResponse != null;
+
+        // Ensure timeout is set before making the request
+        var timeoutSeconds = int.TryParse(_configuration["Ollama:RequestTimeoutSeconds"], out var timeout)
+            ? timeout
+            : 90;
+        _httpClient.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
 
         var requestPayload = new
         {
@@ -148,21 +157,20 @@ public class OllamaLLMService : ILLMService
         catch (Exception ex)
         {
             Console.WriteLine($"Error calling Ollama API: {ex.Message}");
-            
-            // Fallback to mock streaming for testing
-            if (shouldStream && onPartialResponse != null)
+
+            // Fallback to mock response WITHOUT streaming (to avoid duplicates)
+            var mockResponse = GetMockResponse(userMessage, currentState, availableProfessionals, domainConfigurations);
+            var extractedData = ExtractDataFromMessage(userMessage, currentState, availableProfessionals, domainConfigurations);
+
+            // Return proper LLMResponse for mock data
+            return new LLMResponse
             {
-                var mockResponse = GetMockResponse(userMessage, currentState);
-                var words = mockResponse.Split(' ');
-                foreach (var word in words)
-                {
-                    await onPartialResponse(word + " ");
-                    await Task.Delay(10); // Simulate streaming
-                }
-                return ParseAIResponse(mockResponse);
-            }
-            
-            return CreateFallbackResponse();
+                ResponseText = mockResponse,
+                SuggestedOptions = GetSuggestedOptionsFromMessage(userMessage, currentState, availableProfessionals, domainConfigurations),
+                DetectedIntent = DetectIntentFromMessage(userMessage),
+                SuggestedNextState = GetNextStateFromMessage(userMessage, currentState),
+                ExtractedData = extractedData
+            };
         }
     }
 
@@ -318,47 +326,99 @@ public class OllamaLLMService : ILLMService
             prompt.AppendLine();
         }
 
+        // Add domain configurations (service types)
+        if (domainConfigurations != null && domainConfigurations.Any())
+        {
+            prompt.AppendLine("Available Service Types (Domain Configurations):");
+            prompt.AppendLine("Users can book appointments for the following service types:");
+            prompt.AppendLine();
+
+            foreach (var config in domainConfigurations)
+            {
+                prompt.AppendLine($"- {config.Name}");
+                prompt.AppendLine($"  ID: {config.Id}");
+                if (!string.IsNullOrEmpty(config.Description))
+                    prompt.AppendLine($"  Description: {config.Description}");
+                prompt.AppendLine($"  Default Duration: {config.DefaultDurationMinutes} minutes");
+                prompt.AppendLine();
+            }
+            prompt.AppendLine("IMPORTANT: When users want to book an appointment, first ask them which service type they need.");
+            prompt.AppendLine("Present the service types above in suggestedOptions when asking.");
+            prompt.AppendLine();
+        }
+
         // Add available professionals to the prompt
         if (availableProfessionals != null && availableProfessionals.Any())
         {
             prompt.AppendLine("Available Professionals:");
             prompt.AppendLine("The following doctors/professionals are available for booking:");
             prompt.AppendLine();
-            prompt.AppendLine("=== PROFESSIONAL LIST (USE EXACTLY THESE NAMES) ===");
+            prompt.AppendLine("=== PROFESSIONAL LIST BY SPECIALIZATION ===");
 
-            foreach (var prof in availableProfessionals)
+            // Group professionals by specialization
+            var professionalsBySpecialization = availableProfessionals
+                .Where(p => p.IsAvailable)
+                .GroupBy(p => p.Specialization ?? "General")
+                .OrderBy(g => g.Key);
+
+            foreach (var group in professionalsBySpecialization)
             {
-                var firstName = !string.IsNullOrEmpty(prof.FirstName) && prof.FirstName != "Doctor" ? prof.FirstName : "";
-                var lastName = !string.IsNullOrEmpty(prof.LastName) && prof.LastName != "Profile" ? prof.LastName : "";
-                var name = $"{firstName} {lastName}".Trim();
-
-                // If name is still empty or generic, create a name from specialization
-                if (string.IsNullOrEmpty(name) || name == "Doctor Profile")
+                prompt.AppendLine($"Specialization: {group.Key}");
+                foreach (var prof in group)
                 {
-                    if (!string.IsNullOrEmpty(prof.Specialization))
-                    {
-                        name = $"Dr. {prof.Specialization}";
-                    }
-                    else
-                    {
-                        name = "Doctor";
-                    }
-                }
+                    var firstName = !string.IsNullOrEmpty(prof.FirstName) && prof.FirstName != "Doctor" ? prof.FirstName : "";
+                    var lastName = !string.IsNullOrEmpty(prof.LastName) && prof.LastName != "Profile" ? prof.LastName : "";
+                    var name = $"{firstName} {lastName}".Trim();
 
-                var specialization = !string.IsNullOrEmpty(prof.Specialization) ? prof.Specialization : "General Practice";
-                prompt.AppendLine($"- {name} | {specialization} | {prof.UserId}");
+                    // If name is still empty or generic, create a name from specialization
+                    if (string.IsNullOrEmpty(name) || name == "Doctor Profile")
+                    {
+                        if (!string.IsNullOrEmpty(prof.Specialization))
+                        {
+                            name = $"Dr. {prof.Specialization}";
+                        }
+                        else
+                        {
+                            name = "Doctor";
+                        }
+                    }
+
+                    prompt.AppendLine($"  - ID: {prof.Id} | Name: {name} | Specialization: {prof.Specialization} | UserId: {prof.UserId}");
+                }
                 prompt.AppendLine();
             }
             prompt.AppendLine("====================================================");
-            prompt.AppendLine("CRITICAL INSTRUCTIONS:");
-            prompt.AppendLine("1. USE ONLY the professional names listed above. DO NOT create or hallucinate fake names.");
-            prompt.AppendLine("2. When users want to see doctors, your suggestedOptions MUST include BOTH the doctor's name AND their specialization.");
-            prompt.AppendLine("3. Format: \"Dr. [Name] - [Specialization]\" or \"[Name] - [Specialization]\"");
-            prompt.AppendLine("4. Example: [\"Dr. Sac Ahbdsdi - Cardiology\", \"Dr. Gei sa - Dermiology\"]");
-            prompt.AppendLine("5. DO NOT return options like [\"Cardiology\", \"Dermatology\"] or [\"Dr. Cardiology\"] alone.");
-            prompt.AppendLine("6. DO NOT create names like \"Dr. John Smith\" or \"Dr. Jane Doe\" unless they are in the list above.");
-            prompt.AppendLine("7. Each option must show a specific professional with their ACTUAL name from the list.");
-            prompt.AppendLine("8. When a user selects a professional, extract their ID and store it as 'professionalId' in extractedData.");
+            prompt.AppendLine("CRITICAL INSTRUCTIONS FOR BOOKING FLOW:");
+            prompt.AppendLine();
+            prompt.AppendLine("STEP 1: SELECTING SERVICE");
+            prompt.AppendLine("- When user wants to book, FIRST ask which service type (Cardiology, Dermatology, etc.)");
+            prompt.AppendLine("- Show service types in suggestedOptions format: [\"Cardiology\", \"Dermatology\"]");
+            prompt.AppendLine("- Extract selected service as 'serviceType' in extractedData");
+            prompt.AppendLine("- Move to SelectingProfessional state");
+            prompt.AppendLine();
+            prompt.AppendLine("STEP 2: SELECTING PROFESSIONAL");
+            prompt.AppendLine("- Filter professionals by the selected serviceType/specialization");
+            prompt.AppendLine("- Show ONLY professionals matching the selected service");
+            prompt.AppendLine("- Format options as: [\"Dr. [Name] - [Specialization]\", \"Dr. [Name2] - [Specialization]\"]");
+            prompt.AppendLine("- Example: [\"Dr. Cardiology - Cardiology\", \"Dr. Dermatology - Dermatology\"]");
+            prompt.AppendLine("- Extract selected professional's ID as 'professionalId' in extractedData");
+            prompt.AppendLine("- Move to SelectingDateTime state");
+            prompt.AppendLine();
+            prompt.AppendLine("STEP 3: SELECTING DATE");
+            prompt.AppendLine("- Show date options: [\"Today\", \"Tomorrow\", \"Monday\", \"Tuesday\", etc.]");
+            prompt.AppendLine("- Extract selected date as 'preferredDate' in extractedData");
+            prompt.AppendLine("- Move to SelectingTimeSlot state");
+            prompt.AppendLine();
+            prompt.AppendLine("STEP 4: SELECTING TIME");
+            prompt.AppendLine("- Show time slots: [\"9:00 AM\", \"11:00 AM\", \"2:00 PM\", \"4:00 PM\"]");
+            prompt.AppendLine("- Extract selected time as 'preferredTime' in extractedData");
+            prompt.AppendLine("- Combine date and time into 'preferredDateTime' in extractedData");
+            prompt.AppendLine("- Move to ConfirmingBooking state");
+            prompt.AppendLine();
+            prompt.AppendLine("STEP 5: CONFIRMING BOOKING");
+            prompt.AppendLine("- Show booking summary with all details");
+            prompt.AppendLine("- Options: [\"Yes, Confirm\", \"No, Cancel\", \"Change Details\"]");
+            prompt.AppendLine("- On confirm, move to BookingComplete state");
             prompt.AppendLine();
         }
 
@@ -400,29 +460,46 @@ public class OllamaLLMService : ILLMService
                 prompt.AppendLine("When user selects a service type, extract it as 'serviceType' in extractedData.");
                 break;
             case ConversationState.SelectingProfessional:
-                prompt.AppendLine("Help the user select a professional based on their needs.");
-                prompt.AppendLine("Present available professionals with their specialties.");
-                prompt.AppendLine("CRITICAL: When generating suggestedOptions for professionals, you MUST include BOTH the doctor's name AND their specialization.");
-                prompt.AppendLine("Format: \"Dr. [Name] - [Specialization]\" or \"[Name] - [Specialization]\"");
-                prompt.AppendLine("Example suggestedOptions: [\"Dr. John Smith - Cardiology\", \"Dr. Sarah Johnson - Dermatology\", \"Dr. Michael Brown - Pediatrics\"]");
-                prompt.AppendLine("DO NOT include only the specialization without the doctor's name.");
-                prompt.AppendLine("When user selects a professional, set 'professionalId' in extractedData with the user's ID (e.g., 'professionalId': 'user-id-from-list').");
-                prompt.AppendLine("IMPORTANT: After a professional is selected, you MUST set suggestedNextState to 'SelectingDateTime' to ask for date/time.");
+                prompt.AppendLine("Help the user select a professional based on the selected service type.");
+                prompt.AppendLine("CRITICAL: You MUST filter professionals by the serviceType that was selected in the previous step.");
+                prompt.AppendLine("Only show professionals whose specialization matches the selected service type.");
+                prompt.AppendLine("CRITICAL: When generating suggestedOptions for professionals, you MUST include BOTH the doctor's identifier AND their specialization.");
+                prompt.AppendLine("Format: \"Dr. [Name/Identifier] - [Specialization]\" or \"[Name/Identifier] - [Specialization]\"");
+                prompt.AppendLine("Example suggestedOptions: [\"Dr. Cardiology - Cardiology\", \"Dr. Dermatology - Dermatology\"]");
+                prompt.AppendLine("DO NOT include professionals from other specializations.");
+                prompt.AppendLine("When user selects a professional, set 'professionalId' in extractedData with the professional's ID (e.g., 'professionalId': '55123dbb-59b8-435d-837e-209431f04025').");
+                prompt.AppendLine("IMPORTANT: After a professional is selected, you MUST set suggestedNextState to 'SelectingDateTime' to ask for date.");
                 break;
             case ConversationState.SelectingDateTime:
-                prompt.AppendLine("Help the user select an available date and time slot.");
-                prompt.AppendLine("CRITICAL: You MUST provide date/time options in the suggestedOptions array.");
-                prompt.AppendLine("Include multiple date options with specific time slots:");
-                prompt.AppendLine($"- Today ({DateTime.Today:MMM dd}): 9:00 AM, 11:00 AM, 2:00 PM, 4:00 PM");
-                prompt.AppendLine($"- Tomorrow ({DateTime.Today.AddDays(1):MMM dd}): 9:00 AM, 11:00 AM, 2:00 PM, 4:00 PM");
-                prompt.AppendLine($"- Next week ({DateTime.Today.AddDays(7):MMM dd}): 9:00 AM, 11:00 AM, 2:00 PM, 4:00 PM");
+                prompt.AppendLine("Help the user select an available date first.");
+                prompt.AppendLine("CRITICAL: Show ONLY date options in the suggestedOptions array. Time slots will be selected in the next step.");
+                prompt.AppendLine("Provide multiple date options:");
+                prompt.AppendLine($"- Today ({DateTime.Today:MMM dd})");
+                prompt.AppendLine($"- Tomorrow ({DateTime.Today.AddDays(1):MMM dd})");
+                prompt.AppendLine($"- Next week ({DateTime.Today.AddDays(7):MMM dd})");
+                prompt.AppendLine($"- Monday, Tuesday, Wednesday, Thursday, Friday");
                 prompt.AppendLine();
                 prompt.AppendLine("Example suggestedOptions format:");
-                prompt.AppendLine("[\"Today, 9:00 AM\", \"Today, 11:00 AM\", \"Today, 2:00 PM\", \"Tomorrow, 9:00 AM\", \"Tomorrow, 11:00 AM\", \"Tomorrow, 2:00 PM\", \"Next week, 9:00 AM\"]");
+                prompt.AppendLine("[\"Today\", \"Tomorrow\", \"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Next week\"]");
                 prompt.AppendLine();
-                prompt.AppendLine("IMPORTANT: The suggestedOptions MUST contain at least 5-6 specific date/time combinations.");
-                prompt.AppendLine("DO NOT ask about availability BEFORE showing the options in suggestedOptions.");
-                prompt.AppendLine("Show the options FIRST, then let the user select one.");
+                prompt.AppendLine("IMPORTANT: The suggestedOptions MUST contain only dates, NOT times.");
+                prompt.AppendLine("When user selects a date, extract it as 'preferredDate' in extractedData.");
+                prompt.AppendLine("After date is selected, set suggestedNextState to 'SelectingTimeSlot' to show time options.");
+                break;
+            case ConversationState.SelectingTimeSlot:
+                prompt.AppendLine("Help the user select a time slot for the selected date.");
+                prompt.AppendLine("CRITICAL: You MUST provide time slot options in the suggestedOptions array.");
+                prompt.AppendLine("Provide multiple time slot options:");
+                prompt.AppendLine("- 9:00 AM, 10:00 AM, 11:00 AM, 12:00 PM");
+                prompt.AppendLine("- 1:00 PM, 2:00 PM, 3:00 PM, 4:00 PM, 5:00 PM");
+                prompt.AppendLine();
+                prompt.AppendLine("Example suggestedOptions format:");
+                prompt.AppendLine("[\"9:00 AM\", \"10:00 AM\", \"11:00 AM\", \"12:00 PM\", \"2:00 PM\", \"3:00 PM\", \"4:00 PM\"]");
+                prompt.AppendLine();
+                prompt.AppendLine("IMPORTANT: The suggestedOptions MUST contain only time slots.");
+                prompt.AppendLine("When user selects a time, extract it as 'preferredTime' in extractedData.");
+                prompt.AppendLine("Combine the preferredDate and preferredTime into 'preferredDateTime' in extractedData as a full DateTime string.");
+                prompt.AppendLine("After time is selected, set suggestedNextState to 'ConfirmingBooking' to confirm the booking.");
                 break;
             case ConversationState.ConfirmingBooking:
                 prompt.AppendLine("Confirm all booking details with the user.");
@@ -467,18 +544,18 @@ public class OllamaLLMService : ILLMService
         prompt.AppendLine("Example of WRONG suggestedOptions: {\"dateOptions\": [...], \"timeOptions\": [...]}");
         prompt.AppendLine();
         prompt.AppendLine("- suggestedNextState MUST be one of these EXACT values:");
-        prompt.AppendLine("  * Greeting - Initial state when starting conversation");
-        prompt.AppendLine("  * CollectingInfo - Collecting information from user");
-        prompt.AppendLine("  * SelectingService - User selecting service type");
-        prompt.AppendLine("  * SelectingProfessional - User selecting doctor/professional");
-        prompt.AppendLine("  * SelectingDateTime - User selecting date/time");
-        prompt.AppendLine("  * ConfirmingBooking - Confirming booking details");
-        prompt.AppendLine("  * BookingComplete - Booking is confirmed and complete");
-        prompt.AppendLine("  * FAQ - Answering questions");
-        prompt.AppendLine("  * Error - Error state");
-        prompt.AppendLine();
-        prompt.AppendLine("WARNING: DO NOT use invalid states like 'SelectingNextAction', 'NextStep', etc. Only use the states listed above.");
-
+                        prompt.AppendLine("  * Greeting - Initial state when starting conversation");
+                        prompt.AppendLine("  * CollectingInfo - Collecting information from user");
+                        prompt.AppendLine("  * SelectingService - User selecting service type");
+                        prompt.AppendLine("  * SelectingProfessional - User selecting doctor/professional");
+                        prompt.AppendLine("  * SelectingDateTime - User selecting date");
+                        prompt.AppendLine("  * SelectingTimeSlot - User selecting time slot");
+                        prompt.AppendLine("  * ConfirmingBooking - Confirming booking details");
+                        prompt.AppendLine("  * BookingComplete - Booking is confirmed and complete");
+                        prompt.AppendLine("  * FAQ - Answering questions");
+                        prompt.AppendLine("  * Error - Error state");
+                        prompt.AppendLine();
+                        prompt.AppendLine("WARNING: DO NOT use invalid states like 'SelectingNextAction', 'NextStep', etc. Only use the states listed above.");
         return prompt.ToString();
     }
 
@@ -665,39 +742,145 @@ public class OllamaLLMService : ILLMService
         };
     }
 
-    private string GetMockResponse(string userMessage, ConversationState currentState)
+    private string GetMockResponse(
+        string userMessage, 
+        ConversationState currentState,
+        List<ProfessionalInfo>? availableProfessionals = null,
+        List<DomainConfigurationInfo>? domainConfigurations = null)
     {
+        var lowerMessage = userMessage.ToLower();
+        
         if (currentState == ConversationState.Greeting || currentState == ConversationState.Idle)
         {
-            return "Hello! I'm your AI booking assistant. I can help you book appointments, check availability, and answer questions about our services. How can I assist you today?";
+            // Check if user wants to start booking
+            if (lowerMessage.Contains("book") || lowerMessage.Contains("appointment") || lowerMessage.Contains("schedule"))
+            {
+                var services = domainConfigurations?.Select(d => d.Name).Distinct().ToList() ?? new List<string> { "Cardiology", "Dermatology" };
+                var servicesList = string.Join(", ", services);
+                return $"I'd be happy to help you book an appointment! We offer the following services: {servicesList}.\n\nPlease select a service by clicking on it above.";
+            }
+            
+            return $"Hello! I'm your AI booking assistant. I can help you book appointments, check availability, and answer questions about our services. How can I assist you today?";
         }
         
-        if (userMessage.ToLower().Contains("book") || userMessage.ToLower().Contains("appointment"))
+        if (currentState == ConversationState.CollectingInfo)
         {
-            return "I'd be happy to help you book an appointment! To get started, could you please tell me what type of service you're looking for? We offer Cardiology and Dermatology services.";
+            // Check for service type selection
+            if (domainConfigurations != null)
+            {
+                foreach (var service in domainConfigurations)
+                {
+                    if (lowerMessage.Contains(service.Name.ToLower()) || 
+                        (service.Name == "Dermatology" && lowerMessage.Contains("derm")) ||
+                        (service.Name == "Cardiology" && lowerMessage.Contains("cardio")))
+                    {
+                        var professionals = availableProfessionals?.Where(p => 
+                            p.Specialization != null && 
+                            p.Specialization.Contains(service.Name, StringComparison.OrdinalIgnoreCase) &&
+                            p.IsAvailable
+                        ).ToList();
+                        
+                        if (professionals.Any())
+                        {
+                            var prosText = string.Join("\n", professionals.Select(p => {
+                                var doctorName = !string.IsNullOrEmpty(p.FirstName) && !string.IsNullOrEmpty(p.LastName)
+                                    ? $"Dr. {p.FirstName} {p.LastName}"
+                                    : !string.IsNullOrEmpty(p.FirstName)
+                                        ? $"Dr. {p.FirstName}"
+                                        : $"Dr. {p.Specialization}";
+                                return $"• {doctorName} - {p.Specialization} (${p.HourlyRate}/hour)";
+                            }));
+                            return $"Great! For {service.Name}, we have the following doctors available:\n{prosText}\n\nPlease let me know which doctor you prefer by clicking on their name above.";
+                        }
+                        else
+                        {
+                            return $"I'm sorry, but we don't have any {service.Name} specialists available at the moment. Would you like to try a different service?";
+                        }
+                    }
+                }
+            }
+            
+            // Check for doctor name selection
+                    if (availableProfessionals != null)
+                    {
+                        foreach (var pro in availableProfessionals.Where(p => p.IsAvailable))
+                        {
+                            if (lowerMessage.Contains(pro.FirstName?.ToLower() ?? "") || 
+                                lowerMessage.Contains(pro.LastName?.ToLower() ?? "") ||
+                                lowerMessage.Contains(pro.Id.ToString().ToLower()) ||
+                                lowerMessage.Contains("dr.") && lowerMessage.Contains(pro.Specialization?.ToLower() ?? ""))
+                            {
+                                var doctorName = !string.IsNullOrEmpty(pro.FirstName) && !string.IsNullOrEmpty(pro.LastName)
+                                    ? $"Dr. {pro.FirstName} {pro.LastName}"
+                                    : !string.IsNullOrEmpty(pro.FirstName)
+                                        ? $"Dr. {pro.FirstName}"
+                                        : $"Dr. {pro.Specialization}";
+                                
+                                return $"Excellent! You've selected {doctorName} ({pro.Specialization}).\n\nWhat date and time would you like to schedule your appointment? Please provide a date (e.g., 'tomorrow', 'Monday') and time (e.g., '10:00 AM', '2:00 PM').";
+                            }
+                        }
+                    }            
+            // Check for date/time preference
+            if (lowerMessage.ContainsAny(new[] { "tomorrow", "today", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday" }) ||
+                lowerMessage.Contains(":") || // Time format
+                lowerMessage.Contains("am") || lowerMessage.Contains("pm"))
+            {
+                return $"Thank you! I've noted your preferred date and time.\n\nPlease provide your phone number so I can contact you if needed: ";
+            }
+            
+            // Check for phone number
+            if (lowerMessage.Contains("phone") || lowerMessage.Contains("contact") || 
+                lowerMessage.ContainsAny(new[] { "123", "456", "789", "012", "345", "678", "901" }) ||
+                System.Text.RegularExpressions.Regex.IsMatch(userMessage, @"\d{3}[-.\s]?\d{3}[-.\s]?\d{4}"))
+            {
+                return $"Perfect! I have all the information needed for your booking.\n\nTo confirm your appointment, please click 'Confirm Booking' below.";
+            }
+            
+            return "I'm collecting information for your booking. Please let me know:\n• Which service you need (Cardiology or Dermatology)\n• Which doctor you prefer\n• Your preferred date and time\n• Your phone number";
         }
         
-        if (userMessage.ToLower().Contains("cardiology"))
+        if (currentState == ConversationState.ConfirmingBooking)
         {
-            return "Great choice! We have Cardiology specialists available. When would you like to schedule your appointment? Please let me know your preferred date and time.";
+            if (lowerMessage.Contains("yes") || lowerMessage.Contains("confirm") || lowerMessage.Contains("proceed"))
+            {
+                return "Thank you for confirming! Your appointment has been successfully booked.\n\nYou'll receive a confirmation email with all the details shortly.\n\nIs there anything else I can help you with?";
+            }
+            
+            if (lowerMessage.Contains("no") || lowerMessage.Contains("cancel") || lowerMessage.Contains("change"))
+            {
+                return "No problem. We can modify your booking details. What would you like to change?";
+            }
         }
         
-        if (userMessage.ToLower().Contains("dermatology") || userMessage.ToLower().Contains("dermitology"))
+        if (currentState == ConversationState.BookingComplete)
         {
-            return "Excellent! Our Dermatology team is ready to help you. What date and time works best for your appointment?";
+            return "Your booking is complete! What would you like to do next?\n• Book another appointment\n• View my appointments\n• Ask a question";
         }
         
-        if (userMessage.ContainsAny(new[] { "tomorrow", "today", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday" }))
+        // Default booking initiation
+        if (lowerMessage.Contains("book") || lowerMessage.Contains("appointment") || lowerMessage.Contains("schedule"))
         {
-            return "Thank you! I've noted your preferred time. Let me check our availability for you. Our doctors have several slots available. Would you like me to proceed with booking this appointment?";
+            var services = domainConfigurations?.Select(d => d.Name).Distinct().ToList() ?? new List<string> { "Cardiology", "Dermatology" };
+            var servicesList = string.Join(", ", services);
+            return $"I'd be happy to help you book an appointment! We offer the following services: {servicesList}.\n\nPlease select a service by clicking on it above.";
         }
         
-        if (userMessage.ToLower().Contains("yes") || userMessage.ToLower().Contains("confirm"))
+        if (lowerMessage.Contains("available") || lowerMessage.Contains("availability"))
         {
-            return "Perfect! I'll book this appointment for you. Your appointment has been confirmed. You'll receive a confirmation email shortly. Is there anything else I can help you with?";
+            var availablePros = availableProfessionals?.Where(p => p.IsAvailable).ToList() ?? new List<ProfessionalInfo>();
+            if (availablePros.Any())
+            {
+                var prosText = string.Join("\n", availablePros.Select(p => 
+                    $"• Dr. {p.FirstName} {p.LastName} - {p.Specialization} (${p.HourlyRate}/hour)"));
+                return $"Here are our currently available doctors:\n{prosText}\n\nWould you like to book with any of them? Just say which doctor you'd like to see.";
+            }
+            else
+            {
+                return "I'm sorry, but we don't have any doctors available at the moment. Please check back later or contact us directly.";
+            }
         }
         
-        return "I understand. I'm here to help you with booking appointments, checking availability, or answering any questions you might have about our services. What would you like to do?";
+        return "I'm here to help you book an appointment. You can:\n• Say 'Book an appointment' to start\n• Say 'Check availability' to see available doctors\n• Click on any suggested option above\n\nWhat would you like to do?";
     }
 
     private List<string> GetDefaultBookingOptions()
@@ -710,6 +893,299 @@ public class OllamaLLMService : ILLMService
             "Ask a question",
             "Cancel appointment"
         };
+    }
+
+    private List<string> GetSuggestedOptionsFromMessage(string userMessage, ConversationState currentState, List<ProfessionalInfo>? availableProfessionals, List<DomainConfigurationInfo>? domainConfigurations)
+    {
+        var lowerMessage = userMessage.ToLower();
+        
+        if (currentState == ConversationState.Greeting || currentState == ConversationState.Idle)
+        {
+            return new List<string> { "Book a new appointment", "Check availability", "View my appointments", "Ask a question" };
+        }
+        
+        if (currentState == ConversationState.CollectingInfo)
+        {
+            // Check if user is selecting a service
+            if (domainConfigurations != null)
+            {
+                foreach (var service in domainConfigurations)
+                {
+                    if (lowerMessage.Contains(service.Name.ToLower()) || 
+                        (service.Name == "Dermatology" && lowerMessage.Contains("derm")) ||
+                        (service.Name == "Cardiology" && lowerMessage.Contains("cardio")))
+                    {
+                        // Return available doctors for this service
+                        var professionals = availableProfessionals?.Where(p => 
+                            p.Specialization != null && 
+                            p.Specialization.Contains(service.Name, StringComparison.OrdinalIgnoreCase) &&
+                            p.IsAvailable
+                        ).ToList();
+                        
+                        if (professionals.Any())
+                        {
+                            return professionals.Take(3).Select(p => $"Dr. {p.FirstName} {p.LastName}").ToList();
+                        }
+                    }
+                }
+            }
+            
+            // Check if user is selecting a doctor
+            if (availableProfessionals != null)
+            {
+                foreach (var pro in availableProfessionals.Where(p => p.IsAvailable))
+                {
+                    if (lowerMessage.Contains(pro.FirstName?.ToLower() ?? "") || 
+                        lowerMessage.Contains(pro.LastName?.ToLower() ?? "") ||
+                        lowerMessage.Contains(pro.Id.ToString().ToLower()) ||
+                        lowerMessage.Contains("dr.") && lowerMessage.Contains(pro.Specialization?.ToLower() ?? ""))
+                    {
+                        return new List<string> { "Tomorrow 10:00 AM", "Tomorrow 2:00 PM", "Monday 9:00 AM", "Monday 3:00 PM", "Next week" };
+                    }
+                }
+            }
+            
+            // Check if user provided date/time - show confirm option
+            if (lowerMessage.ContainsAny(new[] { "tomorrow", "today", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday" }) ||
+                lowerMessage.Contains(":") || lowerMessage.Contains("am") || lowerMessage.Contains("pm"))
+            {
+                return new List<string> { "Provide phone number", "Skip phone number" };
+            }
+            
+            // Check if user provided phone - show confirm option
+            if (System.Text.RegularExpressions.Regex.IsMatch(userMessage, @"\d{3}[-.\s]?\d{3}[-.\s]?\d{4}") ||
+                lowerMessage.Contains("phone") || lowerMessage.Contains("contact"))
+            {
+                return new List<string> { "Confirm Booking", "Cancel Booking", "Change Details" };
+            }
+            
+            // Default: show services if just started collecting
+            var services = domainConfigurations?.Select(d => d.Name).Distinct().ToList() ?? new List<string> { "Cardiology", "Dermatology" };
+            return services;
+        }
+        
+        if (currentState == ConversationState.ConfirmingBooking)
+        {
+            return new List<string> { "Confirm Booking", "Cancel Booking", "Change Details" };
+        }
+        
+        if (currentState == ConversationState.BookingComplete)
+        {
+            return new List<string> { "Book another appointment", "View my appointments", "Ask a question" };
+        }
+        
+        if (lowerMessage.Contains("available") || lowerMessage.Contains("availability"))
+        {
+            var availablePros = availableProfessionals?.Where(p => p.IsAvailable).ToList() ?? new List<ProfessionalInfo>();
+            if (availablePros.Any())
+            {
+                return availablePros.Take(3).Select(p => $"Book with Dr. {p.FirstName} {p.LastName}").ToList();
+            }
+        }
+        
+        return new List<string>();
+    }
+
+    private UserIntent DetectIntentFromMessage(string userMessage)
+    {
+        var lowerMessage = userMessage.ToLower();
+        
+        if (lowerMessage.Contains("book") || lowerMessage.Contains("appointment") || lowerMessage.Contains("schedule"))
+            return UserIntent.BookAppointment;
+        
+        if (lowerMessage.Contains("available") || lowerMessage.Contains("availability"))
+            return UserIntent.CheckAvailability;
+        
+        if (lowerMessage.Contains("cancel"))
+            return UserIntent.CancelAppointment;
+        
+        if (lowerMessage.Contains("reschedule"))
+            return UserIntent.RescheduleAppointment;
+        
+        return UserIntent.GeneralInquiry;
+    }
+
+    private ConversationState GetNextStateFromMessage(string userMessage, ConversationState currentState)
+    {
+        var lowerMessage = userMessage.ToLower();
+        
+        if (currentState == ConversationState.Greeting || currentState == ConversationState.Idle)
+        {
+            if (lowerMessage.Contains("book") || lowerMessage.Contains("appointment") || lowerMessage.Contains("schedule"))
+                return ConversationState.CollectingInfo;
+        }
+        
+        if (currentState == ConversationState.CollectingInfo)
+        {
+            // Check if phone number is provided - that's the last step before confirmation
+            if (System.Text.RegularExpressions.Regex.IsMatch(userMessage, @"\d{3}[-.\s]?\d{3}[-.\s]?\d{4}") ||
+                lowerMessage.Contains("phone") || lowerMessage.Contains("contact"))
+            {
+                return ConversationState.ConfirmingBooking;
+            }
+            
+            // Stay in collecting info state while gathering service, doctor, and time
+            return ConversationState.CollectingInfo;
+        }
+        
+        if (currentState == ConversationState.ConfirmingBooking)
+        {
+            if (lowerMessage.Contains("yes") || lowerMessage.Contains("confirm") || lowerMessage.Contains("proceed"))
+                return ConversationState.BookingComplete;
+        }
+        
+        return currentState;
+    }
+
+    private Dictionary<string, object> ExtractDataFromMessage(
+        string userMessage,
+        ConversationState currentState,
+        List<ProfessionalInfo>? availableProfessionals,
+        List<DomainConfigurationInfo>? domainConfigurations)
+    {
+        var extractedData = new Dictionary<string, object>();
+        var lowerMessage = userMessage.ToLower();
+
+        if (currentState == ConversationState.CollectingInfo)
+        {
+            // Extract service type
+            if (domainConfigurations != null)
+            {
+                foreach (var service in domainConfigurations)
+                {
+                    if (lowerMessage.Contains(service.Name.ToLower()) ||
+                        (service.Name == "Dermatology" && lowerMessage.Contains("derm")) ||
+                        (service.Name == "Cardiology" && lowerMessage.Contains("cardio")))
+                    {
+                        extractedData["serviceType"] = service.Name;
+                        extractedData["domainConfigurationId"] = service.Id;
+                        break;
+                    }
+                }
+            }
+
+            // Extract doctor ID
+            if (availableProfessionals != null)
+            {
+                foreach (var pro in availableProfessionals.Where(p => p.IsAvailable))
+                {
+                    if (lowerMessage.Contains(pro.FirstName?.ToLower() ?? "") ||
+                        lowerMessage.Contains(pro.LastName?.ToLower() ?? "") ||
+                        lowerMessage.Contains(pro.Id.ToString().ToLower()) ||
+                        (lowerMessage.Contains("dr.") && lowerMessage.Contains(pro.Specialization?.ToLower() ?? "")))
+                    {
+                        extractedData["professionalId"] = pro.Id;
+                        extractedData["professionalUserId"] = pro.UserId;
+                        break;
+                    }
+                }
+            }
+
+            // Extract date/time
+            if (lowerMessage.ContainsAny(new[] { "tomorrow", "today", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday" }) ||
+                lowerMessage.Contains(":") || lowerMessage.Contains("am") || lowerMessage.Contains("pm"))
+            {
+                var dateTime = ParseDateTimeFromMessage(userMessage);
+                if (dateTime.HasValue)
+                {
+                    extractedData["preferredDateTime"] = dateTime.Value;
+                }
+            }
+
+            // Extract phone number
+            var phoneMatch = Regex.Match(userMessage, @"\d{3}[-.\s]?\d{3}[-.\s]?\d{4}");
+            if (phoneMatch.Success)
+            {
+                extractedData["phone"] = phoneMatch.Value;
+            }
+        }
+
+        return extractedData;
+    }
+
+    private DateTime? ParseDateTimeFromMessage(string message)
+    {
+        var lowerMessage = message.ToLower();
+        var now = DateTime.Now;
+
+        // Handle "tomorrow"
+        if (lowerMessage.Contains("tomorrow"))
+        {
+            var date = now.AddDays(1).Date;
+            var time = ExtractTimeFromMessage(message);
+            if (time.HasValue)
+            {
+                return date.Add(time.Value);
+            }
+            return date.AddHours(10); // Default 10 AM
+        }
+
+        // Handle "today"
+        if (lowerMessage.Contains("today"))
+        {
+            var date = now.Date;
+            var time = ExtractTimeFromMessage(message);
+            if (time.HasValue)
+            {
+                return date.Add(time.Value);
+            }
+            return date.AddHours(14); // Default 2 PM
+        }
+
+        // Handle day names
+        var days = new[] { "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday" };
+        for (int i = 0; i < days.Length; i++)
+        {
+            if (lowerMessage.Contains(days[i]))
+            {
+                var targetDay = (DayOfWeek)i;
+                var daysUntil = ((int)targetDay - (int)now.DayOfWeek + 7) % 7;
+                if (daysUntil == 0) daysUntil = 7; // Next week, not today
+                var date = now.AddDays(daysUntil).Date;
+                var time = ExtractTimeFromMessage(message);
+                if (time.HasValue)
+                {
+                    return date.Add(time.Value);
+                }
+                return date.AddHours(9); // Default 9 AM
+            }
+        }
+
+        // Handle "next week"
+        if (lowerMessage.Contains("next week"))
+        {
+            var date = now.AddDays(7 - (int)now.DayOfWeek + (int)DayOfWeek.Monday).Date;
+            return date.AddHours(9); // Default 9 AM
+        }
+
+        return null;
+    }
+
+    private TimeSpan? ExtractTimeFromMessage(string message)
+    {
+        var lowerMessage = message.ToLower();
+
+        // Try to match time patterns like "10:00 AM", "2:00 PM", "10am", etc.
+        var timeMatch = Regex.Match(message, @"(\d{1,2}):(\d{2})\s*(am|pm)?", RegexOptions.IgnoreCase);
+        if (timeMatch.Success)
+        {
+            var hours = int.Parse(timeMatch.Groups[1].Value);
+            var minutes = int.Parse(timeMatch.Groups[2].Value);
+            var period = timeMatch.Groups[3].Value.ToLower();
+
+            if (period == "pm" && hours < 12)
+            {
+                hours += 12;
+            }
+            else if (period == "am" && hours == 12)
+            {
+                hours = 0;
+            }
+
+            return new TimeSpan(hours, minutes, 0);
+        }
+
+        return null;
     }
 
     // Internal classes for JSON deserialization

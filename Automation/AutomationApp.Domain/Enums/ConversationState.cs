@@ -8,10 +8,11 @@ public enum ConversationState
     SelectingService = 3,
     SelectingProfessional = 4,
     SelectingDateTime = 5,
-    ConfirmingBooking = 6,
-    BookingComplete = 7,
-    FAQ = 8,
-    Error = 9
+    SelectingTimeSlot = 6,
+    ConfirmingBooking = 7,
+    BookingComplete = 8,
+    FAQ = 9,
+    Error = 10
 }
 
 public enum UserIntent

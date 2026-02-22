@@ -4,6 +4,7 @@ using AutomationApp.Domain.Interfaces;
 using AutomationApp.Repository.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace AutomationApp.Service.Services;
@@ -16,6 +17,8 @@ public class BookingAutomationService : IBookingAutomationService
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
     private readonly IMemoryCache _memoryCache;
+    private readonly NotificationServiceClient _notificationServiceClient;
+    private readonly ILogger<BookingAutomationService> _logger;
 
     private const string AvailableProfessionalsCacheKey = "automation:available-professionals";
     private const string DomainConfigurationsCacheKey = "automation:domain-configurations";
@@ -26,7 +29,9 @@ public class BookingAutomationService : IBookingAutomationService
         IUnitOfWork unitOfWork,
         HttpClient httpClient,
         IConfiguration configuration,
-        IMemoryCache memoryCache)
+        IMemoryCache memoryCache,
+        NotificationServiceClient notificationServiceClient,
+        ILogger<BookingAutomationService> logger)
     {
         _draftRepository = draftRepository;
         _conversationRepository = conversationRepository;
@@ -34,6 +39,8 @@ public class BookingAutomationService : IBookingAutomationService
         _httpClient = httpClient;
         _configuration = configuration;
         _memoryCache = memoryCache;
+        _notificationServiceClient = notificationServiceClient;
+        _logger = logger;
     }
 
     public async Task<BookingDraft> CreateBookingDraftAsync(Guid conversationId, Guid userId)
@@ -96,11 +103,22 @@ public class BookingAutomationService : IBookingAutomationService
         draft.Status = BookingDraftStatus.Submitted;
 
         // Submit to Appointment Service
-        var orderId = await SubmitToAppointmentServiceAsync(draft);
-        if (orderId.HasValue)
+        var result = await SubmitToAppointmentServiceAsync(draft);
+        if (result.HasValue)
         {
-            draft.FinalOrderId = orderId.Value;
+            draft.FinalOrderId = result.Value.OrderId;
             draft.Status = BookingDraftStatus.Completed;
+
+            // Send notification to the doctor
+            if (result.Value.DoctorUserId.HasValue && result.Value.ClientName != null)
+            {
+                await _notificationServiceClient.SendBookingRequestNotificationAsync(
+                    result.Value.DoctorUserId.Value,
+                    result.Value.ClientName,
+                    draft.ServiceType ?? "Consultation",
+                    draft.PreferredDateTime ?? DateTime.UtcNow,
+                    result.Value.OrderId);
+            }
         }
 
         await _unitOfWork.SaveChangesAsync();
@@ -125,7 +143,7 @@ public class BookingAutomationService : IBookingAutomationService
                draft.ProfessionalId.HasValue;
     }
 
-    private async Task<Guid?> SubmitToAppointmentServiceAsync(BookingDraft draft)
+    private async Task<(Guid? OrderId, Guid? DoctorUserId, string? ClientName)? > SubmitToAppointmentServiceAsync(BookingDraft draft)
     {
         var appointmentServiceUrl = _configuration["AppointmentService:BaseUrl"] ?? "http://appointment-service:5001";
         var identityServiceUrl = _configuration["IdentityService:BaseUrl"] ?? "http://identity-service:5005";
@@ -136,6 +154,12 @@ public class BookingAutomationService : IBookingAutomationService
             var token = await GetAuthTokenAsync(identityServiceUrl);
             if (string.IsNullOrEmpty(token))
                 return null;
+
+            // Get client name from identity service
+            var clientName = await GetClientNameAsync(identityServiceUrl, token, draft.UserId);
+
+            // Get doctor's UserId from professional ID
+            var doctorUserId = await GetDoctorUserIdAsync(appointmentServiceUrl, token, draft.ProfessionalId ?? Guid.Empty);
 
             var orderPayload = new
             {
@@ -160,17 +184,17 @@ public class BookingAutomationService : IBookingAutomationService
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
                 var result = System.Text.Json.JsonSerializer.Deserialize<OrderResponse>(responseContent);
-                return result?.Id;
+                return (result?.Id, doctorUserId, clientName);
             }
             else
             {
                 var error = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Error submitting booking: {error}");
+                _logger.LogError($"Error submitting booking: {error}");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Exception submitting booking: {ex.Message}");
+            _logger.LogError($"Exception submitting booking: {ex.Message}");
         }
 
         return null;
@@ -350,6 +374,66 @@ public class BookingAutomationService : IBookingAutomationService
         }
 
         return new List<DomainConfigurationInfo>();
+    }
+
+    private async Task<string?> GetClientNameAsync(string identityServiceUrl, string token, Guid userId)
+    {
+        try
+        {
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
+            var response = await _httpClient.GetAsync($"{identityServiceUrl}/api/users/{userId}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var user = JsonSerializer.Deserialize<JsonElement>(responseContent);
+
+                if (user.TryGetProperty("firstName", out var firstName) && user.TryGetProperty("lastName", out var lastName))
+                {
+                    return $"{firstName.GetString()} {lastName.GetString()}";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error fetching client name: {ex.Message}");
+        }
+
+        return "Patient";
+    }
+
+    private async Task<Guid?> GetDoctorUserIdAsync(string appointmentServiceUrl, string token, Guid professionalId)
+    {
+        try
+        {
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
+            var response = await _httpClient.GetAsync($"{appointmentServiceUrl}/api/professionals/{professionalId}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var professional = JsonSerializer.Deserialize<JsonElement>(responseContent);
+
+                if (professional.TryGetProperty("userId", out var userIdProp))
+                {
+                    var userIdStr = userIdProp.GetString();
+                    if (Guid.TryParse(userIdStr, out var userId))
+                    {
+                        return userId;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error fetching doctor user ID: {ex.Message}");
+        }
+
+        return null;
     }
 
     private class OrderResponse

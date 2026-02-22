@@ -582,9 +582,15 @@ public static class AutomationEndpoints
         if (extractedData.TryGetValue("preferredDateTime", out var dateTime))
         {
             if (dateTime is DateTime dt)
-                preferredDateTime = dt;
+            {
+                // Convert to UTC if not already UTC
+                preferredDateTime = dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime();
+            }
             else if (dateTime is string dtStr && DateTime.TryParse(dtStr, out var parsedDt))
-                preferredDateTime = parsedDt;
+            {
+                // Convert to UTC if not already UTC
+                preferredDateTime = parsedDt.Kind == DateTimeKind.Utc ? parsedDt : parsedDt.ToUniversalTime();
+            }
         }
 
         if (extractedData.TryGetValue("notes", out var note))

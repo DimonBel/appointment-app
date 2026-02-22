@@ -59,6 +59,14 @@ builder.Services.AddHttpClient("AppointmentService", client =>
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
+// Register HttpClient for Notification Service
+builder.Services.AddHttpClient("NotificationService", client =>
+{
+    var notificationServiceUrl = builder.Configuration["NotificationService:BaseUrl"] ?? "http://notification-service:5003";
+    client.BaseAddress = new Uri(notificationServiceUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
 // Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured.");
@@ -114,15 +122,13 @@ builder.Services.AddHttpClient<ILLMService, OllamaLLMService>((serviceProvider, 
 {
     var configuration = serviceProvider.GetRequiredService<IConfiguration>();
     var ollamaBaseUrl = configuration["Ollama:BaseUrl"] ?? "http://localhost:11434";
-    var timeoutSeconds = int.TryParse(configuration["Ollama:RequestTimeoutSeconds"], out var timeout)
-        ? timeout
-        : 2;
 
     client.BaseAddress = new Uri(ollamaBaseUrl);
-    client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+    // Note: Timeout is configured in OllamaLLMService constructor to avoid conflicts
 });
 builder.Services.AddScoped<IBookingAutomationService, BookingAutomationService>();
 builder.Services.AddScoped<IDataCollectionService, DataCollectionService>();
+builder.Services.AddScoped<AutomationApp.Service.Services.NotificationServiceClient>();
 
 // Register Repository Layer
 builder.Services.AddScoped<IConversationRepository, AutomationApp.Postgres.Repositories.ConversationRepository>();
