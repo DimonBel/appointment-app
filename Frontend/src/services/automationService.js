@@ -12,13 +12,44 @@ export const automationService = {
     return response.data
   },
 
-  // Get active conversation for current user
-  async getActiveConversation() {
+  // Start a brand new conversation (ignores existing active)
+  async startNewConversation() {
     const response = await requestWithAuthRetry({
-      method: 'get',
-      url: `${AUTOMATION_BASE_URL}/conversations/active`
+      method: 'post',
+      url: `${AUTOMATION_BASE_URL}/conversations/new`
     })
     return response.data
+  },
+
+  // List all conversations for current user
+  async listConversations() {
+    try {
+      const response = await requestWithAuthRetry({
+        method: 'get',
+        url: `${AUTOMATION_BASE_URL}/conversations`
+      })
+      return response.data || []
+    } catch (error) {
+      return []
+    }
+  },
+
+  // Get active conversation for current user (returns null if no active conversation)
+  async getActiveConversation() {
+    try {
+      const response = await requestWithAuthRetry({
+        method: 'get',
+        url: `${AUTOMATION_BASE_URL}/conversations/active`
+      })
+      return response.data
+    } catch (error) {
+      // If 404, it means no active conversation - return null instead of throwing
+      if (error.response?.status === 404) {
+        return null
+      }
+      // Re-throw other errors
+      throw error
+    }
   },
 
   // Get conversation messages

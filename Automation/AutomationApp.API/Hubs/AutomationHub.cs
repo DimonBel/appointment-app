@@ -44,6 +44,12 @@ public class AutomationHub : Hub
         await Clients.Group($"conversation-{conversationId}").SendAsync("ConversationStateChanged", state);
     }
 
+    // Send streaming response chunk
+    public async Task SendStreamChunk(Guid conversationId, string chunk, bool isComplete = false)
+    {
+        await Clients.Group($"conversation-{conversationId}").SendAsync("ReceiveStreamChunk", new { chunk, isComplete });
+    }
+
     public override async Task OnConnectedAsync()
     {
         _logger.LogInformation($"Client connected: {Context.ConnectionId}");

@@ -35,6 +35,11 @@ public static class AutomationEndpoints
             .WithOpenApi()
             .WithSummary("Get active conversation for current user");
 
+        group.MapGet("/conversations", ListConversationsAsync)
+            .WithName("ListConversations")
+            .WithOpenApi()
+            .WithSummary("List all conversations for current user");
+
         group.MapGet("/conversations/{id}/messages", GetConversationMessagesAsync)
             .WithName("GetConversationMessages")
             .WithOpenApi()
@@ -151,6 +156,28 @@ public static class AutomationEndpoints
         return Results.Ok(dto);
     }
 
+    private static async Task<IResult> ListConversationsAsync(
+        HttpContext httpContext,
+        IConversationService conversationService)
+    {
+        var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userGuid))
+        {
+            return Results.Unauthorized();
+        }
+
+        // Get all conversations for user (need to implement this in service)
+        // For now, return just the active one
+        var conversations = new List<object>();
+        var activeConversation = await conversationService.GetActiveConversationByUserIdAsync(userGuid);
+        if (activeConversation != null)
+        {
+            conversations.Add(MapToConversationDTO(activeConversation));
+        }
+
+        return Results.Ok(conversations);
+    }
+
     private static async Task<IResult> GetConversationMessagesAsync(
         Guid id,
         IConversationService conversationService,
@@ -262,17 +289,40 @@ public static class AutomationEndpoints
             }
         }
 
-        // Add AI response message
+        // Send typing indicator off via SignalR
+        await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("TypingIndicator", false);
+
+        // Stream the AI response chunk by chunk for real-time feel
+        var fullResponse = llmResponse.ResponseText;
+        var chunkSize = 20; // Larger chunks for faster streaming
+        
+        for (int i = 0; i < fullResponse.Length; i += chunkSize)
+        {
+            var chunk = fullResponse.Substring(i, Math.Min(chunkSize, fullResponse.Length - i));
+            var isComplete = (i + chunkSize) >= fullResponse.Length;
+            
+            await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ReceiveStreamChunk", new 
+            { 
+                chunk, 
+                isComplete,
+                conversationId = conversation.Id
+            });
+            
+            // Very small delay between chunks for faster but still natural effect
+            if (!isComplete)
+            {
+                await Task.Delay(10);
+            }
+        }
+
+        // Add AI response message after streaming is complete
         var aiMessage = await conversationService.AddMessageAsync(
             conversation.Id,
             llmResponse.ResponseText,
             false,
             llmResponse.SuggestedOptions);
 
-        // Send typing indicator off via SignalR
-        await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("TypingIndicator", false);
-
-        // Broadcast AI response via SignalR
+        // Broadcast complete AI response via SignalR with options
         await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ReceiveMessage", new
         {
             message = new

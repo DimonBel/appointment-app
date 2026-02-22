@@ -2,6 +2,7 @@ import axios from 'axios'
 import { requestWithAuthRetry } from './httpClient'
 
 const API_URL = import.meta.env.VITE_APPOINTMENT_API_URL || '/api/appointment'
+const PROFESSIONALS_API_URL = '/api/professionals'
 
 class AppointmentService {
   async getOrders(token, status = null) {
@@ -67,7 +68,7 @@ class AppointmentService {
       const response = await requestWithAuthRetry(
         {
           method: 'get',
-          url: `${API_URL}/professionals/user/${userId}`,
+          url: `${PROFESSIONALS_API_URL}/user/${userId}`,
         },
         token
       )
@@ -84,7 +85,7 @@ class AppointmentService {
     const response = await requestWithAuthRetry(
       {
         method: 'post',
-        url: `${API_URL}/professionals`,
+        url: `${PROFESSIONALS_API_URL}`,
         data: professionalData,
       },
       token
@@ -177,7 +178,7 @@ class AppointmentService {
     const response = await requestWithAuthRetry(
       {
         method: 'get',
-        url: `${API_URL}/professionals`,
+        url: `${PROFESSIONALS_API_URL}`,
       },
       token
     )

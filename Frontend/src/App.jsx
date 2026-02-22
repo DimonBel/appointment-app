@@ -17,6 +17,7 @@ import { Notifications } from './pages/notifications/Notifications'
 import { AdminPanel } from './pages/admin/AdminPanel'
 import { ManagementPanel } from './pages/management/ManagementPanel'
 import { DocumentPreview } from './pages/management/DocumentPreview'
+import { AIAssistant } from './pages/AIAssistant'
 import { useNotificationHub } from './hooks/useNotificationHub'
 import './App.css'
 
@@ -73,6 +74,7 @@ function App() {
                 <Route path="/management" element={<ManagementPanel />} />
                 <Route path="/document-preview" element={<DocumentPreview />} />
                 <Route path="/notifications" element={<Notifications />} />
+                <Route path="/ai-assistant" element={<AIAssistant />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/admin" element={<AdminPanel />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

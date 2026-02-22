@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Send, Bot, User, Loader2, Sparkles, Calendar, Clock, CheckCircle, X, House } from 'lucide-react'
+import { Send, Bot, User, Loader2, Sparkles, Calendar, Clock, CheckCircle, X, House, Plus, MessageSquare, MoreVertical, Trash2, Edit3 } from 'lucide-react'
 import { automationService } from '../services/automationService'
 import { useSelector } from 'react-redux'
 
@@ -7,11 +7,17 @@ export const AIAssistant = () => {
   const [messages, setMessages] = useState([])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isStreaming, setIsStreaming] = useState(false)
   const [conversationId, setConversationId] = useState(null)
+  const [conversations, setConversations] = useState([])
   const [suggestedOptions, setSuggestedOptions] = useState([])
   const [isBookingComplete, setIsBookingComplete] = useState(false)
   const [error, setError] = useState(null)
+  const [streamingContent, setStreamingContent] = useState('')
+  const [showNewChatButton, setShowNewChatButton] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const messagesEndRef = useRef(null)
+  const connectionRef = useRef(null)
   const token = useSelector((state) => state.auth.token)
   const user = useSelector((state) => state.auth.user)
 
@@ -19,16 +25,75 @@ export const AIAssistant = () => {
   useEffect(() => {
     if (token) {
       initializeConversation()
+      loadConversations()
     }
   }, [token])
+
+  const loadConversations = async () => {
+    try {
+      const convs = await automationService.listConversations()
+      setConversations(convs)
+    } catch (error) {
+      console.error('Failed to load conversations:', error)
+    }
+  }
 
   // Scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, streamingContent])
+
+  // Setup SignalR connection for streaming
+  useEffect(() => {
+    if (token && conversationId) {
+      setupSignalRConnection()
+    }
+    return () => {
+      if (connectionRef.current) {
+        connectionRef.current.stop()
+      }
+    }
+  }, [token, conversationId])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const setupSignalRConnection = async () => {
+    try {
+      const { HubConnectionBuilder } = await import('@microsoft/signalr')
+      const baseUrl = window.location.origin
+      const connection = new HubConnectionBuilder()
+        .withUrl(`${baseUrl}/automationhub`, {
+          accessTokenFactory: () => token
+        })
+        .withAutomaticReconnect()
+        .build()
+
+      connection.on('ReceiveStreamChunk', (data) => {
+        // Clear the "..." placeholder on first real chunk
+        setStreamingContent(prev => prev === '...' ? data.chunk : prev + data.chunk)
+        if (data.isComplete) {
+          setIsStreaming(false)
+          setShowNewChatButton(true)
+        }
+      })
+
+      connection.on('ReceiveMessage', (data) => {
+        setStreamingContent('')
+        setShowNewChatButton(true)
+      })
+
+      connection.on('TypingIndicator', (isTyping) => {
+        setIsLoading(isTyping)
+      })
+
+      await connection.start()
+      await connection.invoke('JoinConversation', conversationId)
+      connectionRef.current = connection
+    } catch (err) {
+      console.error('SignalR connection error:', err)
+    }
   }
 
   const initializeConversation = async () => {
@@ -79,18 +144,27 @@ export const AIAssistant = () => {
   }
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isLoading) return
+    if (!inputMessage.trim() || isLoading || isStreaming) return
 
     const userMessage = inputMessage.trim()
     setInputMessage('')
     setSuggestedOptions([])
     setError(null)
+    setStreamingContent('')
+    setShowNewChatButton(false)
 
     // Add user message immediately
     addMessage(userMessage, true)
 
+    // Start streaming immediately (even before LLM responds)
     setIsLoading(true)
+    setIsStreaming(true)
+    
+    // Show typing indicator immediately
+    setStreamingContent('...')
+
     try {
+      // The streaming will be handled by SignalR
       const response = await automationService.sendMessage(userMessage, conversationId)
       
       // Update conversation ID if new
@@ -98,14 +172,15 @@ export const AIAssistant = () => {
         setConversationId(response.conversationId)
       }
 
-      // Add AI response
-      addMessage(response.responseText, false, response.suggestedOptions)
+      // Once streaming is complete, add the final message
       setSuggestedOptions(response.suggestedOptions || [])
       setIsBookingComplete(response.isBookingComplete || false)
     } catch (error) {
       console.error('Failed to send message:', error)
       setError('Failed to send message. Please try again.')
+      setStreamingContent('')
       addMessage("Sorry, I'm having trouble connecting. Please try again.", false)
+      setIsStreaming(false)
     } finally {
       setIsLoading(false)
     }
@@ -124,13 +199,60 @@ export const AIAssistant = () => {
     }
   }
 
+  const handleNewChat = async () => {
+    try {
+      // Clear UI immediately for instant feedback
+      setStreamingContent('')
+      setShowNewChatButton(false)
+      setConversationId(null)
+      setMessages([])
+      setSuggestedOptions([])
+      setIsBookingComplete(false)
+      setError(null)
+      
+      // Add greeting immediately
+      addMessage("Hello! I'm your AI booking assistant. How can I help you today? You can tell me you want to book an appointment, check availability, or ask any questions.", false, [
+        "Book a new appointment",
+        "Check availability",
+        "View my appointments",
+        "Ask a question"
+      ])
+      
+      // Create conversation in background
+      const newConversation = await automationService.startNewConversation()
+      setConversationId(newConversation.id)
+      await loadConversations()
+    } catch (error) {
+      console.error('Failed to create new conversation:', error)
+      setError('Unable to start a new conversation. Please try again.')
+    }
+  }
+
+  const handleSelectConversation = async (convId) => {
+    try {
+      setStreamingContent('')
+      setShowNewChatButton(false)
+      setConversationId(convId)
+      const existingMessages = await automationService.getConversationMessages(convId)
+      setMessages(existingMessages.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        isFromUser: msg.isFromUser,
+        suggestedOptions: msg.suggestedOptions,
+        selectedOption: msg.selectedOption,
+        timestamp: new Date(msg.sentAt)
+      })))
+      setSuggestedOptions([])
+      setIsBookingComplete(false)
+      setError(null)
+    } catch (error) {
+      console.error('Failed to load conversation:', error)
+      setError('Unable to load conversation. Please try again.')
+    }
+  }
+
   const handleNewBooking = () => {
-    setConversationId(null)
-    setMessages([])
-    setSuggestedOptions([])
-    setIsBookingComplete(false)
-    setError(null)
-    initializeConversation()
+    handleNewChat()
   }
 
   const getAvatarUrl = () => user?.avatarUrl || null
@@ -143,13 +265,77 @@ export const AIAssistant = () => {
 
   return (
     <div className="fixed inset-0 mt-16 flex bg-background-app">
-      {/* Main Chat Area - Full Width */}
+      {/* Sidebar - ChatGPT Style */}
+      <div className={`${sidebarOpen ? 'w-72' : 'w-0'} bg-gray-900 text-white flex flex-col transition-all duration-300 overflow-hidden`}>
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-gray-700">
+          <button
+            onClick={handleNewChat}
+            className="w-full flex items-center gap-3 px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors text-left"
+          >
+            <Plus size={20} />
+            <span className="font-medium">New chat</span>
+          </button>
+        </div>
+
+        {/* Conversations List */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {conversations.map((conv) => (
+            <button
+              key={conv.id}
+              onClick={() => handleSelectConversation(conv.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left group ${
+                conversationId === conv.id ? 'bg-gray-700' : 'hover:bg-gray-800'
+              }`}
+            >
+              <MessageSquare size={18} className="text-gray-400" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm truncate">{conv.title || 'New conversation'}</p>
+                <p className="text-xs text-gray-500">
+                  {new Date(conv.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-600 rounded transition-opacity"
+              >
+                <MoreVertical size={16} />
+              </button>
+            </button>
+          ))}
+        </div>
+
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-gray-700">
+          <div className="flex items-center gap-3 px-3 py-2">
+            <div className="w-8 h-8 rounded-full bg-primary-accent flex items-center justify-center">
+              {getAvatarUrl() ? (
+                <img src={getAvatarUrl()} alt={getDisplayName()} className="w-full h-full rounded-full object-cover" />
+              ) : (
+                <User size={16} className="text-white" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{getDisplayName()}</p>
+              <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Chat Area */}
       <div className="flex-1 flex flex-col bg-white">
         {/* Header */}
         <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-primary-light/10 to-primary-accent/10">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-primary-accent flex items-center justify-center">
-              <Bot size={24} className="text-white" />
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors lg:hidden"
+            >
+              <MessageSquare size={20} className="text-primary-accent" />
+            </button>
+            <div className="w-10 h-10 rounded-full bg-primary-accent flex items-center justify-center">
+              <Bot size={20} className="text-white" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900">AI Booking Assistant</h2>
@@ -157,15 +343,6 @@ export const AIAssistant = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {isBookingComplete && (
-              <button
-                onClick={handleNewBooking}
-                className="flex items-center gap-2 px-4 py-2 bg-primary-accent text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium"
-              >
-                <Calendar size={16} />
-                New Booking
-              </button>
-            )}
             <button
               onClick={() => window.history.back()}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -236,6 +413,20 @@ export const AIAssistant = () => {
                   <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
                 </div>
                 
+                {message.suggestedOptions && message.suggestedOptions.length > 0 && !message.isFromUser && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {message.suggestedOptions.map((option, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleSelectOption(option)}
+                        className="px-3 py-1.5 bg-white border border-primary-accent/30 text-primary-dark rounded-lg text-sm font-medium hover:bg-primary-light/10 hover:border-primary-accent transition-all shadow-sm"
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
                 {message.selectedOption && (
                   <div className="text-xs text-gray-500 mt-1 italic ml-2">
                     Selected: {message.selectedOption}
@@ -259,6 +450,29 @@ export const AIAssistant = () => {
               )}
             </div>
           ))}
+
+          {/* Streaming response */}
+          {isStreaming && streamingContent && (
+            <div className="flex gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary-accent flex items-center justify-center flex-shrink-0">
+                <Bot size={20} className="text-white" />
+              </div>
+              <div className="flex flex-col items-start max-w-[70%] lg:max-w-[50%]">
+                <h4 className="text-xs font-medium text-gray-700 mb-1">AI Assistant</h4>
+                <div className="px-4 py-3 rounded-2xl bg-gray-100 text-gray-900">
+                  {streamingContent === '...' ? (
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                      <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                      <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                    </div>
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{streamingContent}<span className="inline-block w-2 h-4 bg-primary-accent ml-1 animate-pulse"></span></p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {isLoading && (
             <div className="flex gap-3">

@@ -27,9 +27,27 @@ public class ProfessionalService : IProfessionalService
         }
 
         var existingUser = await _userManager.FindByIdAsync(userId.ToString());
+        
+        // If user doesn't exist in Appointment service, create a basic user entry
+        // This happens when the user was created in Identity service but not synced
         if (existingUser == null)
         {
-            throw new InvalidOperationException($"User with ID {userId} not found. Please ensure the user exists in the Identity service before creating a professional profile.");
+            // Create a minimal user entry with just the ID
+            // The full user data should be synced separately or fetched from Identity service
+            existingUser = new AppIdentityUser
+            {
+                Id = userId,
+                UserName = $"user_{userId.ToString().Substring(0, 8)}",
+                Email = $"user_{userId.ToString().Substring(0, 8)}@placeholder.local",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            
+            var createResult = await _userManager.CreateAsync(existingUser, "TempPassword123!");
+            if (!createResult.Succeeded)
+            {
+                throw new InvalidOperationException($"Failed to create user in Appointment service: {string.Join(", ", createResult.Errors.Select(e => e.Description))}");
+            }
         }
 
         var professional = new Professional

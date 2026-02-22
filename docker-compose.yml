@@ -383,7 +383,7 @@ services:
       - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
       - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
       - Ollama__BaseUrl=http://ollama:11434
-      - Ollama__ModelName=llama-3.1-8b
+      - Ollama__ModelName=tinyllama
     ports:
       - "5006:5006"
     depends_on:

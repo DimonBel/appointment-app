@@ -19,6 +19,9 @@ public class OllamaLLMService : ILLMService
         _baseUrl = configuration["Ollama:BaseUrl"] ?? "http://localhost:11434";
         _modelName = configuration["Ollama:ModelName"] ?? "tinyllama";
         _httpClient.BaseAddress = new Uri(_baseUrl);
+        
+        // Increase timeout to 300 seconds for better reliability
+        _httpClient.Timeout = TimeSpan.FromSeconds(300);
     }
 
     public async Task<LLMResponse> ProcessUserMessageAsync(Guid conversationId, string userMessage, ConversationState currentState, Dictionary<string, object>? context = null, List<AutomationApp.Domain.Entity.ProfessionalInfo>? availableProfessionals = null, List<DomainConfigurationInfo>? domainConfigurations = null)
@@ -37,9 +40,12 @@ public class OllamaLLMService : ILLMService
             stream = false,
             options = new
             {
-                temperature = 1.0,
-                num_predict = 1024,
-                top_p = 1.0
+                temperature = 0.5,
+                num_predict = 256,
+                top_p = 0.8,
+                top_k = 30,
+                num_ctx = 2048,
+                num_thread = 4
             },
             format = "json"
         };
@@ -81,14 +87,16 @@ public class OllamaLLMService : ILLMService
             model = _modelName,
             messages = new[]
             {
-                new { role = "system", content = "You are a helpful appointment booking assistant. Greet the user warmly and ask how you can help them today." },
+                new { role = "system", content = "You are a helpful appointment booking assistant. Greet the user warmly and ask how you can help them today. Keep it brief and friendly." },
                 new { role = "user", content = "Generate a greeting message." }
             },
             stream = false,
             options = new
             {
-                temperature = 0.8,
-                num_predict = 200
+                temperature = 0.7,
+                num_predict = 150,
+                num_ctx = 2048,
+                num_thread = 2
             }
         };
 
@@ -120,14 +128,16 @@ public class OllamaLLMService : ILLMService
             model = _modelName,
             messages = new[]
             {
-                new { role = "system", content = "Generate 4-5 quick action options for booking an appointment. Return only a JSON array of strings." },
+                new { role = "system", content = "Generate 4-5 quick action options for booking an appointment. Return only a JSON array of strings. Keep it simple and clear." },
                 new { role = "user", content = "Generate booking options." }
             },
             stream = false,
             options = new
             {
                 temperature = 0.7,
-                num_predict = 150
+                num_predict = 150,
+                num_ctx = 2048,
+                num_thread = 2
             },
             format = "json"
         };
