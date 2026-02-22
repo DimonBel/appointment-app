@@ -2,6 +2,7 @@ using AutomationApp.Domain.Entity;
 using AutomationApp.Domain.Enums;
 using AutomationApp.Domain.Interfaces;
 using AutomationApp.Repository.Interfaces;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 
@@ -14,19 +15,25 @@ public class BookingAutomationService : IBookingAutomationService
     private readonly IUnitOfWork _unitOfWork;
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
+    private readonly IMemoryCache _memoryCache;
+
+    private const string AvailableProfessionalsCacheKey = "automation:available-professionals";
+    private const string DomainConfigurationsCacheKey = "automation:domain-configurations";
 
     public BookingAutomationService(
         IBookingDraftRepository draftRepository,
         IConversationRepository conversationRepository,
         IUnitOfWork unitOfWork,
         HttpClient httpClient,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IMemoryCache memoryCache)
     {
         _draftRepository = draftRepository;
         _conversationRepository = conversationRepository;
         _unitOfWork = unitOfWork;
         _httpClient = httpClient;
         _configuration = configuration;
+        _memoryCache = memoryCache;
     }
 
     public async Task<BookingDraft> CreateBookingDraftAsync(Guid conversationId, Guid userId)
@@ -178,6 +185,11 @@ public class BookingAutomationService : IBookingAutomationService
 
     public async Task<List<ProfessionalInfo>> GetAvailableProfessionalsAsync()
     {
+        if (_memoryCache.TryGetValue<List<ProfessionalInfo>>(AvailableProfessionalsCacheKey, out var cachedProfessionals) && cachedProfessionals != null)
+        {
+            return cachedProfessionals;
+        }
+
         var appointmentServiceUrl = _configuration["AppointmentService:BaseUrl"] ?? "http://appointment-service:5001";
         var identityServiceUrl = _configuration["IdentityService:BaseUrl"] ?? "http://identity-service:5005";
 
@@ -254,6 +266,7 @@ public class BookingAutomationService : IBookingAutomationService
                             Email = GetNestedProperty(prof, "user", "email")
                         });
                     }
+                    _memoryCache.Set(AvailableProfessionalsCacheKey, result, TimeSpan.FromSeconds(45));
                     return result;
                 }
             }
@@ -268,6 +281,11 @@ public class BookingAutomationService : IBookingAutomationService
 
     public async Task<List<DomainConfigurationInfo>> GetDomainConfigurationsAsync()
     {
+        if (_memoryCache.TryGetValue<List<DomainConfigurationInfo>>(DomainConfigurationsCacheKey, out var cachedConfigs) && cachedConfigs != null)
+        {
+            return cachedConfigs;
+        }
+
         var appointmentServiceUrl = _configuration["AppointmentService:BaseUrl"] ?? "http://appointment-service:5001";
         var identityServiceUrl = _configuration["IdentityService:BaseUrl"] ?? "http://identity-service:5005";
 
@@ -321,6 +339,7 @@ public class BookingAutomationService : IBookingAutomationService
                             RequiredFields = null // Could parse this if needed
                         });
                     }
+                    _memoryCache.Set(DomainConfigurationsCacheKey, result, TimeSpan.FromSeconds(90));
                     return result;
                 }
             }

@@ -382,8 +382,12 @@ services:
       - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
       - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
       - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
-      - Ollama__BaseUrl=http://ollama:11434
-      - Ollama__ModelName=tinyllama
+      - Ollama__BaseUrl=${OLLAMA_BASE_URL:-http://ollama:11434}
+      - Ollama__ModelName=${OLLAMA_MODEL_NAME:-tinyllama}
+      - Ollama__RequestTimeoutSeconds=${OLLAMA_REQUEST_TIMEOUT_SECONDS:-90}
+      - Ollama__NumPredict=${OLLAMA_NUM_PREDICT:-128}
+      - Ollama__NumCtx=${OLLAMA_NUM_CTX:-1536}
+      - Ollama__NumThread=${OLLAMA_NUM_THREAD:-4}
     ports:
       - "5006:5006"
     depends_on:

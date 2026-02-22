@@ -16,7 +16,14 @@ public interface IConversationService
 
 public interface ILLMService
 {
-    Task<LLMResponse> ProcessUserMessageAsync(Guid conversationId, string userMessage, ConversationState currentState, Dictionary<string, object>? context = null, List<ProfessionalInfo>? availableProfessionals = null, List<DomainConfigurationInfo>? domainConfigurations = null);
+    Task<LLMResponse> ProcessUserMessageAsync(
+        Guid conversationId,
+        string userMessage,
+        ConversationState currentState,
+        Dictionary<string, object>? context = null,
+        List<ProfessionalInfo>? availableProfessionals = null,
+        List<DomainConfigurationInfo>? domainConfigurations = null,
+        Func<string, Task>? onPartialResponse = null);
     Task<string> GenerateGreetingAsync(Guid userId);
     Task<List<string>> GenerateBookingOptionsAsync();
 }

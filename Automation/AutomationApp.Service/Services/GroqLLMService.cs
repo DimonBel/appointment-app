@@ -18,7 +18,14 @@ public class GroqLLMService : ILLMService
         _apiKey = configuration["Groq:ApiKey"] ?? throw new InvalidOperationException("Groq API Key is not configured");
     }
 
-    public async Task<LLMResponse> ProcessUserMessageAsync(Guid conversationId, string userMessage, ConversationState currentState, Dictionary<string, object>? context = null, List<AutomationApp.Domain.Entity.ProfessionalInfo>? availableProfessionals = null, List<DomainConfigurationInfo>? domainConfigurations = null)
+    public async Task<LLMResponse> ProcessUserMessageAsync(
+        Guid conversationId,
+        string userMessage,
+        ConversationState currentState,
+        Dictionary<string, object>? context = null,
+        List<AutomationApp.Domain.Entity.ProfessionalInfo>? availableProfessionals = null,
+        List<DomainConfigurationInfo>? domainConfigurations = null,
+        Func<string, Task>? onPartialResponse = null)
     {
         var systemPrompt = BuildSystemPrompt(currentState, context, availableProfessionals, domainConfigurations);
         var contextInfo = BuildContextInfo(context, currentState);

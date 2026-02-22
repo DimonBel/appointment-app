@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace AutomationApp.API.Endpoints;
@@ -254,14 +255,31 @@ public static class AutomationEndpoints
         // Fetch domain configurations (service types)
         var domainConfigurations = await bookingService.GetDomainConfigurationsAsync();
 
-        // Process with LLM
+        var streamedResponseBuilder = new StringBuilder();
+
+        // Process with LLM and stream chunks in real-time
         var llmResponse = await llmService.ProcessUserMessageAsync(
             conversation.Id,
             request.Message,
             conversation.State,
             conversation.ContextData,
             availableProfessionals,
-            domainConfigurations);
+            domainConfigurations,
+            async chunk =>
+            {
+                if (string.IsNullOrEmpty(chunk))
+                {
+                    return;
+                }
+
+                streamedResponseBuilder.Append(chunk);
+                await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ReceiveStreamChunk", new
+                {
+                    chunk,
+                    isComplete = false,
+                    conversationId = conversation.Id
+                });
+            });
 
         // Update conversation state
         if (llmResponse.SuggestedNextState.HasValue)
@@ -289,36 +307,26 @@ public static class AutomationEndpoints
             }
         }
 
+        var finalResponseText = streamedResponseBuilder.ToString();
+        if (string.IsNullOrWhiteSpace(finalResponseText))
+        {
+            finalResponseText = llmResponse.ResponseText;
+        }
+
+        await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ReceiveStreamChunk", new
+        {
+            chunk = string.Empty,
+            isComplete = true,
+            conversationId = conversation.Id
+        });
+
         // Send typing indicator off via SignalR
         await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("TypingIndicator", false);
-
-        // Stream the AI response chunk by chunk for real-time feel
-        var fullResponse = llmResponse.ResponseText;
-        var chunkSize = 20; // Larger chunks for faster streaming
-        
-        for (int i = 0; i < fullResponse.Length; i += chunkSize)
-        {
-            var chunk = fullResponse.Substring(i, Math.Min(chunkSize, fullResponse.Length - i));
-            var isComplete = (i + chunkSize) >= fullResponse.Length;
-            
-            await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ReceiveStreamChunk", new 
-            { 
-                chunk, 
-                isComplete,
-                conversationId = conversation.Id
-            });
-            
-            // Very small delay between chunks for faster but still natural effect
-            if (!isComplete)
-            {
-                await Task.Delay(10);
-            }
-        }
 
         // Add AI response message after streaming is complete
         var aiMessage = await conversationService.AddMessageAsync(
             conversation.Id,
-            llmResponse.ResponseText,
+            finalResponseText,
             false,
             llmResponse.SuggestedOptions);
 
@@ -329,7 +337,7 @@ public static class AutomationEndpoints
             {
                 id = aiMessage.Id,
                 conversationId = conversation.Id,
-                content = llmResponse.ResponseText,
+                content = finalResponseText,
                 isFromUser = false,
                 sentAt = aiMessage.SentAt,
                 suggestedOptions = llmResponse.SuggestedOptions
@@ -358,7 +366,7 @@ public static class AutomationEndpoints
         {
             ConversationId = conversation.Id,
             MessageId = aiMessage.Id,
-            ResponseText = llmResponse.ResponseText,
+            ResponseText = finalResponseText,
             SuggestedOptions = llmResponse.SuggestedOptions,
             CurrentState = llmResponse.SuggestedNextState?.ToString() ?? conversation.State.ToString(),
             IsBookingComplete = isBookingComplete,

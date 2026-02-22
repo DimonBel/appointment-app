@@ -75,12 +75,26 @@ export const AIAssistant = () => {
         setStreamingContent(prev => prev === '...' ? data.chunk : prev + data.chunk)
         if (data.isComplete) {
           setIsStreaming(false)
+          setIsLoading(false)
           setShowNewChatButton(true)
         }
       })
 
       connection.on('ReceiveMessage', (data) => {
+        if (data?.message) {
+          setMessages(prev => [...prev, {
+            id: data.message.id || Date.now(),
+            content: data.message.content || '',
+            isFromUser: false,
+            suggestedOptions: data.message.suggestedOptions || [],
+            selectedOption: null,
+            timestamp: data.message.sentAt ? new Date(data.message.sentAt) : new Date()
+          }])
+          setSuggestedOptions(data.message.suggestedOptions || [])
+        }
         setStreamingContent('')
+        setIsStreaming(false)
+        setIsLoading(false)
         setShowNewChatButton(true)
       })
 

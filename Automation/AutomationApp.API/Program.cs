@@ -110,7 +110,17 @@ builder.Services.AddSignalR();
 
 // Register Service Layer
 builder.Services.AddScoped<IConversationService, ConversationService>();
-builder.Services.AddScoped<ILLMService, OllamaLLMService>();
+builder.Services.AddHttpClient<ILLMService, OllamaLLMService>((serviceProvider, client) =>
+{
+    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    var ollamaBaseUrl = configuration["Ollama:BaseUrl"] ?? "http://localhost:11434";
+    var timeoutSeconds = int.TryParse(configuration["Ollama:RequestTimeoutSeconds"], out var timeout)
+        ? timeout
+        : 90;
+
+    client.BaseAddress = new Uri(ollamaBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+});
 builder.Services.AddScoped<IBookingAutomationService, BookingAutomationService>();
 builder.Services.AddScoped<IDataCollectionService, DataCollectionService>();
 

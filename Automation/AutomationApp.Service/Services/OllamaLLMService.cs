@@ -12,22 +12,40 @@ public class OllamaLLMService : ILLMService
     private readonly HttpClient _httpClient;
     private readonly string _baseUrl;
     private readonly string _modelName;
+    private readonly int _numPredict;
+    private readonly int _numCtx;
+    private readonly int _numThread;
 
     public OllamaLLMService(HttpClient httpClient, IConfiguration configuration)
     {
         _httpClient = httpClient;
         _baseUrl = configuration["Ollama:BaseUrl"] ?? "http://localhost:11434";
         _modelName = configuration["Ollama:ModelName"] ?? "tinyllama";
+        _numPredict = int.TryParse(configuration["Ollama:NumPredict"], out var numPredict) ? numPredict : 128;
+        _numCtx = int.TryParse(configuration["Ollama:NumCtx"], out var numCtx) ? numCtx : 1536;
+        _numThread = int.TryParse(configuration["Ollama:NumThread"], out var numThread)
+            ? numThread
+            : Math.Max(2, Environment.ProcessorCount / 2);
         _httpClient.BaseAddress = new Uri(_baseUrl);
-        
-        // Increase timeout to 300 seconds for better reliability
-        _httpClient.Timeout = TimeSpan.FromSeconds(300);
+
+        var timeoutSeconds = int.TryParse(configuration["Ollama:RequestTimeoutSeconds"], out var timeout)
+            ? timeout
+            : 90;
+        _httpClient.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
     }
 
-    public async Task<LLMResponse> ProcessUserMessageAsync(Guid conversationId, string userMessage, ConversationState currentState, Dictionary<string, object>? context = null, List<AutomationApp.Domain.Entity.ProfessionalInfo>? availableProfessionals = null, List<DomainConfigurationInfo>? domainConfigurations = null)
+    public async Task<LLMResponse> ProcessUserMessageAsync(
+        Guid conversationId,
+        string userMessage,
+        ConversationState currentState,
+        Dictionary<string, object>? context = null,
+        List<AutomationApp.Domain.Entity.ProfessionalInfo>? availableProfessionals = null,
+        List<DomainConfigurationInfo>? domainConfigurations = null,
+        Func<string, Task>? onPartialResponse = null)
     {
         var systemPrompt = BuildSystemPrompt(currentState, context, availableProfessionals, domainConfigurations);
         var contextInfo = BuildContextInfo(context, currentState);
+        var shouldStream = onPartialResponse != null;
 
         var requestPayload = new
         {
@@ -37,41 +55,82 @@ public class OllamaLLMService : ILLMService
                 new { role = "system", content = systemPrompt },
                 new { role = "user", content = $"Context: {contextInfo}\n\nUser Message: {userMessage}" }
             },
-            stream = false,
+            stream = shouldStream,
             options = new
             {
-                temperature = 0.5,
-                num_predict = 256,
+                temperature = 0.2,
+                num_predict = _numPredict,
                 top_p = 0.8,
                 top_k = 30,
-                num_ctx = 2048,
-                num_thread = 4
+                num_ctx = _numCtx,
+                num_thread = _numThread
             },
+            keep_alive = "30m",
             format = "json"
         };
 
         var requestJson = JsonConvert.SerializeObject(requestPayload);
-        var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat")
+        {
+            Content = new StringContent(requestJson, Encoding.UTF8, "application/json")
+        };
 
         try
         {
-            var response = await _httpClient.PostAsync("/api/chat", content);
+            var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
 
-            var responseContent = await response.Content.ReadAsStringAsync();
-            var ollamaResponse = JsonConvert.DeserializeObject<OllamaResponse>(responseContent);
+            if (!shouldStream)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var ollamaResponse = JsonConvert.DeserializeObject<OllamaResponse>(responseContent);
 
-            if (ollamaResponse?.Message?.Content == null)
+                if (ollamaResponse?.Message?.Content == null)
+                    return CreateFallbackResponse();
+
+                var aiContent = ollamaResponse.Message.Content;
+                Console.WriteLine($"[DEBUG] AI Response Content: {aiContent}");
+
+                var parsedResponse = ParseAIResponse(aiContent);
+
+                Console.WriteLine($"[DEBUG] Parsed Response - Text: {parsedResponse.ResponseText}, Options: [{string.Join(", ", parsedResponse.SuggestedOptions)}], State: {parsedResponse.SuggestedNextState}");
+
+                return parsedResponse;
+            }
+
+            var fullResponseBuilder = new StringBuilder();
+            await using var stream = await response.Content.ReadAsStreamAsync();
+            using var reader = new StreamReader(stream);
+
+            while (!reader.EndOfStream)
+            {
+                var line = await reader.ReadLineAsync();
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+
+                var chunk = JsonConvert.DeserializeObject<OllamaResponse>(line);
+                var contentChunk = chunk?.Message?.Content;
+                if (!string.IsNullOrEmpty(contentChunk))
+                {
+                    fullResponseBuilder.Append(contentChunk);
+                    await onPartialResponse!(contentChunk);
+                }
+
+                if (chunk?.Done == true)
+                {
+                    break;
+                }
+            }
+
+            var fullContent = fullResponseBuilder.ToString();
+            if (string.IsNullOrWhiteSpace(fullContent))
+            {
                 return CreateFallbackResponse();
+            }
 
-            var aiContent = ollamaResponse.Message.Content;
-            Console.WriteLine($"[DEBUG] AI Response Content: {aiContent}");
-
-            var parsedResponse = ParseAIResponse(aiContent);
-
-            Console.WriteLine($"[DEBUG] Parsed Response - Text: {parsedResponse.ResponseText}, Options: [{string.Join(", ", parsedResponse.SuggestedOptions)}], State: {parsedResponse.SuggestedNextState}");
-
-            return parsedResponse;
+            return ParseAIResponse(fullContent);
         }
         catch (Exception ex)
         {
@@ -259,19 +318,8 @@ public class OllamaLLMService : ILLMService
                     }
                 }
 
-                var title = !string.IsNullOrEmpty(prof.Title) ? prof.Title : "Dr.";
                 var specialization = !string.IsNullOrEmpty(prof.Specialization) ? prof.Specialization : "General Practice";
-                var qualifications = !string.IsNullOrEmpty(prof.Qualifications) ? prof.Qualifications : "Experienced";
-
-                prompt.AppendLine($"- Doctor Name: {name} (USE THIS EXACT NAME)");
-                prompt.AppendLine($"  Title: {title}");
-                prompt.AppendLine($"  Specialization: {specialization}");
-                prompt.AppendLine($"  Qualifications: {qualifications}");
-                if (prof.HourlyRate.HasValue)
-                    prompt.AppendLine($"  Rate: ${prof.HourlyRate}/hour");
-                if (!string.IsNullOrEmpty(prof.Bio))
-                    prompt.AppendLine($"  Bio: {prof.Bio}");
-                prompt.AppendLine($"  ID: {prof.UserId}");
+                prompt.AppendLine($"- {name} | {specialization} | {prof.UserId}");
                 prompt.AppendLine();
             }
             prompt.AppendLine("====================================================");
