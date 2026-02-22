@@ -268,11 +268,13 @@ export const AIAssistant = () => {
     return newMessage
   }
 
-  const handleSendMessage = async (messageOverride = null) => {
+  const handleSendMessage = async (messageOverride = null, conversationIdOverride = null) => {
     if (sendInFlightRef.current) return
 
     const messageToSend = (messageOverride ?? inputMessage).trim()
     if (!messageToSend || isLoading || isStreaming) return
+
+    const effectiveConversationId = conversationIdOverride ?? conversationId
 
     sendInFlightRef.current = true
 
@@ -298,10 +300,10 @@ export const AIAssistant = () => {
 
     try {
       // The streaming will be handled by SignalR
-      const response = await automationService.sendMessage(userMessage, conversationId)
+      const response = await automationService.sendMessage(userMessage, effectiveConversationId)
       
       // Update conversation ID if new
-      if (response.conversationId && !conversationId) {
+      if (response.conversationId && !effectiveConversationId) {
         setConversationId(response.conversationId)
       }
 
@@ -320,7 +322,46 @@ export const AIAssistant = () => {
     }
   }
 
+  const startNewBookingConversation = async () => {
+    if (isLoading || isStreaming || sendInFlightRef.current) return
+
+    try {
+      setError(null)
+      setIsBookingComplete(false)
+      setSuggestedOptions([])
+      setStreamingContent('')
+      setShowNewChatButton(false)
+      streamingMessageIdRef.current = null
+
+      const newConversation = await automationService.startNewConversation()
+      const newConversationId = newConversation.id
+
+      setConversationId(newConversationId)
+      setMessages([])
+
+      if (connectionRef.current?.state === 'Connected') {
+        try {
+          await connectionRef.current.invoke('JoinConversation', newConversationId)
+          joinedConversationRef.current = newConversationId
+        } catch (err) {
+          console.error('Failed to join new booking conversation:', err)
+        }
+      }
+
+      await loadConversations()
+      await handleSendMessage('Book a new appointment', newConversationId)
+    } catch (error) {
+      console.error('Failed to start a new booking conversation:', error)
+      setError('Unable to start a new booking. Please try again.')
+    }
+  }
+
   const handleSelectOption = async (option) => {
+    if (typeof option === 'string' && option.trim().toLowerCase() === 'book another appointment') {
+      await startNewBookingConversation()
+      return
+    }
+
     await handleSendMessage(option)
   }
 
