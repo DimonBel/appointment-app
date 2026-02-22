@@ -71,6 +71,31 @@ export const AIAssistant = () => {
         .withAutomaticReconnect()
         .build()
 
+      connection.onreconnecting(() => {
+        setIsLoading(false)
+        setIsStreaming(false)
+        setStreamingContent('')
+      })
+
+      connection.onreconnected(async () => {
+        setIsLoading(false)
+        setIsStreaming(false)
+        setStreamingContent('')
+        if (conversationId) {
+          try {
+            await connection.invoke('JoinConversation', conversationId)
+          } catch (err) {
+            console.error('Failed to rejoin conversation after reconnect:', err)
+          }
+        }
+      })
+
+      connection.onclose(() => {
+        setIsLoading(false)
+        setIsStreaming(false)
+        setStreamingContent('')
+      })
+
       connection.on('ReceiveStreamChunk', (data) => {
         const chunk = typeof data === 'string'
           ? data

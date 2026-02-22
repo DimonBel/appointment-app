@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Globalization;
 
 namespace AutomationApp.API.Endpoints;
 
@@ -207,7 +208,6 @@ public static class AutomationEndpoints
         IConversationService conversationService,
         ILLMService llmService,
         IBookingAutomationService bookingService,
-        IDataCollectionService dataCollectionService,
         IHubContext<AutomationHub> hubContext)
     {
         var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -240,11 +240,11 @@ public static class AutomationEndpoints
         await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("TypingIndicator", true);
 
         // Add user message
-        var userMessage = await conversationService.AddMessageAsync(conversation.Id, request.Message, true, null, request.SelectedOption);
+        await conversationService.AddMessageAsync(conversation.Id, request.Message, true, null, request.SelectedOption);
 
         // Get or create booking draft
         var bookingDraft = await bookingService.GetBookingDraftByConversationIdAsync(conversation.Id);
-        if (bookingDraft == null && conversation.State == ConversationState.CollectingInfo)
+        if (bookingDraft == null)
         {
             bookingDraft = await bookingService.CreateBookingDraftAsync(conversation.Id, userGuid);
         }
@@ -255,31 +255,71 @@ public static class AutomationEndpoints
         // Fetch domain configurations (service types)
         var domainConfigurations = await bookingService.GetDomainConfigurationsAsync();
 
-        var streamedResponseBuilder = new StringBuilder();
+        var contextData = conversation.ContextData ?? new Dictionary<string, object>();
+        var normalizedInput = (request.SelectedOption ?? request.Message ?? string.Empty).Trim();
 
-        // Process with LLM and stream chunks in real-time
-        var llmResponse = await llmService.ProcessUserMessageAsync(
-            conversation.Id,
-            request.Message,
+        var deterministicResult = ProcessDeterministicBookingFlow(
+            normalizedInput,
             conversation.State,
-            conversation.ContextData,
-            availableProfessionals,
-            domainConfigurations,
-            async chunk =>
-            {
-                if (string.IsNullOrEmpty(chunk))
-                {
-                    return;
-                }
+            contextData,
+            availableProfessionals);
 
-                streamedResponseBuilder.Append(chunk);
-                await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ReceiveStreamChunk", new
-                {
-                    chunk,
-                    isComplete = false,
-                    conversationId = conversation.Id
-                });
+        LLMResponse llmResponse;
+        var finalResponseText = string.Empty;
+
+        if (deterministicResult != null)
+        {
+            llmResponse = new LLMResponse
+            {
+                ResponseText = deterministicResult.ResponseText,
+                SuggestedOptions = deterministicResult.SuggestedOptions,
+                DetectedIntent = UserIntent.BookAppointment,
+                SuggestedNextState = deterministicResult.NextState,
+                ExtractedData = deterministicResult.ExtractedData
+            };
+
+            finalResponseText = deterministicResult.ResponseText;
+
+            await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ReceiveStreamChunk", new
+            {
+                chunk = finalResponseText,
+                isComplete = false,
+                conversationId = conversation.Id
             });
+        }
+        else
+        {
+            var streamedResponseBuilder = new StringBuilder();
+
+            llmResponse = await llmService.ProcessUserMessageAsync(
+                conversation.Id,
+                request.Message,
+                conversation.State,
+                contextData,
+                availableProfessionals,
+                domainConfigurations,
+                async chunk =>
+                {
+                    if (string.IsNullOrEmpty(chunk))
+                    {
+                        return;
+                    }
+
+                    streamedResponseBuilder.Append(chunk);
+                    await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ReceiveStreamChunk", new
+                    {
+                        chunk,
+                        isComplete = false,
+                        conversationId = conversation.Id
+                    });
+                });
+
+            finalResponseText = streamedResponseBuilder.ToString();
+            if (string.IsNullOrWhiteSpace(finalResponseText))
+            {
+                finalResponseText = llmResponse.ResponseText;
+            }
+        }
 
         // Update conversation state
         if (llmResponse.SuggestedNextState.HasValue)
@@ -305,12 +345,6 @@ public static class AutomationEndpoints
             {
                 await UpdateBookingDraftFromExtractedData(bookingService, bookingDraft.Id, llmResponse.ExtractedData);
             }
-        }
-
-        var finalResponseText = streamedResponseBuilder.ToString();
-        if (string.IsNullOrWhiteSpace(finalResponseText))
-        {
-            finalResponseText = llmResponse.ResponseText;
         }
 
         await hubContext.Clients.Group($"conversation-{conversation.Id}").SendAsync("ReceiveStreamChunk", new
@@ -375,6 +409,331 @@ public static class AutomationEndpoints
 
         return Results.Ok(response);
     }
+
+    private static DeterministicBookingResult? ProcessDeterministicBookingFlow(
+        string input,
+        ConversationState currentState,
+        Dictionary<string, object> context,
+        List<ProfessionalInfo> professionals)
+    {
+        var text = (input ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        var lower = text.ToLowerInvariant();
+        var isBookingStart = lower.Contains("book") || lower.Contains("appointment") || lower.Contains("new appointment");
+
+        if ((currentState == ConversationState.Greeting || currentState == ConversationState.Idle || currentState == ConversationState.CollectingInfo) && isBookingStart)
+        {
+            var specialties = professionals
+                .Where(p => !string.IsNullOrWhiteSpace(p.Specialization))
+                .Select(p => p.Specialization!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(s => s)
+                .ToList();
+
+            if (specialties.Count == 0)
+            {
+                return new DeterministicBookingResult(
+                    "I couldn't find available specialties right now. Please try again in a moment.",
+                    new List<string> { "Book a new appointment", "Check availability" },
+                    ConversationState.Greeting,
+                    new Dictionary<string, object>());
+            }
+
+            return new DeterministicBookingResult(
+                "Great — first choose a specialty.",
+                specialties,
+                ConversationState.SelectingService,
+                new Dictionary<string, object>());
+        }
+
+        if (currentState == ConversationState.SelectingService)
+        {
+            var specialty = MatchSpecialty(text, professionals);
+            if (string.IsNullOrWhiteSpace(specialty))
+            {
+                var options = professionals
+                    .Where(p => !string.IsNullOrWhiteSpace(p.Specialization))
+                    .Select(p => p.Specialization!.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(s => s)
+                    .ToList();
+
+                return new DeterministicBookingResult(
+                    "Please select a specialty from the available options.",
+                    options,
+                    ConversationState.SelectingService,
+                    new Dictionary<string, object>());
+            }
+
+            var doctorOptions = professionals
+                .Where(p => string.Equals((p.Specialization ?? string.Empty).Trim(), specialty, StringComparison.OrdinalIgnoreCase))
+                .Select(FormatDoctorOption)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var extracted = new Dictionary<string, object> { ["serviceType"] = specialty };
+            return new DeterministicBookingResult(
+                $"Great choice. Now select a doctor in {specialty}.",
+                doctorOptions,
+                ConversationState.SelectingProfessional,
+                extracted);
+        }
+
+        if (currentState == ConversationState.SelectingProfessional)
+        {
+            var selectedSpecialty = context.TryGetValue("serviceType", out var s) ? s?.ToString() : null;
+            var candidates = professionals
+                .Where(p => string.IsNullOrWhiteSpace(selectedSpecialty) || string.Equals((p.Specialization ?? string.Empty).Trim(), selectedSpecialty.Trim(), StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            var doctor = candidates.FirstOrDefault(p => IsDoctorMatch(text, p));
+            if (doctor == null)
+            {
+                return new DeterministicBookingResult(
+                    "Please select a doctor from the list.",
+                    candidates.Select(FormatDoctorOption).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                    ConversationState.SelectingProfessional,
+                    new Dictionary<string, object>());
+            }
+
+            var extracted = new Dictionary<string, object>
+            {
+                ["professionalId"] = doctor.Id,
+                ["professionalUserId"] = doctor.UserId,
+                ["professionalName"] = BuildDoctorName(doctor),
+                ["serviceType"] = selectedSpecialty ?? doctor.Specialization ?? string.Empty
+            };
+
+            return new DeterministicBookingResult(
+                $"Perfect. You selected {BuildDoctorName(doctor)}. Now choose a day.",
+                BuildDayOptions(),
+                ConversationState.SelectingDateTime,
+                extracted);
+        }
+
+        if (currentState == ConversationState.SelectingDateTime)
+        {
+            if (!TryResolveDay(text, out var selectedDayLabel, out var selectedDate))
+            {
+                return new DeterministicBookingResult(
+                    "Please choose a day first.",
+                    BuildDayOptions(),
+                    ConversationState.SelectingDateTime,
+                    new Dictionary<string, object>());
+            }
+
+            var extracted = new Dictionary<string, object>
+            {
+                ["selectedDayLabel"] = selectedDayLabel,
+                ["selectedDate"] = selectedDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+            };
+
+            return new DeterministicBookingResult(
+                $"Great. Now choose the time for {selectedDayLabel}.",
+                BuildTimeOptions(),
+                ConversationState.SelectingTimeSlot,
+                extracted);
+        }
+
+        if (currentState == ConversationState.SelectingTimeSlot)
+        {
+            if (!TryResolveTime(text, out var timeLabel, out var timeOfDay))
+            {
+                return new DeterministicBookingResult(
+                    "Please choose a time from the options.",
+                    BuildTimeOptions(),
+                    ConversationState.SelectingTimeSlot,
+                    new Dictionary<string, object>());
+            }
+
+            var selectedDateRaw = context.TryGetValue("selectedDate", out var dateObj) ? dateObj?.ToString() : null;
+            if (!DateTime.TryParse(selectedDateRaw, CultureInfo.InvariantCulture, DateTimeStyles.None, out var selectedDate))
+            {
+                return new DeterministicBookingResult(
+                    "Let's choose the day again first.",
+                    BuildDayOptions(),
+                    ConversationState.SelectingDateTime,
+                    new Dictionary<string, object>());
+            }
+
+            var appointmentLocal = selectedDate.Date.Add(timeOfDay);
+            var professionalName = context.TryGetValue("professionalName", out var pn) ? pn?.ToString() ?? "the selected doctor" : "the selected doctor";
+            var serviceType = context.TryGetValue("serviceType", out var sv) ? sv?.ToString() ?? "Consultation" : "Consultation";
+
+            var extracted = new Dictionary<string, object>
+            {
+                ["preferredDateTime"] = appointmentLocal,
+                ["timeLabel"] = timeLabel
+            };
+
+            return new DeterministicBookingResult(
+                $"Please confirm your booking:\n- Specialty: {serviceType}\n- Doctor: {professionalName}\n- Date: {selectedDate:dddd, MMM dd}\n- Time: {timeLabel}\n\nReply with 'Yes, Confirm Appointment' to create it.",
+                new List<string> { "Yes, Confirm Appointment", "Change time", "Cancel" },
+                ConversationState.ConfirmingBooking,
+                extracted);
+        }
+
+        if (currentState == ConversationState.ConfirmingBooking)
+        {
+            if (lower.Contains("yes") || lower.Contains("confirm"))
+            {
+                var doctorName = context.TryGetValue("professionalName", out var dn) ? dn?.ToString() ?? "the selected doctor" : "the selected doctor";
+                return new DeterministicBookingResult(
+                    $"Booking request created successfully with {doctorName}. The doctor can now see it and will accept or decline.",
+                    new List<string> { "View my appointments", "Book a new appointment" },
+                    ConversationState.BookingComplete,
+                    new Dictionary<string, object>());
+            }
+
+            if (lower.Contains("change"))
+            {
+                return new DeterministicBookingResult(
+                    "Sure — choose a new time.",
+                    BuildTimeOptions(),
+                    ConversationState.SelectingTimeSlot,
+                    new Dictionary<string, object>());
+            }
+
+            if (lower.Contains("cancel") || lower.Contains("no"))
+            {
+                return new DeterministicBookingResult(
+                    "Booking cancelled. You can start a new one anytime.",
+                    new List<string> { "Book a new appointment", "Check availability" },
+                    ConversationState.Greeting,
+                    new Dictionary<string, object>());
+            }
+        }
+
+        return null;
+    }
+
+    private static string MatchSpecialty(string input, List<ProfessionalInfo> professionals)
+    {
+        var specialties = professionals
+            .Where(p => !string.IsNullOrWhiteSpace(p.Specialization))
+            .Select(p => p.Specialization!.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return specialties.FirstOrDefault(s => string.Equals(s, input, StringComparison.OrdinalIgnoreCase)
+                                            || input.Contains(s, StringComparison.OrdinalIgnoreCase)) ?? string.Empty;
+    }
+
+    private static bool IsDoctorMatch(string input, ProfessionalInfo professional)
+    {
+        var option = FormatDoctorOption(professional);
+        var fullName = BuildDoctorName(professional);
+        return string.Equals(option, input, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(fullName, input, StringComparison.OrdinalIgnoreCase)
+               || input.Contains(fullName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string FormatDoctorOption(ProfessionalInfo professional)
+    {
+        var name = BuildDoctorName(professional);
+        var specialty = string.IsNullOrWhiteSpace(professional.Specialization) ? "General" : professional.Specialization!.Trim();
+        return $"{name} - {specialty}";
+    }
+
+    private static string BuildDoctorName(ProfessionalInfo professional)
+    {
+        var firstName = (professional.FirstName ?? string.Empty).Trim();
+        var lastName = (professional.LastName ?? string.Empty).Trim();
+        var combined = $"{firstName} {lastName}".Trim();
+        return string.IsNullOrWhiteSpace(combined) ? "Doctor" : combined;
+    }
+
+    private static List<string> BuildDayOptions()
+    {
+        var today = DateTime.Today;
+        return new List<string>
+        {
+            $"Today ({today:ddd, MMM dd})",
+            $"Tomorrow ({today.AddDays(1):ddd, MMM dd})",
+            $"{today.AddDays(2):dddd} ({today.AddDays(2):MMM dd})"
+        };
+    }
+
+    private static List<string> BuildTimeOptions()
+    {
+        return new List<string>
+        {
+            "09:00 AM",
+            "11:00 AM",
+            "02:00 PM",
+            "04:00 PM"
+        };
+    }
+
+    private static bool TryResolveDay(string input, out string label, out DateTime date)
+    {
+        var today = DateTime.Today;
+        label = string.Empty;
+        date = today;
+
+        if (input.Contains("today", StringComparison.OrdinalIgnoreCase))
+        {
+            label = $"Today ({today:ddd, MMM dd})";
+            date = today;
+            return true;
+        }
+
+        if (input.Contains("tomorrow", StringComparison.OrdinalIgnoreCase))
+        {
+            date = today.AddDays(1);
+            label = $"Tomorrow ({date:ddd, MMM dd})";
+            return true;
+        }
+
+        if (DateTime.TryParse(input, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+        {
+            date = parsed.Date;
+            label = $"{date:dddd} ({date:MMM dd})";
+            return true;
+        }
+
+        var thirdDay = today.AddDays(2);
+        if (input.Contains(thirdDay.ToString("dddd", CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase))
+        {
+            date = thirdDay;
+            label = $"{thirdDay:dddd} ({thirdDay:MMM dd})";
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryResolveTime(string input, out string timeLabel, out TimeSpan time)
+    {
+        timeLabel = string.Empty;
+        time = TimeSpan.Zero;
+
+        var allowed = BuildTimeOptions();
+        var matched = allowed.FirstOrDefault(o => string.Equals(o, input, StringComparison.OrdinalIgnoreCase) || input.Contains(o, StringComparison.OrdinalIgnoreCase));
+        if (matched == null)
+        {
+            return false;
+        }
+
+        if (!DateTime.TryParse(matched, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+        {
+            return false;
+        }
+
+        timeLabel = matched;
+        time = parsed.TimeOfDay;
+        return true;
+    }
+
+    private sealed record DeterministicBookingResult(
+        string ResponseText,
+        List<string> SuggestedOptions,
+        ConversationState NextState,
+        Dictionary<string, object> ExtractedData);
 
     private static async Task<IResult> GetBookingDraftAsync(
         Guid conversationId,
@@ -586,7 +945,7 @@ public static class AutomationEndpoints
                 // Convert to UTC if not already UTC
                 preferredDateTime = dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime();
             }
-            else if (dateTime is string dtStr && DateTime.TryParse(dtStr, out var parsedDt))
+            else if (dateTime is string dtStr && DateTime.TryParse(dtStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDt))
             {
                 // Convert to UTC if not already UTC
                 preferredDateTime = parsedDt.Kind == DateTimeKind.Utc ? parsedDt : parsedDt.ToUniversalTime();
