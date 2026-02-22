@@ -18,6 +18,7 @@ export const AIAssistant = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const messagesEndRef = useRef(null)
   const connectionRef = useRef(null)
+  const streamingMessageIdRef = useRef(null)
   const token = useSelector((state) => state.auth.token)
   const user = useSelector((state) => state.auth.user)
 
@@ -71,25 +72,72 @@ export const AIAssistant = () => {
         .build()
 
       connection.on('ReceiveStreamChunk', (data) => {
-        // Clear the "..." placeholder on first real chunk
-        setStreamingContent(prev => prev === '...' ? data.chunk : prev + data.chunk)
-        if (data.isComplete) {
+        const chunk = typeof data === 'string'
+          ? data
+          : (data?.chunk ?? data?.Chunk ?? '')
+        const isComplete = typeof data === 'object'
+          ? (data?.isComplete ?? data?.IsComplete ?? false)
+          : false
+
+        if (chunk) {
+          setIsStreaming(true)
+          setIsLoading(false)
+          setShowNewChatButton(false)
+          setStreamingContent(prev => prev === '...' ? chunk : (prev || '') + chunk)
+
+          setMessages(prev => {
+            let streamId = streamingMessageIdRef.current
+            const next = [...prev]
+
+            if (!streamId || !next.some(msg => msg.id === streamId)) {
+              streamId = `stream-${Date.now()}`
+              streamingMessageIdRef.current = streamId
+              next.push({
+                id: streamId,
+                content: '',
+                isFromUser: false,
+                suggestedOptions: [],
+                selectedOption: null,
+                timestamp: new Date()
+              })
+            }
+
+            return next.map(msg =>
+              msg.id === streamId
+                ? { ...msg, content: (msg.content || '') + chunk, timestamp: new Date() }
+                : msg
+            )
+          })
+        }
+
+        if (isComplete) {
           setIsStreaming(false)
           setIsLoading(false)
+          setStreamingContent('')
           setShowNewChatButton(true)
         }
       })
 
       connection.on('ReceiveMessage', (data) => {
         if (data?.message) {
-          setMessages(prev => [...prev, {
+          const finalMessage = {
             id: data.message.id || Date.now(),
             content: data.message.content || '',
             isFromUser: false,
             suggestedOptions: data.message.suggestedOptions || [],
             selectedOption: null,
             timestamp: data.message.sentAt ? new Date(data.message.sentAt) : new Date()
-          }])
+          }
+
+          setMessages(prev => {
+            const streamId = streamingMessageIdRef.current
+            if (streamId && prev.some(msg => msg.id === streamId)) {
+              return prev.map(msg => msg.id === streamId ? finalMessage : msg)
+            }
+            return [...prev, finalMessage]
+          })
+
+          streamingMessageIdRef.current = null
           setSuggestedOptions(data.message.suggestedOptions || [])
         }
         setStreamingContent('')
@@ -157,13 +205,17 @@ export const AIAssistant = () => {
     return newMessage
   }
 
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isLoading || isStreaming) return
+  const handleSendMessage = async (messageOverride = null) => {
+    const messageToSend = (messageOverride ?? inputMessage).trim()
+    if (!messageToSend || isLoading || isStreaming) return
 
-    const userMessage = inputMessage.trim()
-    setInputMessage('')
+    const userMessage = messageToSend
+    if (messageOverride === null) {
+      setInputMessage('')
+    }
     setSuggestedOptions([])
     setError(null)
+    streamingMessageIdRef.current = null
     setStreamingContent('')
     setShowNewChatButton(false)
 
@@ -201,9 +253,7 @@ export const AIAssistant = () => {
   }
 
   const handleSelectOption = async (option) => {
-    setInputMessage(option)
-    // Auto-send the selected option
-    await handleSendMessage()
+    await handleSendMessage(option)
   }
 
   const handleKeyPress = (e) => {
@@ -246,6 +296,7 @@ export const AIAssistant = () => {
     try {
       setStreamingContent('')
       setShowNewChatButton(false)
+      streamingMessageIdRef.current = null
       setConversationId(convId)
       const existingMessages = await automationService.getConversationMessages(convId)
       setMessages(existingMessages.map(msg => ({
@@ -466,7 +517,7 @@ export const AIAssistant = () => {
           ))}
 
           {/* Streaming response */}
-          {isStreaming && streamingContent && (
+          {isStreaming && streamingContent && !streamingMessageIdRef.current && (
             <div className="flex gap-3">
               <div className="w-10 h-10 rounded-full bg-primary-accent flex items-center justify-center flex-shrink-0">
                 <Bot size={20} className="text-white" />
@@ -488,7 +539,7 @@ export const AIAssistant = () => {
             </div>
           )}
 
-          {isLoading && (
+          {isLoading && !isStreaming && (
             <div className="flex gap-3">
               <div className="w-10 h-10 rounded-full bg-primary-accent flex items-center justify-center flex-shrink-0">
                 <Bot size={20} className="text-white" />

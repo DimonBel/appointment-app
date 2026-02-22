@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Configuration;
 using AutomationApp.Domain.Enums;
 using AutomationApp.Domain.Interfaces;
@@ -99,6 +100,7 @@ public class OllamaLLMService : ILLMService
             }
 
             var fullResponseBuilder = new StringBuilder();
+            var emittedResponseTextLength = 0;
             await using var stream = await response.Content.ReadAsStreamAsync();
             using var reader = new StreamReader(stream);
 
@@ -115,7 +117,14 @@ public class OllamaLLMService : ILLMService
                 if (!string.IsNullOrEmpty(contentChunk))
                 {
                     fullResponseBuilder.Append(contentChunk);
-                    await onPartialResponse!(contentChunk);
+
+                    var currentResponseText = ExtractResponseTextForStreaming(fullResponseBuilder.ToString());
+                    if (!string.IsNullOrEmpty(currentResponseText) && currentResponseText.Length > emittedResponseTextLength)
+                    {
+                        var delta = currentResponseText.Substring(emittedResponseTextLength);
+                        emittedResponseTextLength = currentResponseText.Length;
+                        await onPartialResponse!(delta);
+                    }
                 }
 
                 if (chunk?.Done == true)
@@ -128,6 +137,13 @@ public class OllamaLLMService : ILLMService
             if (string.IsNullOrWhiteSpace(fullContent))
             {
                 return CreateFallbackResponse();
+            }
+
+            var finalResponseText = ExtractResponseTextForStreaming(fullContent);
+            if (!string.IsNullOrEmpty(finalResponseText) && finalResponseText.Length > emittedResponseTextLength)
+            {
+                var delta = finalResponseText.Substring(emittedResponseTextLength);
+                await onPartialResponse!(delta);
             }
 
             return ParseAIResponse(fullContent);
@@ -583,6 +599,48 @@ public class OllamaLLMService : ILLMService
             SuggestedOptions = new List<string>(),
             DetectedIntent = UserIntent.GeneralInquiry
         };
+    }
+
+    private string ExtractResponseTextForStreaming(string rawContent)
+    {
+        if (string.IsNullOrWhiteSpace(rawContent))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            var parsed = JObject.Parse(rawContent);
+            var responseTextToken = parsed["responseText"];
+            if (responseTextToken?.Type == JTokenType.String)
+            {
+                return responseTextToken.Value<string>() ?? string.Empty;
+            }
+        }
+        catch
+        {
+            // Partial JSON is expected during streaming.
+        }
+
+        var match = Regex.Match(rawContent, @"\"responseText\"\s*:\s*\"(?<txt>(?:\\\\.|[^\"])*)", RegexOptions.Singleline);
+        if (!match.Success)
+        {
+            return string.Empty;
+        }
+
+        var captured = match.Groups["txt"].Value;
+        captured = Regex.Replace(captured, @"\\u[0-9a-fA-F]{0,3}$", string.Empty);
+        captured = Regex.Replace(captured, @"\\[\\\"/bfnrt]?$", string.Empty);
+
+        try
+        {
+            var asJsonString = $"\"{captured}\"";
+            return JsonConvert.DeserializeObject<string>(asJsonString) ?? string.Empty;
+        }
+        catch
+        {
+            return captured.Replace("\\n", "\n").Replace("\\t", "\t").Replace("\\\"", "\"").Replace("\\\\", "\\");
+        }
     }
 
     private LLMResponse CreateFallbackResponse()
