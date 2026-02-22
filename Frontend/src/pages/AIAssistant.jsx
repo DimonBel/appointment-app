@@ -390,31 +390,32 @@ export const AIAssistant = () => {
         {/* Conversations List */}
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {conversations.map((conv) => (
-            <button
+            <div
               key={conv.id}
-              onClick={() => handleSelectConversation(conv.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left group ${
+              className={`w-full flex items-center gap-3 px-2 py-2 rounded-lg transition-colors group ${
                 conversationId === conv.id ? 'bg-gray-700' : 'hover:bg-gray-800'
               }`}
             >
-              <MessageSquare size={18} className="text-gray-400" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm truncate">{conv.title || 'New conversation'}</p>
-                <p className="text-xs text-gray-500">
-                  {new Date(conv.startedAt || conv.createdAt).toLocaleDateString()}
-                </p>
-              </div>
               <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleDeleteConversation(conv.id)
-                }}
-                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-600 rounded transition-opacity"
+                onClick={() => handleSelectConversation(conv.id)}
+                className="flex-1 min-w-0 flex items-center gap-3 px-2 py-1 text-left"
+              >
+                <MessageSquare size={18} className="text-gray-400" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm truncate">{conv.title || 'New conversation'}</p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(conv.startedAt || conv.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </button>
+              <button
+                onClick={() => handleDeleteConversation(conv.id)}
+                className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1 hover:bg-gray-600 rounded transition-opacity"
                 title="Delete chat"
               >
                 <Trash2 size={16} />
               </button>
-            </button>
+            </div>
           ))}
         </div>
 
