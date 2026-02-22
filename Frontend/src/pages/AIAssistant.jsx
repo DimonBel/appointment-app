@@ -369,7 +369,7 @@ export const AIAssistant = () => {
       normalizedOption === 'book another appointment'
       || normalizedOption === 'book a new appointment'
 
-    if (shouldStartFreshBooking) {
+    if (shouldStartFreshBooking && isBookingComplete) {
       await startNewBookingConversation()
       return
     }
