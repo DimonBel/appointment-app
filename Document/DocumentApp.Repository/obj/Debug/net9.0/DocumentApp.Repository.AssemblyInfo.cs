@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DocumentApp.Repository")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f0d20d2599aebb6b38a865b8f8e8fa06b51bff77")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3f9d744a933de442175b9f0f86c058d43a8f6442")]
 [assembly: System.Reflection.AssemblyProductAttribute("DocumentApp.Repository")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DocumentApp.Repository")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

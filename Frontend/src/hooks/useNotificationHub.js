@@ -22,6 +22,7 @@ export function useNotificationHub() {
   const connectedRef = useRef(false)
   const toastTimeoutRef = useRef(null)
   const toastRef = useRef(null)
+  const processedNotificationIdsRef = useRef(new Set())
 
   const typeByValue = {
     0: 'OrderCreated',
@@ -244,11 +245,17 @@ export function useNotificationHub() {
       try {
         const hubUrl = import.meta.env.VITE_NOTIFICATION_HUB_URL || '/notificationhub'
 
-        // Register handlers before connecting - register BOTH cases to handle server method name variations
-        notificationHubService.on('ReceiveNotification', (notification) => {
+        const onReceiveNotification = (notification) => {
           console.log('ReceiveNotification handler called with:', notification)
           const normalizedNotification = normalizeIncomingNotification(notification)
 
+          if (normalizedNotification?.id && processedNotificationIdsRef.current.has(normalizedNotification.id)) {
+            return
+          }
+          if (normalizedNotification?.id) {
+            processedNotificationIdsRef.current.add(normalizedNotification.id)
+          }
+
           // Add to Redux store (addNotification already increments unreadCount)
           dispatch(addNotification(normalizedNotification))
 
@@ -266,30 +273,9 @@ export function useNotificationHub() {
               }
             } catch { /* ignore */ }
           }
-        })
+        }
 
-        notificationHubService.on('receivenotification', (notification) => {
-          console.log('receivenotification handler called with:', notification)
-          const normalizedNotification = normalizeIncomingNotification(notification)
-
-          // Add to Redux store (addNotification already increments unreadCount)
-          dispatch(addNotification(normalizedNotification))
-
-          // Show toast
-          showToast(normalizedNotification.title, normalizedNotification.message, normalizedNotification.type)
-
-          // If friend request accepted, add to friend IDs
-          if (normalizedNotification.type === 'FriendRequestAccepted' && normalizedNotification.metadata) {
-            try {
-              const meta = typeof normalizedNotification.metadata === 'string'
-                ? JSON.parse(normalizedNotification.metadata)
-                : normalizedNotification.metadata
-              if (meta.senderId) {
-                dispatch(addFriendId(meta.senderId))
-              }
-            } catch { /* ignore */ }
-          }
-        })
+        notificationHubService.on('ReceiveNotification', onReceiveNotification)
 
         notificationHubService.on('NotificationMarkedRead', (notificationId) => {
           // Could handle this if needed
@@ -306,6 +292,8 @@ export function useNotificationHub() {
     connectHub()
 
     return () => {
+      notificationHubService.off('ReceiveNotification')
+      notificationHubService.off('NotificationMarkedRead')
       if (connectedRef.current) {
         notificationHubService.disconnect()
         connectedRef.current = false
@@ -317,7 +305,7 @@ export function useNotificationHub() {
         clearTimeout(toastTimeoutRef.current)
       }
     }
-  }, [isAuthenticated, token, dispatch, showToast])
+  }, [isAuthenticated, token, dispatch])
 
   useEffect(() => {
     if (!isAuthenticated || !token || !userId) return

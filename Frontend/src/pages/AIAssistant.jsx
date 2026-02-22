@@ -19,6 +19,9 @@ export const AIAssistant = () => {
   const messagesEndRef = useRef(null)
   const connectionRef = useRef(null)
   const streamingMessageIdRef = useRef(null)
+  const isConnectingRef = useRef(false)
+  const joinedConversationRef = useRef(null)
+  const sendInFlightRef = useRef(false)
   const token = useSelector((state) => state.auth.token)
   const user = useSelector((state) => state.auth.user)
 
@@ -46,15 +49,35 @@ export const AIAssistant = () => {
 
   // Setup SignalR connection for streaming
   useEffect(() => {
-    if (token && conversationId) {
+    if (token) {
       setupSignalRConnection()
     }
     return () => {
       if (connectionRef.current) {
         connectionRef.current.stop()
       }
+      connectionRef.current = null
+      isConnectingRef.current = false
+      joinedConversationRef.current = null
     }
-  }, [token, conversationId])
+  }, [token])
+
+  useEffect(() => {
+    const joinConversation = async () => {
+      if (!conversationId || !connectionRef.current) return
+      if (joinedConversationRef.current === conversationId) return
+      if (connectionRef.current.state !== 'Connected') return
+
+      try {
+        await connectionRef.current.invoke('JoinConversation', conversationId)
+        joinedConversationRef.current = conversationId
+      } catch (err) {
+        console.error('Failed to join conversation:', err)
+      }
+    }
+
+    joinConversation()
+  }, [conversationId])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -62,11 +85,18 @@ export const AIAssistant = () => {
 
   const setupSignalRConnection = async () => {
     try {
-      const { HubConnectionBuilder } = await import('@microsoft/signalr')
-      const baseUrl = window.location.origin
+      if (isConnectingRef.current) return
+      if (connectionRef.current?.state === 'Connected') return
+
+      isConnectingRef.current = true
+
+      const { HubConnectionBuilder, HttpTransportType } = await import('@microsoft/signalr')
+      const baseUrl = globalThis.location.origin
       const connection = new HubConnectionBuilder()
         .withUrl(`${baseUrl}/automationhub`, {
-          accessTokenFactory: () => token
+          accessTokenFactory: () => token,
+          transport: HttpTransportType.WebSockets,
+          skipNegotiation: true,
         })
         .withAutomaticReconnect()
         .build()
@@ -84,6 +114,7 @@ export const AIAssistant = () => {
         if (conversationId) {
           try {
             await connection.invoke('JoinConversation', conversationId)
+            joinedConversationRef.current = conversationId
           } catch (err) {
             console.error('Failed to rejoin conversation after reconnect:', err)
           }
@@ -176,10 +207,17 @@ export const AIAssistant = () => {
       })
 
       await connection.start()
-      await connection.invoke('JoinConversation', conversationId)
+
+      if (conversationId) {
+        await connection.invoke('JoinConversation', conversationId)
+        joinedConversationRef.current = conversationId
+      }
+
       connectionRef.current = connection
     } catch (err) {
       console.error('SignalR connection error:', err)
+    } finally {
+      isConnectingRef.current = false
     }
   }
 
@@ -231,8 +269,12 @@ export const AIAssistant = () => {
   }
 
   const handleSendMessage = async (messageOverride = null) => {
+    if (sendInFlightRef.current) return
+
     const messageToSend = (messageOverride ?? inputMessage).trim()
     if (!messageToSend || isLoading || isStreaming) return
+
+    sendInFlightRef.current = true
 
     const userMessage = messageToSend
     if (messageOverride === null) {
@@ -274,6 +316,7 @@ export const AIAssistant = () => {
       setIsStreaming(false)
     } finally {
       setIsLoading(false)
+      sendInFlightRef.current = false
     }
   }
 
