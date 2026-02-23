@@ -118,11 +118,11 @@ public static class DocumentEndpoints
             // Professionals can view:
             // 1. Documents linked to orders
             // 2. BookingFile documents
-            var canViewAsProfessional = user.IsInRole("Doctor") || user.IsInRole("Professional");
+            var canViewAsProfessional = HasAnyRole(user, "Doctor", "Professional");
             var isLinkedToOrder = document.LinkedEntityType == LinkedEntityType.Order;
             var isBookingFile = document.DocumentType == DocumentType.BookingFile;
             
-            if (!hasAccess && !user.IsInRole("Admin") && !user.IsInRole("Management") && !(canViewAsProfessional && (isLinkedToOrder || isBookingFile)))
+            if (!hasAccess && !HasAnyRole(user, "Admin", "Management") && !(canViewAsProfessional && (isLinkedToOrder || isBookingFile)))
             {
                 return Results.Forbid();
             }
@@ -156,20 +156,23 @@ public static class DocumentEndpoints
             }
 
             // Check access - admins and management can download any document
-            var bypassAccessControl = user.IsInRole("Admin") || user.IsInRole("Management");
+            var bypassAccessControl = HasAnyRole(user, "Admin", "Management");
             var hasAccess = await documentService.HasAccessAsync(id, userGuid, AccessControlType.Download);
             
             // Professionals can download:
             // 1. Documents linked to orders (since they can only access documents from their own clients)
             // 2. BookingFile documents (these are uploaded by clients for appointments)
-            var canDownloadAsProfessional = user.IsInRole("Doctor") || user.IsInRole("Professional");
+            var canDownloadAsProfessional = HasAnyRole(user, "Doctor", "Professional");
             var isLinkedToOrder = document.LinkedEntityType == LinkedEntityType.Order;
             var isBookingFile = document.DocumentType == DocumentType.BookingFile;
+            var canBypassAsProfessional = canDownloadAsProfessional && (isLinkedToOrder || isBookingFile);
             
-            if (!hasAccess && !bypassAccessControl && !(canDownloadAsProfessional && (isLinkedToOrder || isBookingFile)))
+            if (!hasAccess && !bypassAccessControl && !canBypassAsProfessional)
             {
                 return Results.Forbid();
             }
+
+            bypassAccessControl = bypassAccessControl || canBypassAsProfessional;
 
             var stream = await documentService.DownloadDocumentAsync(id, userGuid, bypassAccessControl);
             return Results.File(stream, document.ContentType, document.OriginalFileName);
@@ -224,7 +227,7 @@ public static class DocumentEndpoints
             }
 
             // Users can only view their own documents unless they are admin
-            if (ownerId != userGuid && !user.IsInRole("Admin") && !user.IsInRole("Management"))
+            if (ownerId != userGuid && !HasAnyRole(user, "Admin", "Management"))
             {
                 return Results.Forbid();
             }
@@ -283,7 +286,7 @@ public static class DocumentEndpoints
             }
 
             // Check if user is owner or admin/management
-            var bypassOwnershipCheck = user.IsInRole("Admin") || user.IsInRole("Management");
+            var bypassOwnershipCheck = HasAnyRole(user, "Admin", "Management");
 
             var result = await documentService.DeleteDocumentAsync(id, userGuid, bypassOwnershipCheck);
             if (!result)
@@ -384,7 +387,7 @@ public static class DocumentEndpoints
 
             // Check access
             var hasAccess = await documentService.HasAccessAsync(id, userGuid, AccessControlType.View);
-            if (!hasAccess && !user.IsInRole("Admin") && !user.IsInRole("Management"))
+            if (!hasAccess && !HasAnyRole(user, "Admin", "Management"))
             {
                 return Results.Forbid();
             }
@@ -420,7 +423,7 @@ public static class DocumentEndpoints
             }
 
             // Only the owner can update the linked entity
-            if (document.OwnerId != userGuid && !user.IsInRole("Admin") && !user.IsInRole("Management"))
+            if (document.OwnerId != userGuid && !HasAnyRole(user, "Admin", "Management"))
             {
                 return Results.Forbid();
             }
@@ -428,6 +431,11 @@ public static class DocumentEndpoints
             await documentService.UpdateLinkedEntityAsync(id, dto.LinkedEntityType, dto.LinkedEntityId);
 
             var updatedDocument = await documentService.GetDocumentByIdAsync(id);
+            if (updatedDocument == null)
+            {
+                return Results.NotFound();
+            }
+
             var response = MapToResponseDto(updatedDocument, context);
             return Results.Ok(response);
         }
@@ -456,5 +464,28 @@ public static class DocumentEndpoints
             UpdatedAt = document.UpdatedAt,
             DownloadUrl = $"{baseUrl}/api/documents/{document.Id}/download"
         };
+    }
+
+    private static bool HasAnyRole(ClaimsPrincipal user, params string[] roles)
+    {
+        if (roles == null || roles.Length == 0)
+        {
+            return false;
+        }
+
+        foreach (var role in roles)
+        {
+            if (user.IsInRole(role))
+            {
+                return true;
+            }
+        }
+
+        var roleClaims = user.Claims
+            .Where(c => c.Type == ClaimTypes.Role || c.Type == "role" || c.Type == "roles")
+            .Select(c => c.Value)
+            .ToList();
+
+        return roleClaims.Any(claimValue => roles.Any(role => string.Equals(claimValue, role, StringComparison.OrdinalIgnoreCase)));
     }
 }
