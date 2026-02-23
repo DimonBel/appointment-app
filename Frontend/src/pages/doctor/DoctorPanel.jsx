@@ -42,20 +42,31 @@ export const DoctorPanel = () => {
       const clientsList = Array.isArray(data) ? data : []
       setClients(clientsList)
 
-      // Load appointment counts for each client
-      const appointmentCounts = {}
-      for (const client of clientsList) {
+      // Load appointment counts for all clients in parallel
+      const appointmentPromises = clientsList.map(async (client) => {
         try {
           const orders = await appointmentService.getOrdersByClient(client.id, token)
-          appointmentCounts[client.id] = {
-            total: Array.isArray(orders) ? orders.length : 0,
-            upcoming: Array.isArray(orders) ? orders.filter(o => new Date(o.scheduledDateTime) > new Date()).length : 0
+          return {
+            clientId: client.id,
+            data: {
+              total: Array.isArray(orders) ? orders.length : 0,
+              upcoming: Array.isArray(orders) ? orders.filter(o => new Date(o.scheduledDateTime) > new Date()).length : 0
+            }
           }
         } catch (err) {
           console.error(`Failed to load appointments for client ${client.id}:`, err)
-          appointmentCounts[client.id] = { total: 0, upcoming: 0 }
+          return {
+            clientId: client.id,
+            data: { total: 0, upcoming: 0 }
+          }
         }
-      }
+      })
+
+      const appointmentResults = await Promise.all(appointmentPromises)
+      const appointmentCounts = {}
+      appointmentResults.forEach(({ clientId, data }) => {
+        appointmentCounts[clientId] = data
+      })
       setClientAppointments(appointmentCounts)
     } catch (error) {
       console.error('Failed to load clients:', error)

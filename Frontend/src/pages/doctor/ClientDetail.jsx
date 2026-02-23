@@ -42,13 +42,13 @@ export const ClientDetail = () => {
         setClient(null)
       } else {
         setClient(foundClient)
+        setLoading(false) // Show client info immediately, then load data
         loadClientData(foundClient.id)
       }
     } catch (error) {
       console.error('Failed to load client:', error)
       setLoadError(error?.response?.data?.message || error?.message || 'Failed to load client')
       setClient(null)
-    } finally {
       setLoading(false)
     }
   }
@@ -56,27 +56,41 @@ export const ClientDetail = () => {
   const loadClientData = async (clientId) => {
     setLoadingClientData(true)
     try {
-      // Load orders for this client
+      // Load orders for this client - show immediately
       const orders = await appointmentService.getOrdersByClient(clientId, token)
-      setClientOrders(Array.isArray(orders) ? orders : [])
+      const ordersList = Array.isArray(orders) ? orders : []
+      setClientOrders(ordersList)
+      setLoadingClientData(false) // Show appointments immediately
 
-      // Load documents linked to orders for this client
-      const documents = []
-      for (const order of orders) {
-        try {
-          const orderDocs = await documentService.getDocumentsByLinkedEntity('Order', order.id, token)
-          documents.push(...orderDocs)
-        } catch (err) {
-          console.error(`Failed to load documents for order ${order.id}:`, err)
-        }
-      }
-      setClientDocuments(documents)
+      // Load documents in background without blocking
+      loadClientDocuments(ordersList)
     } catch (error) {
       console.error('Failed to load client data:', error)
       setClientOrders([])
       setClientDocuments([])
-    } finally {
       setLoadingClientData(false)
+    }
+  }
+
+  const loadClientDocuments = async (ordersList) => {
+    try {
+      // Load documents for all orders in parallel
+      const documentPromises = ordersList.map(async (order) => {
+        try {
+          const orderDocs = await documentService.getDocumentsByLinkedEntity('Order', order.id, token)
+          return Array.isArray(orderDocs) ? orderDocs : []
+        } catch (err) {
+          console.error(`Failed to load documents for order ${order.id}:`, err)
+          return []
+        }
+      })
+
+      const allDocuments = await Promise.all(documentPromises)
+      const documents = allDocuments.flat()
+      setClientDocuments(documents)
+    } catch (error) {
+      console.error('Failed to load documents:', error)
+      setClientDocuments([])
     }
   }
 
