@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { Bell, Check, CheckCheck, Trash2, Settings, Clock, AlertCircle, Calendar, MessageCircle, UserPlus, UserCheck, UserX } from 'lucide-react'
+import { Bell, Check, CheckCheck, Trash2, Settings, Clock, AlertCircle, Calendar, MessageCircle, UserPlus, UserCheck, UserX, Eye } from 'lucide-react'
 import { notificationService } from '../../services/notificationService'
 import { friendService } from '../../services/friendService'
 import { appointmentService } from '../../services/appointmentService'
@@ -418,6 +418,25 @@ export const Notifications = () => {
                     {notification.title}
                   </p>
                   <p className="text-sm text-gray-500 mt-0.5 whitespace-pre-line">{notification.message}</p>
+
+                  {/* Document Preview Link for Booking Requests */}
+                  {isDoctorBookingRequest(notification) && (
+                    (() => {
+                      const metadata = parseNotificationMetadata(notification);
+                      const docUrl = metadata?.bookingDocumentDownloadUrl;
+                      return docUrl ? (
+                        <a
+                          href={docUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 mt-2 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          <Eye size={14} />
+                          View Booking Document
+                        </a>
+                      ) : null;
+                    })()
+                  )}
 
                   {/* Friend Request Actions */}
                   {notification.type === 'FriendRequest' && (
