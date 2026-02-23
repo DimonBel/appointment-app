@@ -166,13 +166,17 @@ public class BookingAutomationService : IBookingAutomationService
             // Get doctor's UserId from professional ID
             var doctorUserId = await GetDoctorUserIdAsync(appointmentServiceUrl, token, draft.ProfessionalId ?? Guid.Empty);
 
+            // Get doctor's name for the title
+            var doctorName = await GetDoctorNameAsync(appointmentServiceUrl, token, draft.ProfessionalId ?? Guid.Empty);
+            var orderTitle = $"Appointment with Dr. {doctorName}";
+
             var orderPayload = new
             {
                 clientId = draft.UserId,
                 professionalId = draft.ProfessionalId,
                 scheduledDateTime = draft.PreferredDateTime,
                 durationMinutes = draft.DurationMinutes ?? 60,
-                title = draft.ServiceType,
+                title = orderTitle,
                 description = draft.ClientNotes,
                 notes = $"Created via AI Automation. Draft ID: {draft.Id}"
             };
@@ -583,6 +587,70 @@ public class BookingAutomationService : IBookingAutomationService
         }
 
         return null;
+    }
+
+    private async Task<string> GetDoctorNameAsync(string appointmentServiceUrl, string token, Guid professionalId)
+    {
+        try
+        {
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
+            var response = await _httpClient.GetAsync($"{appointmentServiceUrl}/api/professionals/{professionalId}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var professional = JsonSerializer.Deserialize<JsonElement>(responseContent);
+
+                // Try to get name from nested user object
+                if (professional.TryGetProperty("user", out var userProp) && userProp.ValueKind != JsonValueKind.Null)
+                {
+                    string? firstName = null;
+                    string? lastName = null;
+
+                    if (userProp.TryGetProperty("firstName", out var fn) && fn.ValueKind == JsonValueKind.String)
+                    {
+                        firstName = fn.GetString();
+                    }
+
+                    if (userProp.TryGetProperty("lastName", out var ln) && ln.ValueKind == JsonValueKind.String)
+                    {
+                        lastName = ln.GetString();
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(firstName) && !string.IsNullOrWhiteSpace(lastName))
+                    {
+                        return $"{firstName} {lastName}";
+                    }
+                }
+
+                // Try to get name directly from professional object
+                string? profFirstName = null;
+                string? profLastName = null;
+
+                if (professional.TryGetProperty("firstName", out var pfn) && pfn.ValueKind == JsonValueKind.String)
+                {
+                    profFirstName = pfn.GetString();
+                }
+
+                if (professional.TryGetProperty("lastName", out var pln) && pln.ValueKind == JsonValueKind.String)
+                {
+                    profLastName = pln.GetString();
+                }
+
+                if (!string.IsNullOrWhiteSpace(profFirstName) && !string.IsNullOrWhiteSpace(profLastName))
+                {
+                    return $"{profFirstName} {profLastName}";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error fetching doctor name: {ex.Message}");
+        }
+
+        return "Doctor";
     }
 
     private async Task<(string FirstName, string LastName)? > GetUserSummaryAsync(string identityServiceUrl, string token, Guid userId)

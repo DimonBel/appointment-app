@@ -18,6 +18,9 @@ public class NotificationDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // Configure DateTime properties to use UTC
+        ConfigureUtcDateTimeProperties(modelBuilder);
+
         // Notification
         modelBuilder.Entity<Notification>(entity =>
         {
@@ -87,6 +90,44 @@ public class NotificationDbContext : DbContext
 
         // Seed default templates
         SeedTemplates(modelBuilder);
+    }
+
+    private static void ConfigureUtcDateTimeProperties(ModelBuilder modelBuilder)
+    {
+        // Configure all DateTime properties to use UTC
+        modelBuilder.Entity<Notification>()
+            .Property(e => e.CreatedAt)
+            .HasDefaultValueSql("CURRENT_TIMESTAMP AT TIME ZONE 'UTC'");
+
+        modelBuilder.Entity<Notification>()
+            .Property(e => e.SentAt)
+            .HasDefaultValueSql("CURRENT_TIMESTAMP AT TIME ZONE 'UTC'");
+
+        modelBuilder.Entity<Notification>()
+            .Property(e => e.ReadAt);
+
+        modelBuilder.Entity<Notification>()
+            .Property(e => e.ScheduledFor);
+
+        modelBuilder.Entity<NotificationEvent>()
+            .Property(e => e.ReceivedAt)
+            .HasDefaultValueSql("CURRENT_TIMESTAMP AT TIME ZONE 'UTC'");
+
+        modelBuilder.Entity<NotificationEvent>()
+            .Property(e => e.ProcessedAt);
+
+        modelBuilder.Entity<NotificationSchedule>()
+            .Property(e => e.ScheduledAt);
+
+        modelBuilder.Entity<NotificationSchedule>()
+            .Property(e => e.ScheduledAt);
+
+        modelBuilder.Entity<NotificationSchedule>()
+            .Property(e => e.ProcessedAt);
+
+        modelBuilder.Entity<NotificationSchedule>()
+            .Property(e => e.CreatedAt)
+            .HasDefaultValueSql("CURRENT_TIMESTAMP AT TIME ZONE 'UTC'");
     }
 
     private static void SeedTemplates(ModelBuilder modelBuilder)

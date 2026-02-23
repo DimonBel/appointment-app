@@ -41,6 +41,7 @@ builder.Services.AddSingleton<IMinioDocumentStorageService>(sp =>
 });
 
 builder.Services.AddScoped<IDocumentService, DocumentService>();
+builder.Services.AddScoped<IBookingDocumentService, BookingDocumentService>();
 
 // Authentication
 var jwtSecret = builder.Configuration["Jwt:SecretKey"] ?? "your-very-long-secret-key-here-change-in-production";
@@ -108,6 +109,7 @@ app.UseAuthorization();
 
 // Map endpoints
 app.MapDocumentEndpoints();
+app.MapBookingDocumentEndpoints();
 
 app.Run();
 
