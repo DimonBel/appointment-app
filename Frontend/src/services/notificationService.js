@@ -6,7 +6,7 @@ class NotificationService {
   async getNotifications(userId, token, page = 1, pageSize = 20) {
     const response = await requestWithAuthRetry({
       method: 'get',
-      url: `${API_URL}/notifications?userId=${encodeURIComponent(userId)}&page=${page}&pageSize=${pageSize}`,
+      url: `${API_URL}?userId=${encodeURIComponent(userId)}&page=${page}&pageSize=${pageSize}`,
     }, token)
     return response.data
   }
@@ -14,7 +14,7 @@ class NotificationService {
   async getUnreadCount(userId, token) {
     const response = await requestWithAuthRetry({
       method: 'get',
-      url: `${API_URL}/notifications/unread-count?userId=${encodeURIComponent(userId)}`,
+      url: `${API_URL}/unread-count?userId=${encodeURIComponent(userId)}`,
     }, token)
     return response.data
   }
@@ -22,7 +22,7 @@ class NotificationService {
   async getUnreadNotifications(userId, token, page = 1, pageSize = 20) {
     const response = await requestWithAuthRetry({
       method: 'get',
-      url: `${API_URL}/notifications/unread?userId=${encodeURIComponent(userId)}&page=${page}&pageSize=${pageSize}`,
+      url: `${API_URL}/unread?userId=${encodeURIComponent(userId)}&page=${page}&pageSize=${pageSize}`,
     }, token)
     return response.data
   }
@@ -30,7 +30,7 @@ class NotificationService {
   async markAsRead(notificationId, token) {
     const response = await requestWithAuthRetry({
       method: 'put',
-      url: `${API_URL}/notifications/${notificationId}/read`,
+      url: `${API_URL}/${notificationId}/read`,
     }, token)
     return response.data
   }
@@ -38,7 +38,7 @@ class NotificationService {
   async markAllAsRead(userId, token) {
     const response = await requestWithAuthRetry({
       method: 'put',
-      url: `${API_URL}/notifications/read-all?userId=${encodeURIComponent(userId)}`,
+      url: `${API_URL}/read-all?userId=${encodeURIComponent(userId)}`,
     }, token)
     return response.data
   }
@@ -46,7 +46,7 @@ class NotificationService {
   async deleteNotification(notificationId, token) {
     const response = await requestWithAuthRetry({
       method: 'delete',
-      url: `${API_URL}/notifications/${notificationId}`,
+      url: `${API_URL}/${notificationId}`,
     }, token)
     return response.data
   }

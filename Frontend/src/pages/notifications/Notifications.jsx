@@ -268,33 +268,39 @@ export const Notifications = () => {
   }
 
   const handleApproveBookingRequest = async (notification) => {
-    const orderId = parseBookingRequestOrderId(notification)
-    if (!orderId) return
-
-    setProcessingBookingRequest(notification.id)
-    setBookingRequestErrors(prev => ({ ...prev, [notification.id]: null }))
-    try {
-      await appointmentService.approveOrder(orderId, null, token)
-      setBookingRequestResults(prev => ({ ...prev, [notification.id]: 'accepted' }))
-
-      if (notification.status !== 'Read') {
-        await notificationService.markAsRead(notification.id, token)
-        dispatch(markNotificationAsRead(notification.id))
+      const orderId = parseBookingRequestOrderId(notification)
+      if (!orderId) return
+  
+      setProcessingBookingRequest(notification.id)
+      setBookingRequestErrors(prev => ({ ...prev, [notification.id]: null }))
+      try {
+        // First, approve the booking
+        await appointmentService.approveOrder(orderId, null, token)
+        setBookingRequestResults(prev => ({ ...prev, [notification.id]: 'accepted' }))
+  
+        // Then try to mark as read and delete (non-critical operations)
+        try {
+          if (notification.status !== 'Read') {
+            await notificationService.markAsRead(notification.id, token)
+            dispatch(markNotificationAsRead(notification.id))
+          }
+  
+          await notificationService.deleteNotification(notification.id, token)
+          dispatch(removeNotification(notification.id))
+  
+          await loadNotifications()
+        } catch (notificationErr) {
+          // Don't show error for notification operations since booking was already approved
+          console.error('Failed to update notification:', notificationErr)
+        }
+      } catch (err) {
+        console.error('Failed to approve booking request:', err)
+        const apiMessage = err?.response?.data?.message || err?.response?.data?.title || 'Failed to accept request'
+        setBookingRequestErrors(prev => ({ ...prev, [notification.id]: apiMessage }))
+      } finally {
+        setProcessingBookingRequest(null)
       }
-
-      await notificationService.deleteNotification(notification.id, token)
-      dispatch(removeNotification(notification.id))
-
-      await loadNotifications()
-    } catch (err) {
-      console.error('Failed to approve booking request:', err)
-      const apiMessage = err?.response?.data?.message || err?.response?.data?.title || 'Failed to accept request'
-      setBookingRequestErrors(prev => ({ ...prev, [notification.id]: apiMessage }))
-    } finally {
-      setProcessingBookingRequest(null)
-    }
   }
-
   const handleDeclineBookingRequest = async (notification) => {
     const orderId = parseBookingRequestOrderId(notification)
     if (!orderId) return
@@ -418,25 +424,6 @@ export const Notifications = () => {
                     {notification.title}
                   </p>
                   <p className="text-sm text-gray-500 mt-0.5 whitespace-pre-line">{notification.message}</p>
-
-                  {/* Document Preview Link for Booking Requests */}
-                  {isDoctorBookingRequest(notification) && (
-                    (() => {
-                      const metadata = parseNotificationMetadata(notification);
-                      const docUrl = metadata?.bookingDocumentDownloadUrl;
-                      return docUrl ? (
-                        <a
-                          href={docUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 mt-2 text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                        >
-                          <Eye size={14} />
-                          View Booking Document
-                        </a>
-                      ) : null;
-                    })()
-                  )}
 
                   {/* Friend Request Actions */}
                   {notification.type === 'FriendRequest' && (
