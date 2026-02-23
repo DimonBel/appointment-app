@@ -226,6 +226,24 @@ export function useNotificationHub() {
     }, 5000)
   }
 
+  // Load initial unread count when authenticated
+  useEffect(() => {
+    if (!isAuthenticated || !token || !userId) return
+
+    const loadInitialUnreadCount = async () => {
+      try {
+        const countData = await notificationService.getUnreadCount(userId, token)
+        const count = typeof countData === 'number' ? countData : countData?.count || 0
+        dispatch(setUnreadCount(count))
+        console.log('Initial unread count loaded:', count)
+      } catch (err) {
+        console.error('Failed to load initial unread count:', err)
+      }
+    }
+
+    loadInitialUnreadCount()
+  }, [isAuthenticated, token, userId, dispatch])
+
   useEffect(() => {
     if (!isAuthenticated || !token) return
 

@@ -187,6 +187,16 @@ public class NotificationEventService : INotificationEventService
         if (payload.TryGetProperty("scheduledDateTime", out var sdt))
         {
             var scheduledTime = sdt.GetDateTime();
+            // Convert to UTC to avoid PostgreSQL timestamp issues
+            if (scheduledTime.Kind == DateTimeKind.Unspecified)
+            {
+                scheduledTime = DateTime.SpecifyKind(scheduledTime, DateTimeKind.Utc);
+            }
+            else if (scheduledTime.Kind == DateTimeKind.Local)
+            {
+                scheduledTime = scheduledTime.ToUniversalTime();
+            }
+            
             // Reminder for professional
             await _scheduleService.ScheduleAppointmentReminderAsync(professionalId, orderId, scheduledTime, 60);
 

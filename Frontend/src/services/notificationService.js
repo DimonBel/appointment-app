@@ -1,6 +1,6 @@
 import { requestWithAuthRetry } from './httpClient'
 
-const API_URL = import.meta.env.VITE_NOTIFICATION_API_URL || '/api/notification'
+const API_URL = import.meta.env.VITE_NOTIFICATION_API_URL || '/api/notifications'
 
 class NotificationService {
   async getNotifications(userId, token, page = 1, pageSize = 20) {

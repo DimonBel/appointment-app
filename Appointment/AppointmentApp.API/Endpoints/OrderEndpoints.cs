@@ -967,6 +967,12 @@ public static class OrderEndpoints
             ?? configuration["DocumentService:BaseUrl"]
             ?? "http://localhost:5004";
 
+        // If PublicBaseUrl is empty, return the relative path as-is
+        if (string.IsNullOrWhiteSpace(publicBaseUrl))
+        {
+            return relativePath.TrimStart('/');
+        }
+
         return $"{publicBaseUrl.TrimEnd('/')}/{relativePath.TrimStart('/')}";
     }
 }
