@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "/SEIrCpfN+dhlbzqPSVvRtr0UW5R1NWkR+KOdF2iM34=",
+  "Source": "DocumentApp.API",
+  "BasePath": "_content/DocumentApp.API",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

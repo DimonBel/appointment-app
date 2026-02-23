@@ -18,5 +18,6 @@ public enum NotificationType
     FriendRequestAccepted = 13,
     FriendRequestDeclined = 14,
     PasswordChanged = 15,
-    BookingConfirmation = 16
+    BookingConfirmation = 16,
+    BookingRequest = 17
 }

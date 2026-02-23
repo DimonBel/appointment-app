@@ -1,0 +1,13 @@
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Domain/bin/Debug/net9.0/DocumentApp.Domain.deps.json
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Domain/bin/Debug/net9.0/DocumentApp.Domain.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Domain/bin/Debug/net9.0/DocumentApp.Domain.pdb
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Domain/obj/Debug/net9.0/DocumentApp.Domain.csproj.AssemblyReference.cache
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Domain/obj/Debug/net9.0/DocumentApp.Domain.GeneratedMSBuildEditorConfig.editorconfig
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Domain/obj/Debug/net9.0/DocumentApp.Domain.AssemblyInfoInputs.cache
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Domain/obj/Debug/net9.0/DocumentApp.Domain.AssemblyInfo.cs
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Domain/obj/Debug/net9.0/DocumentApp.Domain.csproj.CoreCompileInputs.cache
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Domain/obj/Debug/net9.0/DocumentApp.Domain.sourcelink.json
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Domain/obj/Debug/net9.0/DocumentApp.Domain.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Domain/obj/Debug/net9.0/refint/DocumentApp.Domain.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Domain/obj/Debug/net9.0/DocumentApp.Domain.pdb
+/home/dumas/Desktop/Final-proj/appointment-app/Document/DocumentApp.Domain/obj/Debug/net9.0/ref/DocumentApp.Domain.dll

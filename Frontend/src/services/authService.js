@@ -28,11 +28,8 @@ class AuthService {
       formData.append('avatar', avatarFile)
     }
 
-    const response = await axios.post(`${API_URL}/register-with-avatar`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    })
+    // Don't set Content-Type for FormData - let Axios handle it automatically with proper boundary
+    const response = await axios.post(`${API_URL}/register-with-avatar`, formData)
     return response.data
   }
 

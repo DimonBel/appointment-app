@@ -3479,42 +3479,36 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Duma\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "/home/dumas/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\Duma\\appointment-app\\Notification\\NotificationApp.API\\NotificationApp.API.csproj",
+      "projectUniqueName": "/home/dumas/Desktop/Final-proj/appointment-app/Notification/NotificationApp.API/NotificationApp.API.csproj",
       "projectName": "NotificationApp.API",
-      "projectPath": "D:\\Duma\\appointment-app\\Notification\\NotificationApp.API\\NotificationApp.API.csproj",
-      "packagesPath": "C:\\Users\\Duma\\.nuget\\packages\\",
-      "outputPath": "D:\\Duma\\appointment-app\\Notification\\NotificationApp.API\\obj\\",
+      "projectPath": "/home/dumas/Desktop/Final-proj/appointment-app/Notification/NotificationApp.API/NotificationApp.API.csproj",
+      "packagesPath": "/home/dumas/.nuget/packages/",
+      "outputPath": "/home/dumas/Desktop/Final-proj/appointment-app/Notification/NotificationApp.API/obj/",
       "projectStyle": "PackageReference",
-      "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-      ],
       "configFilePaths": [
-        "C:\\Users\\Duma\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        "/home/dumas/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net9.0"
       ],
       "sources": {
-        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "/usr/lib/dotnet/library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
-            "D:\\Duma\\appointment-app\\Notification\\NotificationApp.Postgres\\NotificationApp.Postgres.csproj": {
-              "projectPath": "D:\\Duma\\appointment-app\\Notification\\NotificationApp.Postgres\\NotificationApp.Postgres.csproj"
+            "/home/dumas/Desktop/Final-proj/appointment-app/Notification/NotificationApp.Postgres/NotificationApp.Postgres.csproj": {
+              "projectPath": "/home/dumas/Desktop/Final-proj/appointment-app/Notification/NotificationApp.Postgres/NotificationApp.Postgres.csproj"
             },
-            "D:\\Duma\\appointment-app\\Notification\\NotificationApp.Service\\NotificationApp.Service.csproj": {
-              "projectPath": "D:\\Duma\\appointment-app\\Notification\\NotificationApp.Service\\NotificationApp.Service.csproj"
+            "/home/dumas/Desktop/Final-proj/appointment-app/Notification/NotificationApp.Service/NotificationApp.Service.csproj": {
+              "projectPath": "/home/dumas/Desktop/Final-proj/appointment-app/Notification/NotificationApp.Service/NotificationApp.Service.csproj"
             }
           }
         }
@@ -3569,7 +3563,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.101/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.114/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

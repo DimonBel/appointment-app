@@ -1,20 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useSelector } from 'react-redux'
+import { useLocation } from 'react-router-dom'
 import { MainContent, SectionHeader } from '../../components/layout/MainContent'
 import { Card, CardContent } from '../../components/ui/Card'
 import { Loader } from '../../components/ui/Loader'
 import { Avatar } from '../../components/ui/Avatar'
 import { appointmentService } from '../../services/appointmentService'
 import { userService } from '../../services/userService'
-import { Users, CalendarCheck, ShieldOff, Clock, UserRound, Grid3x3, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Filter, X } from 'lucide-react'
+import { DocumentManagement } from './DocumentManagement'
+import { Users, CalendarCheck, ShieldOff, Clock, UserRound, Grid3x3, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Filter, X, FileText } from 'lucide-react'
 
 const statusConfig = {
-  0: { text: 'Pending', color: 'bg-yellow-100 text-yellow-800' },
-  1: { text: 'Approved', color: 'bg-green-100 text-green-800' },
-  2: { text: 'Declined', color: 'bg-red-100 text-red-800' },
-  3: { text: 'Cancelled', color: 'bg-red-600 text-white' },
-  4: { text: 'Completed', color: 'bg-blue-100 text-blue-800' },
-  5: { text: 'No-show', color: 'bg-orange-100 text-orange-800' },
+  0: { text: 'Pending', color: 'bg-yellow-100 text-yellow-800', borderColor: 'border-l-yellow-500' },
+  1: { text: 'Approved', color: 'bg-green-100 text-green-800', borderColor: 'border-l-green-500' },
+  2: { text: 'Declined', color: 'bg-red-100 text-red-800', borderColor: 'border-l-red-500' },
+  3: { text: 'Cancelled', color: 'bg-red-600 text-white', borderColor: 'border-l-red-600' },
+  4: { text: 'Completed', color: 'bg-blue-100 text-blue-800', borderColor: 'border-l-blue-500' },
+  5: { text: 'No-show', color: 'bg-orange-100 text-orange-800', borderColor: 'border-l-orange-500' },
 }
 
 const STATUS_OPTIONS = [
@@ -54,6 +56,7 @@ const getTimeSlot = (date) => {
 const normalizeId = (value) => (value ? String(value).toLowerCase() : null)
 
 export const ManagementPanel = () => {
+  const location = useLocation()
   const token = useSelector((state) => state.auth.token)
   const currentUser = useSelector((state) => state.auth.user)
   const isAdmin = currentUser?.roles?.includes('Admin')
@@ -63,6 +66,13 @@ export const ManagementPanel = () => {
   const [loadError, setLoadError] = useState('')
   const [activeTab, setActiveTab] = useState('schedule')
   const [clientOrders, setClientOrders] = useState([])
+
+  // Handle activeTab from navigation state (e.g., when returning from DocumentPreview)
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab)
+    }
+  }, [location.state])
   const [doctorSchedules, setDoctorSchedules] = useState([])
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedAppointment, setSelectedAppointment] = useState(null)
@@ -395,6 +405,17 @@ export const ManagementPanel = () => {
               <UserRound size={18} />
               Doctors Availability
             </button>
+            <button
+              onClick={() => setActiveTab('documents')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                activeTab === 'documents'
+                  ? 'bg-primary-dark text-white shadow-md'
+                  : 'bg-white border border-gray-300 text-text-secondary hover:bg-gray-50'
+              }`}
+            >
+              <FileText size={18} />
+              Documents
+            </button>
           </div>
 
           {activeTab === 'schedule' && (
@@ -470,7 +491,7 @@ export const ManagementPanel = () => {
                                 className={`py-1 px-2 border-l border-gray-100 align-top`}
                               >
                                 <div
-                                  className={`p-2 text-xs font-medium ${statusColor} ${borderRadius} flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity`}
+                                  className={`p-2 text-xs font-medium ${statusColor} border-l-4 ${statusConfig[cellData.status]?.borderColor || 'border-l-gray-400'} ${borderRadius} flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity`}
                                   style={{ minHeight: `${rowSpan * 40 - 16}px` }}
                                   onClick={() => {
                                     setSelectedAppointment(cellData.appointment)
@@ -718,6 +739,8 @@ export const ManagementPanel = () => {
               </CardContent>
             </Card>
           )}
+
+          {activeTab === 'documents' && <DocumentManagement />}
         </div>
       )}
 

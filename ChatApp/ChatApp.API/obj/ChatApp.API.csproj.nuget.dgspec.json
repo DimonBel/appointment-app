@@ -32,8 +32,8 @@
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj": {
-                "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj"
+              "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Repository\\ChatApp.Repository.csproj": {
+                "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Repository\\ChatApp.Repository.csproj"
               },
               "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj": {
                 "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj"
@@ -354,8 +354,8 @@
               "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj": {
                 "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Domain\\ChatApp.Domain.csproj"
               },
-              "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Repository\\ChatApp.Repository.csproj": {
-                "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Repository\\ChatApp.Repository.csproj"
+              "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj": {
+                "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj"
               }
             }
           }

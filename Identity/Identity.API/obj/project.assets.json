@@ -2211,11 +2211,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/dumas/Desktop/Final-proj/Identity/Identity.API/Identity.API.csproj",
+      "projectUniqueName": "/home/dumas/Desktop/Final-proj/appointment-app/Identity/Identity.API/Identity.API.csproj",
       "projectName": "Identity.API",
-      "projectPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.API/Identity.API.csproj",
+      "projectPath": "/home/dumas/Desktop/Final-proj/appointment-app/Identity/Identity.API/Identity.API.csproj",
       "packagesPath": "/home/dumas/.nuget/packages/",
-      "outputPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.API/obj/",
+      "outputPath": "/home/dumas/Desktop/Final-proj/appointment-app/Identity/Identity.API/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/home/dumas/.nuget/NuGet/NuGet.Config"
@@ -2231,14 +2231,14 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
-            "/home/dumas/Desktop/Final-proj/Identity/Identity.Domain/Identity.Domain.csproj": {
-              "projectPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Domain/Identity.Domain.csproj"
+            "/home/dumas/Desktop/Final-proj/appointment-app/Identity/Identity.Domain/Identity.Domain.csproj": {
+              "projectPath": "/home/dumas/Desktop/Final-proj/appointment-app/Identity/Identity.Domain/Identity.Domain.csproj"
             },
-            "/home/dumas/Desktop/Final-proj/Identity/Identity.Postgres/Identity.Postgres.csproj": {
-              "projectPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Postgres/Identity.Postgres.csproj"
+            "/home/dumas/Desktop/Final-proj/appointment-app/Identity/Identity.Postgres/Identity.Postgres.csproj": {
+              "projectPath": "/home/dumas/Desktop/Final-proj/appointment-app/Identity/Identity.Postgres/Identity.Postgres.csproj"
             },
-            "/home/dumas/Desktop/Final-proj/Identity/Identity.Service/Identity.Service.csproj": {
-              "projectPath": "/home/dumas/Desktop/Final-proj/Identity/Identity.Service/Identity.Service.csproj"
+            "/home/dumas/Desktop/Final-proj/appointment-app/Identity/Identity.Service/Identity.Service.csproj": {
+              "projectPath": "/home/dumas/Desktop/Final-proj/appointment-app/Identity/Identity.Service/Identity.Service.csproj"
             }
           }
         }
@@ -2295,7 +2295,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.112/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.114/PortableRuntimeIdentifierGraph.json"
       }
     }
   },

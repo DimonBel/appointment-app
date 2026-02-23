@@ -1204,7 +1204,7 @@
         "framework": ".NETCoreApp,Version=v9.0",
         "dependencies": {
           "ChatApp.Domain": "1.0.0",
-          "ChatApp.Repository": "1.0.0"
+          "ChatApp.Postgres": "1.0.0"
         },
         "compile": {
           "bin/placeholder/ChatApp.Service.dll": {}
@@ -3400,7 +3400,7 @@
   },
   "projectFileDependencyGroups": {
     "net9.0": [
-      "ChatApp.Postgres >= 1.0.0",
+      "ChatApp.Repository >= 1.0.0",
       "ChatApp.Service >= 1.0.0",
       "Microsoft.AspNetCore.Authentication.JwtBearer >= 9.0.0",
       "Microsoft.AspNetCore.OpenApi >= 9.0.11",
@@ -3439,8 +3439,8 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
-            "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj": {
-              "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Postgres\\ChatApp.Postgres.csproj"
+            "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Repository\\ChatApp.Repository.csproj": {
+              "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Repository\\ChatApp.Repository.csproj"
             },
             "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj": {
               "projectPath": "D:\\Duma\\appointment-app\\ChatApp\\ChatApp.Service\\ChatApp.Service.csproj"

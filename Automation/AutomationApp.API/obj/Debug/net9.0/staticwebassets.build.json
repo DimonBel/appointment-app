@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "ftTaktD5ZKAtrF9PRHF9b7Ulx90JFzhnfjJPkfvSBdk=",
+  "Source": "AutomationApp.API",
+  "BasePath": "_content/AutomationApp.API",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

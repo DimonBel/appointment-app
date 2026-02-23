@@ -4,24 +4,48 @@ class SignalRService {
   constructor() {
     this.connection = null
     this.handlers = new Map()
+    this.connectPromise = null
+    this.currentHubUrl = null
+    this.currentAccessToken = null
   }
 
   async connect(accessToken, hubUrl) {
+    if (!accessToken || !hubUrl) return
+
+    const sameTarget = this.currentHubUrl === hubUrl && this.currentAccessToken === accessToken
+
+    if (this.connectPromise) {
+      await this.connectPromise
+      return
+    }
+
     // If already connected, just return
-    if (this.connection?.state === signalR.HubConnectionState.Connected) {
+    if (this.connection?.state === signalR.HubConnectionState.Connected && sameTarget) {
       console.log('SignalR already connected')
       return
     }
 
-    // If connection exists but not connected, stop it first
+    // If currently connecting/reconnecting to same target, don't start another cycle
+    if (this.connection && (
+      this.connection.state === signalR.HubConnectionState.Connecting ||
+      this.connection.state === signalR.HubConnectionState.Reconnecting
+    ) && sameTarget) {
+      return
+    }
+
+    // If target changed or stale state exists, stop and recreate
     if (this.connection && this.connection.state !== signalR.HubConnectionState.Disconnected) {
       await this.disconnect()
     }
 
+    this.currentHubUrl = hubUrl
+    this.currentAccessToken = accessToken
+
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl, {
         accessTokenFactory: () => accessToken,
-        transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.ServerSentEvents,
+        transport: signalR.HttpTransportType.WebSockets,
+        skipNegotiation: true,
       })
       .withAutomaticReconnect()
       .configureLogging(signalR.LogLevel.Information)
@@ -32,23 +56,40 @@ class SignalRService {
       this.connection.on(event, callback)
     })
 
-    try {
-      await this.connection.start()
-      console.log('SignalR Connected')
-    } catch (err) {
-      console.error('SignalR Connection Error:', err)
-      throw err
-    }
+    this.connectPromise = (async () => {
+      try {
+        await this.connection.start()
+        console.log('SignalR Connected')
+      } catch (err) {
+        console.error('SignalR Connection Error:', err)
+        throw err
+      } finally {
+        this.connectPromise = null
+      }
+    })()
+
+    await this.connectPromise
   }
 
   async disconnect() {
+    if (this.connectPromise) {
+      try {
+        await this.connectPromise
+      } catch {
+        // Ignore connect errors during teardown
+      }
+    }
+
     if (this.connection) {
-      await this.connection.stop()
+      if (this.connection.state !== signalR.HubConnectionState.Disconnected) {
+        await this.connection.stop()
+      }
       console.log('SignalR Disconnected')
       this.connection = null
     }
-    // Clear all handlers
-    this.handlers.clear()
+    this.currentHubUrl = null
+    this.currentAccessToken = null
+    // Don't clear handlers - they should persist for reconnects
   }
 
   on(event, callback) {

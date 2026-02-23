@@ -22,11 +22,10 @@ public static class AuthEndpoints
 
         group.MapPost("/register-with-avatar", RegisterWithAvatarAsync)
             .WithName("RegisterWithAvatar")
-            .Accepts<IFormFile>("multipart/form-data")
-            .DisableAntiforgery()
             .WithOpenApi()
             .Produces<AuthResponseDto>(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status400BadRequest);
+            .Produces(StatusCodes.Status400BadRequest)
+            .DisableAntiforgery();
 
         group.MapPost("/login", LoginAsync)
             .WithName("Login")

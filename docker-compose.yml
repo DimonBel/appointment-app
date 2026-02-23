@@ -1,6 +1,22 @@
-version: "3.8"
-
 services:
+  # Ollama LLM Service for AI Assistant
+  # To run this container independently for testing: docker-compose up ollama
+  # After starting, pull a model: docker exec -it ollama ollama pull llama-3.1-8b
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - app-network
+    environment:
+      - OLLAMA_KEEP_ALIVE=-1
+      - OLLAMA_NUM_PARALLEL=2
+    command: serve
+
   # PostgreSQL Database for Identity Service
   identity-db:
     image: postgres:16-alpine
@@ -85,12 +101,54 @@ services:
       timeout: 5s
       retries: 5
 
-  # MinIO Object Storage for avatars
+  # PostgreSQL Database for Document Service
+  document-db:
+    image: postgres:16-alpine
+    container_name: document-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DOCUMENT_DB_NAME:-DocumentDb}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
+    ports:
+      - "5437:5432"
+    volumes:
+      - document-db-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL Database for Automation Service
+  automation-db:
+    image: postgres:16-alpine
+    container_name: automation-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${AUTOMATION_DB_NAME:-automationdb}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
+    ports:
+      - "5438:5432"
+    volumes:
+      - automation-db-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO Object Storage for avatars and documents
   minio:
     image: minio/minio:latest
     container_name: minio
     restart: unless-stopped
-    command: server /data --console-address ":9001"
+    entrypoint: ["/entrypoint.sh"]
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
@@ -99,6 +157,7 @@ services:
       - "9001:9001"
     volumes:
       - minio-data:/data
+      - ./minio-entrypoint.sh:/entrypoint.sh:ro
     networks:
       - app-network
     healthcheck:
@@ -180,6 +239,9 @@ services:
       - ConnectionStrings__DefaultConnection=Host=appointment-db;Port=5432;Database=${APPOINTMENT_DB_NAME:-appointmentdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
       - IdentityService__BaseUrl=http://identity-service:5005
       - NotificationService__BaseUrl=http://notification-service:5003
+      - DocumentService__BaseUrl=http://document-service:5004
+      - DocumentService__PublicBaseUrl=${DOCUMENT_PUBLIC_BASE_URL:-http://localhost:5004}
+      - InternalServiceKey=${INTERNAL_SERVICE_KEY:-internal-dev-key}
       - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
       - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
       - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
@@ -272,6 +334,94 @@ services:
       retries: 3
       start_period: 40s
 
+  # Document Service
+  document-service:
+    build:
+      context: ./Document
+      dockerfile: Dockerfile
+    container_name: document-service
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5004
+      - ConnectionStrings__DefaultConnection=Host=document-db;Port=5432;Database=${DOCUMENT_DB_NAME:-DocumentDb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
+      - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
+      - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
+      - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
+      - Minio__Endpoint=${MINIO_ENDPOINT:-minio:9000}
+      - Minio__AccessKey=${MINIO_ROOT_USER:-minioadmin}
+      - Minio__SecretKey=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - Minio__UseSSL=${MINIO_USE_SSL:-false}
+      - Minio__Bucket=${MINIO_BUCKET_DOCUMENTS:-documents}
+      - InternalServiceKey=${INTERNAL_SERVICE_KEY:-internal-dev-key}
+      - Smtp__Host=${SMTP_HOST:-mail.kubzle.com}
+      - Smtp__Port=${SMTP_PORT:-587}
+      - Smtp__Username=${SMTP_USERNAME:-Test-internship@rts.md}
+      - Smtp__Password=${SMTP_PASSWORD:-5517bBueeT8z}
+      - Smtp__FromEmail=${SMTP_FROM_EMAIL:-Test-internship@rts.md}
+      - Smtp__FromName=${SMTP_FROM_NAME:-Booking-app}
+      - Smtp__SecureSocket=${SMTP_SECURE_SOCKET:-StartTls}
+      - Smtp__UseSsl=false
+      - Smtp__UseStartTls=true
+    ports:
+      - "5004:5004"
+    depends_on:
+      document-db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5004/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Automation Service (AI Assistant)
+  automation-service:
+    build:
+      context: ./Automation
+      dockerfile: Dockerfile
+    container_name: automation-service
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5006
+      - ConnectionStrings__DefaultConnection=Host=automation-db;Port=5432;Database=${AUTOMATION_DB_NAME:-automationdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
+      - IdentityService__BaseUrl=http://identity-service:5005
+      - AppointmentService__BaseUrl=http://appointment-service:5001
+      - NotificationService__BaseUrl=http://notification-service:5003
+      - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
+      - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
+      - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
+      - Ollama__BaseUrl=${OLLAMA_BASE_URL:-http://ollama:11434}
+      - Ollama__ModelName=${OLLAMA_MODEL_NAME:-gemma2:2b}
+      - Ollama__RequestTimeoutSeconds=${OLLAMA_REQUEST_TIMEOUT_SECONDS:-2}
+      - Ollama__NumPredict=${OLLAMA_NUM_PREDICT:-128}
+      - Ollama__NumCtx=${OLLAMA_NUM_CTX:-1536}
+      - Ollama__NumThread=${OLLAMA_NUM_THREAD:-4}
+    ports:
+      - "5006:5006"
+    depends_on:
+      automation-db:
+        condition: service_healthy
+      identity-service:
+        condition: service_healthy
+      appointment-service:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5006/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   # Frontend (React + Nginx)
   frontend:
     build:
@@ -286,6 +436,8 @@ services:
       - appointment-service
       - chat-service
       - notification-service
+      - document-service
+      - automation-service
     networks:
       - app-network
     healthcheck:
@@ -309,5 +461,11 @@ volumes:
     name: chat-db-data
   notification-db-data:
     name: notification-db-data
+  document-db-data:
+    name: document-db-data
+  automation-db-data:
+    name: automation-db-data
   minio-data:
     name: minio-data
+  ollama-data:
+    name: ollama-data

@@ -124,6 +124,11 @@ public class OrderService : IOrderService
         return await _orderRepository.GetByProfessionalAsync(professionalId, status, page, pageSize);
     }
 
+    public async Task<IEnumerable<AppIdentityUser>> GetClientsByProfessionalAsync(Guid professionalId)
+    {
+        return await _orderRepository.GetClientsByProfessionalAsync(professionalId);
+    }
+
     public async Task<Order> UpdateOrderAsync(Guid orderId, string? title = null, string? description = null, string? notes = null)
     {
         var order = await _orderRepository.GetByIdAsync(orderId);

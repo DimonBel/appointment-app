@@ -1,0 +1,13 @@
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Domain/bin/Debug/net9.0/AutomationApp.Domain.deps.json
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Domain/bin/Debug/net9.0/AutomationApp.Domain.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Domain/bin/Debug/net9.0/AutomationApp.Domain.pdb
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Domain/obj/Debug/net9.0/AutomationApp.Domain.csproj.AssemblyReference.cache
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Domain/obj/Debug/net9.0/AutomationApp.Domain.GeneratedMSBuildEditorConfig.editorconfig
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Domain/obj/Debug/net9.0/AutomationApp.Domain.AssemblyInfoInputs.cache
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Domain/obj/Debug/net9.0/AutomationApp.Domain.AssemblyInfo.cs
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Domain/obj/Debug/net9.0/AutomationApp.Domain.csproj.CoreCompileInputs.cache
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Domain/obj/Debug/net9.0/AutomationApp.Domain.sourcelink.json
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Domain/obj/Debug/net9.0/AutomationApp.Domain.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Domain/obj/Debug/net9.0/refint/AutomationApp.Domain.dll
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Domain/obj/Debug/net9.0/AutomationApp.Domain.pdb
+/home/dumas/Desktop/Final-proj/appointment-app/Automation/AutomationApp.Domain/obj/Debug/net9.0/ref/AutomationApp.Domain.dll
