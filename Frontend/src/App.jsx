@@ -14,6 +14,7 @@ import { Profile } from './pages/Profile'
 import { Settings } from './pages/Settings'
 import { DoctorProfile } from './pages/DoctorProfile'
 import { DoctorPanel } from './pages/doctor/DoctorPanel'
+import { ClientDetail } from './pages/doctor/ClientDetail'
 import { Notifications } from './pages/notifications/Notifications'
 import { AdminPanel } from './pages/admin/AdminPanel'
 import { ManagementPanel } from './pages/management/ManagementPanel'
@@ -73,6 +74,7 @@ function App() {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/doctor-profile" element={<DoctorProfile />} />
                 <Route path="/doctor-panel" element={<DoctorPanel />} />
+                <Route path="/doctor-panel/client/:clientId" element={<ClientDetail />} />
                 <Route path="/management" element={<ManagementPanel />} />
                 <Route path="/document-preview" element={<DocumentPreview />} />
                 <Route path="/notifications" element={<Notifications />} />
