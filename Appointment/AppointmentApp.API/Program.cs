@@ -56,6 +56,13 @@ builder.Services.AddHttpClient("NotificationService", client =>
     client.Timeout = TimeSpan.FromSeconds(5);
 });
 
+builder.Services.AddHttpClient("DocumentService", client =>
+{
+    var baseUrl = builder.Configuration["DocumentService:BaseUrl"] ?? "http://localhost:5004";
+    client.BaseAddress = new Uri(baseUrl);
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
 // Configure Authentication with JWT (validate tokens from Identity Service)
 builder.Services.AddAuthentication(options =>
 {

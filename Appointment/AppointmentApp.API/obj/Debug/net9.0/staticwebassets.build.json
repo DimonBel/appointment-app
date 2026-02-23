@@ -1,11 +1,23 @@
 {
   "Version": 1,
-  "Hash": "6juJgqQuEVEv+A6WSGOIr1Y/bF1dmrDdOUWsvSiJMk0=",
+  "Hash": "rtOWyli61sMHRTLeYN8eHZHKbwBwqy1FWAtNeq0lgpI=",
   "Source": "AppointmentApp.API",
   "BasePath": "_content/AppointmentApp.API",
   "Mode": "Default",
   "ManifestType": "Build",
-  "ReferencedProjectsConfiguration": [],
+  "ReferencedProjectsConfiguration": [
+    {
+      "Identity": "/home/dumas/Desktop/Final-proj/appointment-app/Identity/Identity.API/Identity.API.csproj",
+      "Version": 2,
+      "Source": "Identity.API",
+      "GetPublishAssetsTargets": "ComputeReferencedStaticWebAssetsPublishManifest;GetCurrentProjectPublishStaticWebAssetItems",
+      "AdditionalPublishProperties": "",
+      "AdditionalPublishPropertiesToRemove": "WebPublishProfileFile;Configuration;Platform;TargetFramework",
+      "GetBuildAssetsTargets": "GetCurrentProjectBuildStaticWebAssetItems",
+      "AdditionalBuildProperties": "",
+      "AdditionalBuildPropertiesToRemove": "WebPublishProfileFile;Configuration;Platform;TargetFramework"
+    }
+  ],
   "DiscoveryPatterns": [],
   "Assets": [],
   "Endpoints": []

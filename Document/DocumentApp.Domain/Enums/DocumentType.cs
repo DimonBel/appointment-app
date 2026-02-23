@@ -6,5 +6,6 @@ public enum DocumentType
     ChatFile = 2,
     BookingFile = 3,
     ProfileDocument = 4,
-    Other = 5
+    Other = 5,
+    BookingConfirmation = 6
 }

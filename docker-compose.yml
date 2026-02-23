@@ -239,6 +239,9 @@ services:
       - ConnectionStrings__DefaultConnection=Host=appointment-db;Port=5432;Database=${APPOINTMENT_DB_NAME:-appointmentdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
       - IdentityService__BaseUrl=http://identity-service:5005
       - NotificationService__BaseUrl=http://notification-service:5003
+      - DocumentService__BaseUrl=http://document-service:5004
+      - DocumentService__PublicBaseUrl=${DOCUMENT_PUBLIC_BASE_URL:-http://localhost:5004}
+      - InternalServiceKey=${INTERNAL_SERVICE_KEY:-internal-dev-key}
       - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
       - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
       - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
@@ -350,6 +353,16 @@ services:
       - Minio__SecretKey=${MINIO_ROOT_PASSWORD:-minioadmin}
       - Minio__UseSSL=${MINIO_USE_SSL:-false}
       - Minio__Bucket=${MINIO_BUCKET_DOCUMENTS:-documents}
+      - InternalServiceKey=${INTERNAL_SERVICE_KEY:-internal-dev-key}
+      - Smtp__Host=${SMTP_HOST:-mail.kubzle.com}
+      - Smtp__Port=${SMTP_PORT:-587}
+      - Smtp__Username=${SMTP_USERNAME:-Test-internship@rts.md}
+      - Smtp__Password=${SMTP_PASSWORD:-5517bBueeT8z}
+      - Smtp__FromEmail=${SMTP_FROM_EMAIL:-Test-internship@rts.md}
+      - Smtp__FromName=${SMTP_FROM_NAME:-Booking-app}
+      - Smtp__SecureSocket=${SMTP_SECURE_SOCKET:-StartTls}
+      - Smtp__UseSsl=false
+      - Smtp__UseStartTls=true
     ports:
       - "5004:5004"
     depends_on:

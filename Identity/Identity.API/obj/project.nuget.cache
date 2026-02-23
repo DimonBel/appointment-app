@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "0uq7DuGPl88=",
+  "dgSpecHash": "zv2mwLmN+sQ=",
   "success": true,
-  "projectFilePath": "/home/dumas/Desktop/Final-proj/Identity/Identity.API/Identity.API.csproj",
+  "projectFilePath": "/home/dumas/Desktop/Final-proj/appointment-app/Identity/Identity.API/Identity.API.csproj",
   "expectedPackageFiles": [
     "/home/dumas/.nuget/packages/microsoft.aspnetcore.authentication/2.3.0/microsoft.aspnetcore.authentication.2.3.0.nupkg.sha512",
     "/home/dumas/.nuget/packages/microsoft.aspnetcore.authentication.abstractions/2.3.0/microsoft.aspnetcore.authentication.abstractions.2.3.0.nupkg.sha512",

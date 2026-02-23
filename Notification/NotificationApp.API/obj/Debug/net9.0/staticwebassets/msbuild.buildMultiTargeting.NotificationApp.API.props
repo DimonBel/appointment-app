@@ -1,3 +1,3 @@
 ﻿<Project>
-  <Import Project="..\build\NotificationApp.API.props" />
+  <Import Project="../build/NotificationApp.API.props" />
 </Project>

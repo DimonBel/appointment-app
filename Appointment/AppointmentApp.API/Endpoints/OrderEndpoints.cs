@@ -157,6 +157,39 @@ public static class OrderEndpoints
             {
                 try
                 {
+                    var configuration = context.RequestServices.GetRequiredService<IConfiguration>();
+
+                    string? bookingDocumentDownloadUrl = null;
+                    Guid? bookingDocumentId = null;
+
+                    try
+                    {
+                        var documentClient = httpClientFactory.CreateClient("DocumentService");
+                        AddInternalServiceKey(documentClient, configuration);
+
+                        var bookingDocumentRequest = BuildBookingDocumentRequest(
+                            order,
+                            patientName,
+                            userEmail,
+                            ExtractDoctorNameFromOrderTitle(order.Title) ?? "Doctor",
+                            status: "Pending");
+
+                        var docResponse = await documentClient.PostAsJsonAsync(
+                            "/api/documents/bookings/internal/generate",
+                            bookingDocumentRequest);
+
+                        if (docResponse.IsSuccessStatusCode)
+                        {
+                            var generated = await docResponse.Content.ReadFromJsonAsync<BookingDocumentResponse>();
+                            bookingDocumentId = generated?.DocumentId;
+                            bookingDocumentDownloadUrl = BuildDocumentDownloadUrl(configuration, generated?.DownloadUrl);
+                        }
+                    }
+                    catch
+                    {
+                        // non-critical
+                    }
+
                     var client = httpClientFactory.CreateClient("NotificationService");
                     var orderCreatedPayload = JsonSerializer.Serialize(new
                     {
@@ -166,7 +199,9 @@ public static class OrderEndpoints
                         patientName,
                         appointmentDate = dto.ScheduledDateTime.ToString("yyyy-MM-dd"),
                         appointmentTime = dto.ScheduledDateTime.ToString("HH:mm"),
-                        scheduledDateTime = dto.ScheduledDateTime
+                        scheduledDateTime = dto.ScheduledDateTime,
+                        bookingDocumentId,
+                        bookingDocumentDownloadUrl
                     });
 
                     await client.PostAsJsonAsync("/api/notifications/events", new
@@ -427,7 +462,11 @@ public static class OrderEndpoints
 
             try
             {
+                var configuration = context.RequestServices.GetRequiredService<IConfiguration>();
                 var client = httpClientFactory.CreateClient("NotificationService");
+                var documentClient = httpClientFactory.CreateClient("DocumentService");
+                AddInternalServiceKey(documentClient, configuration);
+
                 var accessToken = context.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
                 var clientUser = await userManager.FindByIdAsync(order.ClientId.ToString());
                 var professionalUser = await userManager.FindByIdAsync(order.ProfessionalId.ToString());
@@ -449,18 +488,42 @@ public static class OrderEndpoints
                     ?? doctorNameFromClaims
                     ?? ResolveAppUserDisplayName(professionalUser, "Doctor");
 
+                string? bookingDocumentDownloadUrl = null;
+                Guid? bookingDocumentId = null;
+
+                if (!string.IsNullOrWhiteSpace(targetEmail))
+                {
+                    var emailRequest = new
+                    {
+                        booking = BuildBookingDocumentRequest(order, identityClientUser?.UserName ?? clientUser?.UserName ?? "Patient", targetEmail, doctorName, "Confirmed"),
+                        recipientEmail = targetEmail
+                    };
+
+                    var documentEmailResponse = await documentClient.PostAsJsonAsync(
+                        "/api/documents/bookings/internal/send-confirmation-email",
+                        emailRequest);
+
+                    if (documentEmailResponse.IsSuccessStatusCode)
+                    {
+                        var generated = await documentEmailResponse.Content.ReadFromJsonAsync<BookingDocumentResponse>();
+                        bookingDocumentId = generated?.DocumentId;
+                        bookingDocumentDownloadUrl = BuildDocumentDownloadUrl(configuration, generated?.DownloadUrl);
+                    }
+                }
+
                 var payload = JsonSerializer.Serialize(new
                 {
                     userId = order.ClientId,
                     userName = identityClientUser?.UserName ?? clientUser?.UserName ?? "Patient",
-                    email = targetEmail,
                     orderId = order.Id,
                     doctorName,
                     appointmentDate = order.ScheduledDateTime.ToString("yyyy-MM-dd"),
                     appointmentTime = order.ScheduledDateTime.ToString("HH:mm"),
                     title = order.Title ?? "Appointment",
                     status = "Approved",
-                    reason = dto.Reason
+                    reason = dto.Reason,
+                    bookingDocumentId,
+                    bookingDocumentDownloadUrl
                 });
 
                 await client.PostAsJsonAsync("/api/notifications/events", new
@@ -846,6 +909,72 @@ public static class OrderEndpoints
             order.UpdatedAt
         };
     }
+
+    private static object BuildBookingDocumentRequest(Order order, string patientName, string? patientEmail, string doctorName, string status)
+    {
+        return new
+        {
+            orderId = order.Id,
+            clientId = order.ClientId,
+            doctorId = order.ProfessionalId,
+            facilityName = "Healthcare Hub",
+            facilityAddress = "Medical Center Address",
+            facilityPhone = "+1 345-67-890",
+            facilityEmail = "support@healthcarehub.local",
+            facilityWebsite = "www.healthcarehub.local",
+            bookingNumber = order.Id.ToString("N")[..8].ToUpperInvariant(),
+            bookingDateUtc = DateTime.UtcNow,
+            status,
+            patientName,
+            patientEmail = patientEmail ?? string.Empty,
+            doctorName,
+            scheduledDateTimeUtc = order.ScheduledDateTime,
+            durationMinutes = order.DurationMinutes,
+            taxRate = 0.075m,
+            additionalInformation = "Please arrive 10 minutes before your scheduled appointment.",
+            lineItems = new[]
+            {
+                new
+                {
+                    quantity = 1m,
+                    description = order.Title ?? $"Consultation with {doctorName}",
+                    unitPrice = 100m
+                }
+            }
+        };
+    }
+
+    private static void AddInternalServiceKey(HttpClient client, IConfiguration configuration)
+    {
+        var key = configuration["InternalServiceKey"] ?? "internal-dev-key";
+        client.DefaultRequestHeaders.Remove("X-Internal-Key");
+        client.DefaultRequestHeaders.Add("X-Internal-Key", key);
+    }
+
+    private static string? BuildDocumentDownloadUrl(IConfiguration configuration, string? relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath))
+        {
+            return null;
+        }
+
+        if (Uri.TryCreate(relativePath, UriKind.Absolute, out var absoluteUri))
+        {
+            return absoluteUri.ToString();
+        }
+
+        var publicBaseUrl = configuration["DocumentService:PublicBaseUrl"]
+            ?? configuration["DocumentService:BaseUrl"]
+            ?? "http://localhost:5004";
+
+        return $"{publicBaseUrl.TrimEnd('/')}/{relativePath.TrimStart('/')}";
+    }
+}
+
+internal class BookingDocumentResponse
+{
+    public Guid DocumentId { get; set; }
+    public string DownloadUrl { get; set; } = string.Empty;
 }
 
 public class CancelOrderDto

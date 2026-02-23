@@ -121,8 +121,9 @@ public static class DocumentEndpoints
             var canViewAsProfessional = HasAnyRole(user, "Doctor", "Professional");
             var isLinkedToOrder = document.LinkedEntityType == LinkedEntityType.Order;
             var isBookingFile = document.DocumentType == DocumentType.BookingFile;
+            var isBookingConfirmation = document.DocumentType == DocumentType.BookingConfirmation;
             
-            if (!hasAccess && !HasAnyRole(user, "Admin", "Management") && !(canViewAsProfessional && (isLinkedToOrder || isBookingFile)))
+            if (!hasAccess && !HasAnyRole(user, "Admin", "Management") && !(canViewAsProfessional && (isLinkedToOrder || isBookingFile || isBookingConfirmation)))
             {
                 return Results.Forbid();
             }
@@ -165,7 +166,8 @@ public static class DocumentEndpoints
             var canDownloadAsProfessional = HasAnyRole(user, "Doctor", "Professional");
             var isLinkedToOrder = document.LinkedEntityType == LinkedEntityType.Order;
             var isBookingFile = document.DocumentType == DocumentType.BookingFile;
-            var canBypassAsProfessional = canDownloadAsProfessional && (isLinkedToOrder || isBookingFile);
+            var isBookingConfirmation = document.DocumentType == DocumentType.BookingConfirmation;
+            var canBypassAsProfessional = canDownloadAsProfessional && (isLinkedToOrder || isBookingFile || isBookingConfirmation);
             
             if (!hasAccess && !bypassAccessControl && !canBypassAsProfessional)
             {

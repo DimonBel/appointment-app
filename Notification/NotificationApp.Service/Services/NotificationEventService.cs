@@ -139,6 +139,12 @@ public class NotificationEventService : INotificationEventService
         var patientName = payload.TryGetProperty("patientName", out var pn) ? pn.GetString() ?? "Patient" : "Patient";
         var appointmentDate = payload.TryGetProperty("appointmentDate", out var ad) ? ad.GetString() ?? "" : "";
         var appointmentTime = payload.TryGetProperty("appointmentTime", out var at) ? at.GetString() ?? "" : "";
+        var bookingDocumentDownloadUrl = payload.TryGetProperty("bookingDocumentDownloadUrl", out var docUrl)
+            ? docUrl.GetString() ?? ""
+            : "";
+        var bookingDocumentId = payload.TryGetProperty("bookingDocumentId", out var docId)
+            ? docId.GetGuid()
+            : (Guid?)null;
 
         var data = new Dictionary<string, string>
         {
@@ -153,8 +159,14 @@ public class NotificationEventService : INotificationEventService
             orderId,
             patientName,
             appointmentDate,
-            appointmentTime
+            appointmentTime,
+            bookingDocumentDownloadUrl,
+            bookingDocumentId
         });
+
+        var documentHint = string.IsNullOrWhiteSpace(bookingDocumentDownloadUrl)
+            ? string.Empty
+            : $"\n\nReview booking document: {bookingDocumentDownloadUrl}";
 
         try
         {
@@ -167,7 +179,7 @@ public class NotificationEventService : INotificationEventService
             await _notificationService.SendNotificationAsync(
                 professionalId, NotificationType.OrderCreated,
                 "New Appointment Request",
-                $"You have a new appointment request from {patientName}.",
+                $"You have a new appointment request from {patientName}.{documentHint}",
                 orderId, "Order", metadata);
         }
 
@@ -265,13 +277,21 @@ public class NotificationEventService : INotificationEventService
     private async Task HandleBookingConfirmedAsync(JsonElement payload)
     {
         var userId = payload.GetProperty("userId").GetGuid();
-        var email = payload.TryGetProperty("email", out var em) ? em.GetString() ?? "" : "";
         var doctorName = payload.TryGetProperty("doctorName", out var dn) ? dn.GetString() ?? "Doctor" : "Doctor";
         var appointmentDate = payload.TryGetProperty("appointmentDate", out var ad) ? ad.GetString() ?? "" : "";
         var appointmentTime = payload.TryGetProperty("appointmentTime", out var at) ? at.GetString() ?? "" : "";
         var orderId = payload.TryGetProperty("orderId", out var oi) ? oi.GetGuid() : (Guid?)null;
+        var bookingDocumentDownloadUrl = payload.TryGetProperty("bookingDocumentDownloadUrl", out var docUrl)
+            ? docUrl.GetString() ?? ""
+            : "";
+        var bookingDocumentId = payload.TryGetProperty("bookingDocumentId", out var docId)
+            ? docId.GetGuid()
+            : (Guid?)null;
 
-        var metadata = JsonSerializer.Serialize(new { email });
+        var metadata = JsonSerializer.Serialize(new { bookingDocumentDownloadUrl, bookingDocumentId });
+        var documentHint = string.IsNullOrWhiteSpace(bookingDocumentDownloadUrl)
+            ? string.Empty
+            : $"\n\nDownload booking document: {bookingDocumentDownloadUrl}";
 
         await _notificationService.SendNotificationAsync(
             userId, NotificationType.BookingConfirmation,
@@ -283,7 +303,7 @@ Doctor: {doctorName}
 Date: {appointmentDate}
 Time: {appointmentTime}
 
-Please arrive 10 minutes before your scheduled appointment.",
+Please arrive 10 minutes before your scheduled appointment.{documentHint}",
             orderId, "Order", metadata);
     }
 
