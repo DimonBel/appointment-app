@@ -88,21 +88,36 @@ export const ManagementPanel = () => {
   }, [isManagement, token, selectedDate, currentPage, statusFilter])
 
   const getDisplayName = (firstName, lastName, userName, fallback = 'User') => {
-    // Always prioritize userName/nickname as the primary display name
-    // This ensures the exact nickname from Identity service is displayed
+    const fullName = `${firstName || ''} ${lastName || ''}`.trim()
+
+    // Prefer first + last name when it is meaningful
+    const genericNames = ['doctor profile', 'user profile', 'client', 'doctor', 'user', 'professional', 'client user']
+    if (fullName && !genericNames.includes(fullName.toLowerCase())) {
+      return fullName
+    }
+
+    // Fallback to nickname/username when full name is missing or generic
     if (userName && !userName.startsWith('user_') && !userName.startsWith('client_')) {
       return userName
     }
 
-    const fullName = `${firstName || ''} ${lastName || ''}`.trim()
+    return fullName || fallback
+  }
 
-    // Skip generic names and use fallback
+  const getDoctorFullName = (identityUser, localUser, fallback = 'Doctor') => {
     const genericNames = ['doctor profile', 'user profile', 'client', 'doctor', 'user', 'professional', 'client user']
-    if (genericNames.includes(fullName.toLowerCase())) {
-      return fallback
+
+    const identityFullName = `${identityUser?.firstName || ''} ${identityUser?.lastName || ''}`.trim()
+    if (identityFullName && !genericNames.includes(identityFullName.toLowerCase())) {
+      return identityFullName
     }
 
-    return fullName || fallback
+    const localFullName = `${localUser?.firstName || ''} ${localUser?.lastName || ''}`.trim()
+    if (localFullName && !genericNames.includes(localFullName.toLowerCase())) {
+      return localFullName
+    }
+
+    return fallback
   }
 
   const loadManagementData = async () => {
@@ -135,16 +150,11 @@ export const ManagementPanel = () => {
 
       const schedulesWithProfessionals = professionalList.map((professional) => {
         const availList = groupedAvailabilities[professional.id] || []
-        // Prioritize user data from Identity service (usersById) over local database (professional.user)
-        // This ensures we display the actual nicknames from Identity service, not generic usernames from local DB
-        const doctorUser = usersById[professional.userId] || professional.user
+        const identityDoctorUser = usersById[professional.userId]
+        const localDoctorUser = professional.user
+        const doctorUser = identityDoctorUser || localDoctorUser
 
-        const doctorName = getDisplayName(
-          doctorUser?.firstName,
-          doctorUser?.lastName,
-          doctorUser?.userName,
-          'Doctor'
-        )
+        const doctorName = getDoctorFullName(identityDoctorUser, localDoctorUser, 'Doctor')
 
         return {
           id: professional.id,
@@ -183,7 +193,9 @@ export const ManagementPanel = () => {
       const enrichedOrders = orders.map((order) => {
         // Always prefer data from usersById (Identity service) over order data
         const clientData = usersById[order.clientId] || order.client
-        const doctorData = usersById[order.professionalId] || order.professional
+        const identityDoctorData = usersById[order.professionalId]
+        const localDoctorData = order.professional
+        const doctorData = identityDoctorData || localDoctorData
 
         const clientName = getDisplayName(
           clientData?.firstName,
@@ -192,12 +204,7 @@ export const ManagementPanel = () => {
           'Client'
         )
 
-        const doctorName = getDisplayName(
-          doctorData?.firstName,
-          doctorData?.lastName,
-          doctorData?.userName,
-          'Doctor'
-        )
+        const doctorName = getDoctorFullName(identityDoctorData, localDoctorData, 'Doctor')
 
         const scheduled = order.scheduledDateTime ? new Date(order.scheduledDateTime) : null
         const status = order.status ?? 0
