@@ -55,6 +55,14 @@ const getTimeSlot = (date) => {
 }
 
 const normalizeId = (value) => (value ? String(value).toLowerCase() : null)
+const getEntityId = (entity) => entity?.id || entity?.Id || entity?.orderId || null
+
+const getShortMessage = (order) => {
+  const value = (order?.description || order?.notes || order?.title || '').trim()
+  if (!value) return ''
+  if (value.length <= 70) return value
+  return `${value.slice(0, 67)}...`
+}
 
 export const ManagementPanel = () => {
   const location = useLocation()
@@ -215,12 +223,12 @@ export const ManagementPanel = () => {
         const status = order.status ?? 0
 
         return {
-          id: order.id,
+          id: getEntityId(order),
           professionalId: order.professionalId,
           clientName,
           clientAvatar: clientData?.avatarUrl || clientData?.profilePictureUrl || null,
           serviceType: order.title || 'General consultation',
-          shortMessage: (order.notes || order.description || order.title || '').trim(),
+          shortMessage: getShortMessage(order),
           timing: scheduled
             ? `${scheduled.toLocaleDateString()} ${scheduled.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
             : '-',
@@ -595,7 +603,7 @@ export const ManagementPanel = () => {
                                   <div className="text-center">
                                     <div className="font-semibold underline decoration-dotted">{cellData.clientName}</div>
                                     {cellData.appointment?.shortMessage && (
-                                      <div className="text-[10px] mt-1 opacity-75 max-w-[160px] truncate">
+                                      <div className="text-xs mt-1 opacity-85 max-w-[170px] leading-tight break-words">
                                         {cellData.appointment.shortMessage}
                                       </div>
                                     )}
@@ -845,8 +853,8 @@ export const ManagementPanel = () => {
 
       {/* Appointment Details Modal */}
       {showAppointmentModal && selectedAppointment && (
-        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4 pointer-events-none">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full pointer-events-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-text-primary">Appointment Details</h3>

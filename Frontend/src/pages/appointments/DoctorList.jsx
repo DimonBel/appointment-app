@@ -179,12 +179,13 @@ export const DoctorList = () => {
         domainConfigurationId: null,
       }, token)
 
+      const orderId = order?.id || order?.Id || order?.orderId
+
       // Link uploaded file to the order if present
-      if (uploadedFile && order?.id) {
+      if (uploadedFile && orderId) {
         try {
-          // Check what ID field is available (backend returns 'Id' with capital I)
-          const documentId = uploadedFile.Id || uploadedFile.id
-          console.log('Attempting to link document:', { documentId, orderId: order.id, uploadedFile })
+          const documentId = uploadedFile?.Id || uploadedFile?.id || uploadedFile?.documentId
+          console.log('Attempting to link document:', { documentId, orderId, uploadedFile })
           if (!documentId) {
             console.error('No document ID found in uploadedFile:', uploadedFile)
           } else {
@@ -192,7 +193,7 @@ export const DoctorList = () => {
             await documentService.updateDocumentLinkedEntity(
               documentId,
               'Order',
-              order.id,
+              orderId,
               token
             )
             console.log('Document linked successfully')

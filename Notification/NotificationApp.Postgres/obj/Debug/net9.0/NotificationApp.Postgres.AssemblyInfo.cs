@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("NotificationApp.Postgres")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c1d50d03241d8b17e32da6d3dec9591eb456c826")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+747a445c58909f9d85aac0fbc79ba93056a79f22")]
 [assembly: System.Reflection.AssemblyProductAttribute("NotificationApp.Postgres")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NotificationApp.Postgres")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
