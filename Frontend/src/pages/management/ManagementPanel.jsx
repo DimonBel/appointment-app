@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useSelector } from 'react-redux'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { MainContent, SectionHeader } from '../../components/layout/MainContent'
 import { Card, CardContent } from '../../components/ui/Card'
 import { Loader } from '../../components/ui/Loader'
@@ -66,6 +66,7 @@ const getShortMessage = (order) => {
 
 export const ManagementPanel = () => {
   const location = useLocation()
+  const navigate = useNavigate()
   const token = useSelector((state) => state.auth.token)
   const currentUser = useSelector((state) => state.auth.user)
   const isAdmin = currentUser?.roles?.includes('Admin')
@@ -326,6 +327,16 @@ export const ManagementPanel = () => {
     }
   }
 
+  const handlePreviewDocument = (doc) => {
+    navigate('/document-preview', {
+      state: {
+        document: doc,
+        returnUrl: '/management',
+        activeTab: 'schedule'
+      }
+    })
+  }
+
   const renderAppointmentDocuments = () => {
     if (loadingAppointmentDocuments) {
       return <p className="text-sm text-text-secondary">Loading documents...</p>
@@ -348,12 +359,24 @@ export const ManagementPanel = () => {
               <p className="text-sm text-text-primary truncate">{doc.originalFileName}</p>
               <p className="text-xs text-text-secondary">{documentService.formatFileSize(doc.fileSize || 0)}</p>
             </div>
-            <button
-              onClick={() => documentService.downloadAndSave(doc.id, doc.originalFileName, token)}
-              className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100"
-            >
-              Download
-            </button>
+            <div className="flex items-center gap-1">
+              {documentService.canPreview(doc.contentType) && (
+                <button
+                  onClick={() => handlePreviewDocument(doc)}
+                  className="px-2 py-1 text-xs bg-primary-dark text-white rounded hover:bg-primary-dark/90"
+                  title="Preview document"
+                >
+                  Preview
+                </button>
+              )}
+              <button
+                onClick={() => documentService.downloadAndSave(doc.id, doc.originalFileName, token)}
+                className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100"
+                title="Download document"
+              >
+                Download
+              </button>
+            </div>
           </div>
         ))}
       </div>

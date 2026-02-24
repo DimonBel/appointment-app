@@ -268,15 +268,30 @@ class DocumentService {
    * @returns {Promise<void>}
    */
   async downloadAndSave(documentId, fileName, token) {
-    const blob = await this.downloadDocument(documentId, token)
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = fileName || 'download'
-    document.body.appendChild(a)
-    a.click()
-    window.URL.revokeObjectURL(url)
-    document.body.removeChild(a)
+    try {
+      const blob = await this.downloadDocument(documentId, token)
+      
+      // Use FileSaver-like approach with direct blob assignment
+      const a = document.createElement('a')
+      a.href = window.URL.createObjectURL(blob)
+      a.download = fileName || 'download'
+      a.style.display = 'none'
+      
+      // Set crossOrigin to anonymous to avoid mixed content warnings
+      a.crossOrigin = 'anonymous'
+      
+      document.body.appendChild(a)
+      a.click()
+      
+      // Delay cleanup to ensure download initiates
+      setTimeout(() => {
+        window.URL.revokeObjectURL(a.href)
+        document.body.removeChild(a)
+      }, 200)
+    } catch (error) {
+      console.error('Download failed:', error)
+      throw error
+    }
   }
 }
 
