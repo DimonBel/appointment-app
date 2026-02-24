@@ -251,11 +251,16 @@ public static class OrderEndpoints
             Guid clientId,
             [FromServices] IOrderService orderService,
             [FromServices] IProfessionalRepository professionalRepo,
+            [FromQuery] Guid? professionalId = null,
             [FromQuery] OrderStatus? status = null,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20) =>
         {
             var orders = await orderService.GetOrdersByClientAsync(clientId, status, page, pageSize);
+            if (professionalId.HasValue)
+            {
+                orders = orders.Where(o => o.ProfessionalId == professionalId.Value);
+            }
 
             // Enrich orders with professional entity data
             var enrichedOrders = new List<object>();

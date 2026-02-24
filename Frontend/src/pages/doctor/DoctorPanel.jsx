@@ -45,7 +45,7 @@ export const DoctorPanel = () => {
       // Load appointment counts for all clients in parallel
       const appointmentPromises = clientsList.map(async (client) => {
         try {
-          const orders = await appointmentService.getOrdersByClient(client.id, token)
+          const orders = await appointmentService.getOrdersByClient(client.id, token, null, 1, 100, currentUser.id)
           return {
             clientId: client.id,
             data: {

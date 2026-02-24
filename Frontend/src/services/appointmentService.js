@@ -35,7 +35,7 @@ class AppointmentService {
     return response.data
   }
 
-  async getOrdersByClient(clientId, token, status = null, page = 1, pageSize = 100) {
+  async getOrdersByClient(clientId, token, status = null, page = 1, pageSize = 100, professionalId = null) {
     const response = await requestWithAuthRetry(
       {
         method: 'get',
@@ -44,6 +44,7 @@ class AppointmentService {
           ...(status !== null ? { status } : {}),
           page,
           pageSize,
+          ...(professionalId ? { professionalId } : {}),
         },
       },
       token

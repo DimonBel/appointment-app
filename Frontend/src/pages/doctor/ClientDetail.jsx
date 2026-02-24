@@ -57,7 +57,7 @@ export const ClientDetail = () => {
     setLoadingClientData(true)
     try {
       // Load orders for this client - show immediately
-      const orders = await appointmentService.getOrdersByClient(clientId, token)
+      const orders = await appointmentService.getOrdersByClient(clientId, token, null, 1, 100, currentUser.id)
       const ordersList = Array.isArray(orders) ? orders : []
       setClientOrders(ordersList)
       setLoadingClientData(false) // Show appointments immediately
