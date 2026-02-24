@@ -246,6 +246,75 @@ public static class OrderEndpoints
         .WithName("GetOrderById")
         .WithOpenApi();
 
+        // Generate booking document for an existing order
+        group.MapPost("/{id}/booking-document/generate", async (
+            Guid id,
+            [FromServices] IOrderService orderService,
+            [FromServices] IIdentityServiceClient identityServiceClient,
+            [FromServices] IHttpClientFactory httpClientFactory,
+            [FromServices] UserManager<AppIdentityUser> userManager,
+            HttpContext context) =>
+        {
+            var order = await orderService.GetOrderByIdAsync(id);
+            if (order == null)
+            {
+                return Results.NotFound(new { message = "Order not found." });
+            }
+
+            var configuration = context.RequestServices.GetRequiredService<IConfiguration>();
+            var accessToken = context.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
+
+            var clientUser = await userManager.FindByIdAsync(order.ClientId.ToString());
+            var professionalUser = await userManager.FindByIdAsync(order.ProfessionalId.ToString());
+
+            var identityClientUser = !string.IsNullOrWhiteSpace(accessToken)
+                ? await identityServiceClient.GetUserByIdAsync(order.ClientId, accessToken)
+                : null;
+            var identityProfessionalUser = !string.IsNullOrWhiteSpace(accessToken)
+                ? await identityServiceClient.GetUserByIdAsync(order.ProfessionalId, accessToken)
+                : null;
+
+            var patientName = ResolveIdentityDisplayName(identityClientUser)
+                ?? ResolveAppUserDisplayName(clientUser, "Patient");
+            var patientEmail = ResolvePreferredEmail(identityClientUser?.Email, clientUser?.Email);
+            var doctorName = ResolveIdentityDisplayName(identityProfessionalUser)
+                ?? ExtractDoctorNameFromOrderTitle(order.Title)
+                ?? ResolveAppUserDisplayName(professionalUser, "Doctor");
+
+            var documentClient = httpClientFactory.CreateClient("DocumentService");
+            AddInternalServiceKey(documentClient, configuration);
+
+            var bookingDocumentRequest = BuildBookingDocumentRequest(
+                order,
+                patientName,
+                patientEmail,
+                doctorName,
+                order.Status.ToString());
+
+            var docResponse = await documentClient.PostAsJsonAsync(
+                "/api/documents/bookings/internal/generate",
+                bookingDocumentRequest);
+
+            if (!docResponse.IsSuccessStatusCode)
+            {
+                return Results.BadRequest(new { message = "Failed to generate booking document." });
+            }
+
+            var generated = await docResponse.Content.ReadFromJsonAsync<BookingDocumentResponse>();
+            if (generated == null || generated.DocumentId == Guid.Empty)
+            {
+                return Results.BadRequest(new { message = "Booking document generation returned an invalid response." });
+            }
+
+            return Results.Ok(new
+            {
+                documentId = generated.DocumentId,
+                downloadUrl = BuildDocumentDownloadUrl(configuration, generated.DownloadUrl)
+            });
+        })
+        .WithName("GenerateBookingDocument")
+        .WithOpenApi();
+
         // Get orders by client
         group.MapGet("/client/{clientId}", async (
             Guid clientId,

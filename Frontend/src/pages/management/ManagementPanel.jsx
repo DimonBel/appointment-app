@@ -7,6 +7,7 @@ import { Loader } from '../../components/ui/Loader'
 import { Avatar } from '../../components/ui/Avatar'
 import { appointmentService } from '../../services/appointmentService'
 import { userService } from '../../services/userService'
+import documentService from '../../services/documentService'
 import { DocumentManagement } from './DocumentManagement'
 import { Users, CalendarCheck, ShieldOff, Clock, UserRound, Grid3x3, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Filter, X, FileText } from 'lucide-react'
 
@@ -77,6 +78,10 @@ export const ManagementPanel = () => {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [showAppointmentModal, setShowAppointmentModal] = useState(false)
+  const [selectedAppointmentDocuments, setSelectedAppointmentDocuments] = useState([])
+  const [loadingAppointmentDocuments, setLoadingAppointmentDocuments] = useState(false)
+  const [appointmentDocumentsError, setAppointmentDocumentsError] = useState('')
+  const [generatingBookingDocument, setGeneratingBookingDocument] = useState(false)
 
   // Pagination and filtering
   const [currentPage, setCurrentPage] = useState(1)
@@ -215,6 +220,7 @@ export const ManagementPanel = () => {
           clientName,
           clientAvatar: clientData?.avatarUrl || clientData?.profilePictureUrl || null,
           serviceType: order.title || 'General consultation',
+          shortMessage: (order.notes || order.description || order.title || '').trim(),
           timing: scheduled
             ? `${scheduled.toLocaleDateString()} ${scheduled.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
             : '-',
@@ -261,6 +267,89 @@ export const ManagementPanel = () => {
     const newDate = new Date(selectedDate)
     newDate.setDate(newDate.getDate() + days)
     setSelectedDate(newDate)
+  }
+
+  const loadAppointmentDocuments = async (appointmentId) => {
+    if (!appointmentId || !token) {
+      setSelectedAppointmentDocuments([])
+      return
+    }
+
+    setLoadingAppointmentDocuments(true)
+    setAppointmentDocumentsError('')
+    try {
+      const docs = await documentService.getDocumentsByLinkedEntity('Order', appointmentId, token)
+      setSelectedAppointmentDocuments(Array.isArray(docs) ? docs : [])
+    } catch (error) {
+      console.error('Failed to load appointment documents:', error)
+      setSelectedAppointmentDocuments([])
+      setAppointmentDocumentsError(error?.response?.data?.message || 'Failed to load documents')
+    } finally {
+      setLoadingAppointmentDocuments(false)
+    }
+  }
+
+  const openAppointmentModal = async (appointment) => {
+    setSelectedAppointment(appointment)
+    setShowAppointmentModal(true)
+    await loadAppointmentDocuments(appointment?.id)
+  }
+
+  const closeAppointmentModal = () => {
+    setShowAppointmentModal(false)
+    setSelectedAppointment(null)
+    setSelectedAppointmentDocuments([])
+    setAppointmentDocumentsError('')
+    setGeneratingBookingDocument(false)
+  }
+
+  const handleGenerateBookingDocument = async () => {
+    if (!selectedAppointment?.id || !token) return
+
+    setGeneratingBookingDocument(true)
+    try {
+      await appointmentService.generateBookingDocument(selectedAppointment.id, token)
+      await loadAppointmentDocuments(selectedAppointment.id)
+    } catch (error) {
+      console.error('Failed to generate booking document:', error)
+      setAppointmentDocumentsError(error?.response?.data?.message || 'Failed to generate booking document')
+    } finally {
+      setGeneratingBookingDocument(false)
+    }
+  }
+
+  const renderAppointmentDocuments = () => {
+    if (loadingAppointmentDocuments) {
+      return <p className="text-sm text-text-secondary">Loading documents...</p>
+    }
+
+    if (appointmentDocumentsError) {
+      return <p className="text-sm text-red-600">{appointmentDocumentsError}</p>
+    }
+
+    if (selectedAppointmentDocuments.length === 0) {
+      return <p className="text-sm text-text-secondary">No documents attached.</p>
+    }
+
+    return (
+      <div className="space-y-2 max-h-36 overflow-auto pr-1">
+        {selectedAppointmentDocuments.map((doc) => (
+          <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
+            <span className="text-base">{documentService.getFileIcon(doc.contentType)}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-text-primary truncate">{doc.originalFileName}</p>
+              <p className="text-xs text-text-secondary">{documentService.formatFileSize(doc.fileSize || 0)}</p>
+            </div>
+            <button
+              onClick={() => documentService.downloadAndSave(doc.id, doc.originalFileName, token)}
+              className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100"
+            >
+              Download
+            </button>
+          </div>
+        ))}
+      </div>
+    )
   }
 
   // Filter orders: only show Pending, Approved, Completed (not Cancelled, Declined, No-show)
@@ -497,21 +586,24 @@ export const ManagementPanel = () => {
                                 rowSpan={rowSpan}
                                 className={`py-1 px-2 border-l border-gray-100 align-top`}
                               >
-                                <div
+                                <button
+                                  type="button"
                                   className={`p-2 text-xs font-medium ${statusColor} border-l-4 ${statusConfig[cellData.status]?.borderColor || 'border-l-gray-400'} ${borderRadius} flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity`}
                                   style={{ minHeight: `${rowSpan * 40 - 16}px` }}
-                                  onClick={() => {
-                                    setSelectedAppointment(cellData.appointment)
-                                    setShowAppointmentModal(true)
-                                  }}
+                                  onClick={() => openAppointmentModal(cellData.appointment)}
                                 >
                                   <div className="text-center">
                                     <div className="font-semibold underline decoration-dotted">{cellData.clientName}</div>
+                                    {cellData.appointment?.shortMessage && (
+                                      <div className="text-[10px] mt-1 opacity-75 max-w-[160px] truncate">
+                                        {cellData.appointment.shortMessage}
+                                      </div>
+                                    )}
                                     <div className="text-[10px] mt-1 opacity-75">
                                       {cellData.durationMinutes} min
                                     </div>
                                   </div>
-                                </div>
+                                </button>
                               </td>
                             )
                           })}
@@ -561,7 +653,7 @@ export const ManagementPanel = () => {
                       <select
                         value={statusFilter ?? ''}
                         onChange={(e) => {
-                          setStatusFilter(e.target.value === '' ? null : parseInt(e.target.value))
+                          setStatusFilter(e.target.value === '' ? null : Number.parseInt(e.target.value, 10))
                           setCurrentPage(1)
                         }}
                         className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
@@ -753,16 +845,13 @@ export const ManagementPanel = () => {
 
       {/* Appointment Details Modal */}
       {showAppointmentModal && selectedAppointment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-text-primary">Appointment Details</h3>
                 <button
-                  onClick={() => {
-                    setShowAppointmentModal(false)
-                    setSelectedAppointment(null)
-                  }}
+                  onClick={closeAppointmentModal}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <X size={20} />
@@ -801,20 +890,39 @@ export const ManagementPanel = () => {
                   <p className="font-medium text-text-primary">{selectedAppointment.durationMinutes} minutes</p>
                 </div>
 
+                {selectedAppointment.shortMessage && (
+                  <div>
+                    <p className="text-sm text-text-secondary">Message</p>
+                    <p className="font-medium text-text-primary">{selectedAppointment.shortMessage}</p>
+                  </div>
+                )}
+
                 <div>
                   <p className="text-sm text-text-secondary">Status</p>
                   <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${selectedAppointment.statusConfig.color}`}>
                     {selectedAppointment.statusConfig.text}
                   </span>
                 </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-text-secondary">Documents</p>
+                    <button
+                      onClick={handleGenerateBookingDocument}
+                      disabled={generatingBookingDocument}
+                      className="px-2.5 py-1.5 text-xs bg-primary-dark text-white rounded-md hover:bg-primary-dark/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {generatingBookingDocument ? 'Generating...' : 'Generate booking document'}
+                    </button>
+                  </div>
+
+                  {renderAppointmentDocuments()}
+                </div>
               </div>
 
               <div className="mt-6 flex justify-end">
                 <button
-                  onClick={() => {
-                    setShowAppointmentModal(false)
-                    setSelectedAppointment(null)
-                  }}
+                  onClick={closeAppointmentModal}
                   className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   Close

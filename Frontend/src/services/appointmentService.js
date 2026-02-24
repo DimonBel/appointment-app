@@ -63,19 +63,7 @@ class AppointmentService {
     return response.data
   }
 
-  async createOrder(orderData, token) {
-    const response = await requestWithAuthRetry(
-      {
-        method: 'post',
-        url: `${API_URL}/orders`,
-        data: orderData,
-      },
-      token
-    )
-    return response.data
-  }
-
-  async getProfessionalByUserId(userId, token) {
+  async d(userId, token) {
     try {
       const response = await requestWithAuthRetry(
         {
@@ -180,6 +168,18 @@ class AppointmentService {
         data: {
           reason: reason || 'Declined by doctor',
         },
+      },
+      token
+    )
+    return response.data
+  }
+
+  async generateBookingDocument(orderId, token) {
+    const response = await requestWithAuthRetry(
+      {
+        method: 'post',
+        url: `${API_URL}/orders/${orderId}/booking-document/generate`,
+        data: {},
       },
       token
     )
