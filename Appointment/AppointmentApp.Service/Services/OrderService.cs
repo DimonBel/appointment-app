@@ -69,6 +69,20 @@ public class OrderService : IOrderService
             throw new InvalidOperationException("Requested time slot is not available");
         }
 
+        // Reserve the slots for this order to prevent double-booking
+        var requestedStartTime = normalizedScheduledDateTime.TimeOfDay;
+        var requestedEndTime = requestedStartTime.Add(TimeSpan.FromMinutes(durationMinutes));
+        var daySlots = (await _availabilitySlotRepository.GetSlotsByDateAsync(professional.Id, normalizedScheduledDateTime.Date))
+            .Where(s => s.StartTime >= requestedStartTime && s.StartTime < requestedEndTime)
+            .OrderBy(s => s.StartTime)
+            .ToList();
+
+        foreach (var slot in daySlots)
+        {
+            slot.IsAvailable = false;
+            await _availabilitySlotRepository.UpdateAsync(slot);
+        }
+
         var order = new Order
         {
             Id = Guid.NewGuid(),
@@ -154,12 +168,8 @@ public class OrderService : IOrderService
 
         var previousStatus = order.Status;
 
-        if (order.Status != OrderStatus.Requested && order.Status != OrderStatus.Approved)
-        {
-            throw new InvalidOperationException($"Cannot cancel order with status {order.Status}");
-        }
-
-        if (previousStatus == OrderStatus.Approved)
+        // Release reserved slots for both Requested and Approved orders
+        if (previousStatus == OrderStatus.Requested || previousStatus == OrderStatus.Approved)
         {
             await ReleaseReservedSlotsAsync(order.ProfessionalId, order.ScheduledDateTime, order.DurationMinutes);
         }

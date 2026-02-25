@@ -55,6 +55,7 @@ export const TimeSlotPicker = ({ slots, selectedTime, onSelectTime, loading }) =
                     : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:scale-105 border border-gray-200'
                 }
               `}
+              title={slot.isAvailable ? 'Available' : 'Unavailable'}
             >
               {formatTimeLabel(slot.time)}
             </button>

@@ -1,4 +1,4 @@
-using Identity.API.DTOs;
+using IdentityApp.Domain.DTOs;
 using AppointmentApp.API.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -33,7 +33,7 @@ public static class AuthEndpoints
             .WithName("GetCurrentUser")
             .RequireAuthorization()
             .WithOpenApi()
-            .Produces<IdentityUserDto>(StatusCodes.Status200OK)
+            .Produces<UserDto>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized);
 
         group.MapPost("/logout", LogoutAsync)

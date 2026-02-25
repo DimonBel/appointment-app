@@ -125,7 +125,8 @@ public class OrderApprovalService : IOrderApprovalService
 
         var previousStatus = order.Status;
 
-        if (previousStatus == OrderStatus.Approved)
+        // Release reserved slots for both Requested and Approved orders
+        if (previousStatus == OrderStatus.Requested || previousStatus == OrderStatus.Approved)
         {
             await ReleaseReservedSlotsAsync(order.ProfessionalId, order.ScheduledDateTime, order.DurationMinutes);
         }

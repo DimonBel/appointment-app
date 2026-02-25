@@ -1,5 +1,5 @@
 using AppointmentApp.API.DTOs;
-using Identity.API.DTOs;
+using IdentityApp.Domain.DTOs;
 using AppointmentApp.API.Services;
 using AppointmentApp.Domain.Entity;
 using AppointmentApp.Domain.Enums;
@@ -895,7 +895,7 @@ public static class OrderEndpoints
             ?? fallback;
     }
 
-    private static string? ResolveIdentityDisplayName(IdentityUserDto? user)
+    private static string? ResolveIdentityDisplayName(UserDto? user)
     {
         if (user == null) return null;
 
