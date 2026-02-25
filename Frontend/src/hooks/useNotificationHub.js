@@ -131,7 +131,10 @@ export function useNotificationHub() {
   const showToast = (title, message, type) => {
     console.log('showToast called:', { title, message, type })
     const safeTitle = normalizeMessageText(title)
-    const safeMessage = normalizeMessageText(message)
+    let safeMessage = normalizeMessageText(message)
+
+    // Remove last line containing file download URL
+    safeMessage = safeMessage.replace(/\n\n(?:Review|Download) booking document:.*$/i, '').trim()
 
     let shortTitle = safeTitle
     let shortMessage = safeMessage
