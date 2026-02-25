@@ -191,6 +191,7 @@ public static class OrderEndpoints
                     }
 
                     var client = httpClientFactory.CreateClient("NotificationService");
+                    AddInternalServiceKey(client, configuration);
                     var orderCreatedPayload = JsonSerializer.Serialize(new
                     {
                         professionalId = order.ProfessionalId,
@@ -204,14 +205,20 @@ public static class OrderEndpoints
                         bookingDocumentDownloadUrl
                     });
 
-                    await client.PostAsJsonAsync("/api/notifications/events", new
+                    var eventResponse = await client.PostAsJsonAsync("/api/notifications/events", new
                     {
                         sourceService = "AppointmentService",
                         eventName = "OrderCreated",
                         payload = orderCreatedPayload
                     });
 
-                    await client.PostAsJsonAsync("/api/notifications", new
+                    if (!eventResponse.IsSuccessStatusCode)
+                    {
+                        var errorContent = await eventResponse.Content.ReadAsStringAsync();
+                        Console.WriteLine($"Failed to send OrderCreated event: {eventResponse.StatusCode}, {errorContent}");
+                    }
+
+                    var notificationResponse = await client.PostAsJsonAsync("/api/notifications", new
                     {
                         userId = clientId.Value,
                         title = "Booking Pending",
@@ -226,8 +233,17 @@ public static class OrderEndpoints
                             appointmentTime = dto.ScheduledDateTime.ToString("HH:mm")
                         })
                     });
+
+                    if (!notificationResponse.IsSuccessStatusCode)
+                    {
+                        var errorContent = await notificationResponse.Content.ReadAsStringAsync();
+                        Console.WriteLine($"Failed to send booking notification: {notificationResponse.StatusCode}, {errorContent}");
+                    }
                 }
-                catch { /* non-critical */ }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error sending notifications: {ex.Message}");
+                }
             });
 
             return Results.Created($"/api/orders/{order.Id}", order);
@@ -538,6 +554,7 @@ public static class OrderEndpoints
             {
                 var configuration = context.RequestServices.GetRequiredService<IConfiguration>();
                 var client = httpClientFactory.CreateClient("NotificationService");
+                AddInternalServiceKey(client, configuration);
                 var documentClient = httpClientFactory.CreateClient("DocumentService");
                 AddInternalServiceKey(documentClient, configuration);
 
@@ -643,6 +660,7 @@ public static class OrderEndpoints
             try
             {
                 var client = httpClientFactory.CreateClient("NotificationService");
+                AddInternalServiceKey(client, context.RequestServices.GetRequiredService<IConfiguration>());
                 var accessToken = context.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
                 var clientUser = await userManager.FindByIdAsync(order.ClientId.ToString());
                 var professionalUser = await userManager.FindByIdAsync(order.ProfessionalId.ToString());
@@ -722,6 +740,7 @@ public static class OrderEndpoints
             try
             {
                 var client = httpClientFactory.CreateClient("NotificationService");
+                AddInternalServiceKey(client, context.RequestServices.GetRequiredService<IConfiguration>());
                 var accessToken = context.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
                 var clientUser = await userManager.FindByIdAsync(order.ClientId.ToString());
                 var professionalUser = await userManager.FindByIdAsync(order.ProfessionalId.ToString());

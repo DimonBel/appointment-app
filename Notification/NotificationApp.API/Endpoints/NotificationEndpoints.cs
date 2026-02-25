@@ -59,8 +59,27 @@ public static class NotificationEndpoints
         }).WithName("GetUnreadNotifications");
 
         // POST /api/notifications
-        group.MapPost("/", async (CreateNotificationDto dto, INotificationService service) =>
+        group.MapPost("/", async (CreateNotificationDto dto, INotificationService service, HttpContext httpContext) =>
         {
+            // Allow internal service requests
+            if (httpContext.Items["IsInternalService"] is true)
+            {
+                await service.SendNotificationAsync(
+                    dto.UserId, dto.Type, dto.Title, dto.Message,
+                    dto.ReferenceId, dto.ReferenceType, dto.Metadata);
+                return Results.Created();
+            }
+
+            // For external requests, require authentication
+            var userIdClaim = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? httpContext.User.FindFirstValue("sub")
+                ?? httpContext.User.FindFirstValue("nameid");
+
+            if (userIdClaim == null)
+            {
+                return Results.Unauthorized();
+            }
+
             await service.SendNotificationAsync(
                 dto.UserId, dto.Type, dto.Title, dto.Message,
                 dto.ReferenceId, dto.ReferenceType, dto.Metadata);

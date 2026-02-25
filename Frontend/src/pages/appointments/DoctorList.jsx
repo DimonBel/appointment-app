@@ -188,6 +188,7 @@ export const DoctorList = () => {
           console.log('Attempting to link document:', { documentId, orderId, uploadedFile })
           if (!documentId) {
             console.error('No document ID found in uploadedFile:', uploadedFile)
+            alert('Warning: Could not link uploaded file to booking. File ID is missing.')
           } else {
             // Update the document's linked entity to the new order
             await documentService.updateDocumentLinkedEntity(
@@ -201,7 +202,10 @@ export const DoctorList = () => {
         } catch (fileError) {
           console.error('Error linking file to order:', fileError)
           console.error('Error response:', fileError.response?.data)
+          console.error('Error status:', fileError.response?.status)
           console.error('uploadedFile object:', uploadedFile)
+          const errorMessage = fileError.response?.data?.detail || fileError.response?.data?.message || fileError.response?.data?.error || fileError.message
+          alert(`Warning: Could not link uploaded file to booking. Error: ${errorMessage}`)
           // Don't fail the booking if file linking fails
         }
       }

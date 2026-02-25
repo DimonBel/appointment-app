@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
+import { createPortal } from 'react-dom'
 import { MainContent } from '../../components/layout/MainContent'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -661,8 +662,14 @@ export const Chat = () => {
       </div>
 
       {/* User Search Modal */}
-      {showUserSearch && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      {showUserSearch && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] backdrop-blur-sm" onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setShowUserSearch(false)
+            setUserSearchQuery('')
+            setSearchResults([])
+          }
+        }}>
           <div className="bg-white rounded-lg w-full max-w-md mx-4">
             <div className="p-4 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-text-primary">Search Users</h3>
@@ -805,7 +812,8 @@ export const Chat = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

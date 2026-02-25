@@ -10,8 +10,14 @@ public static class EventEndpoints
         var group = app.MapGroup("/api/notifications/events").WithTags("Notification Events");
 
         // POST /api/notifications/events — receive event from other microservices
-        group.MapPost("/", async (EventDto dto, INotificationEventService service) =>
+        group.MapPost("/", async (EventDto dto, INotificationEventService service, HttpContext httpContext) =>
         {
+            // Allow internal service requests
+            if (httpContext.Items["IsInternalService"] is not true)
+            {
+                return Results.Unauthorized();
+            }
+
             var ev = await service.RecordEventAsync(dto.SourceService, dto.EventName, dto.Payload);
             // Process immediately
             await service.ProcessEventAsync(ev.Id);

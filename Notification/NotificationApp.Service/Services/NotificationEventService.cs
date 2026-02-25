@@ -43,22 +43,35 @@ public class NotificationEventService : INotificationEventService
 
     public async Task ProcessEventAsync(Guid eventId)
     {
+        System.Console.WriteLine($"[NotificationEventService] Processing event {eventId}");
         var ev = await _eventRepository.GetByIdAsync(eventId);
-        if (ev == null || ev.IsProcessed) return;
+        if (ev == null)
+        {
+            System.Console.WriteLine($"[NotificationEventService] Event {eventId} not found");
+            return;
+        }
+        if (ev.IsProcessed)
+        {
+            System.Console.WriteLine($"[NotificationEventService] Event {eventId} already processed");
+            return;
+        }
 
         try
         {
+            System.Console.WriteLine($"[NotificationEventService] Processing event: {ev.SourceService} - {ev.EventName}");
             await ProcessEventByNameAsync(ev);
 
             ev.IsProcessed = true;
             ev.ProcessedAt = DateTime.UtcNow;
             await _eventRepository.UpdateAsync(ev);
+            System.Console.WriteLine($"[NotificationEventService] Event {eventId} processed successfully");
         }
         catch (Exception ex)
         {
             ev.RetryCount++;
             ev.ErrorMessage = ex.Message;
             await _eventRepository.UpdateAsync(ev);
+            System.Console.WriteLine($"[NotificationEventService] ERROR processing event {eventId}: {ex.Message}");
         }
     }
 
@@ -337,13 +350,16 @@ Please arrive 10 minutes before your scheduled appointment.{documentHint}",
     {
         var requesterId = payload.GetProperty("requesterId").GetGuid();
         var accepterName = payload.TryGetProperty("accepterName", out var an) ? an.GetString() ?? "Someone" : "Someone";
+        var accepterId = payload.TryGetProperty("accepterId", out var ai) ? ai.GetGuid() : (Guid?)null;
         var friendshipId = payload.TryGetProperty("friendshipId", out var fi) ? fi.GetGuid() : (Guid?)null;
+
+        var metadata = JsonSerializer.Serialize(new { accepterId, friendshipId, action = "friend_request_accepted" });
 
         await _notificationService.SendNotificationAsync(
             requesterId, NotificationType.FriendRequestAccepted,
             "Friend Request Accepted",
             $"{accepterName} accepted your friend request. You can now start chatting!",
-            friendshipId, "Friendship");
+            friendshipId, "Friendship", metadata);
     }
 
     private async Task HandleFriendRequestDeclinedAsync(JsonElement payload)

@@ -120,6 +120,21 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Middleware to allow internal service communication
+app.Use(async (context, next) =>
+{
+    var internalKey = context.Request.Headers["X-Internal-Key"].FirstOrDefault();
+    var configuredKey = builder.Configuration["InternalServiceKey"] ?? "internal-dev-key";
+
+    if (internalKey == configuredKey)
+    {
+        // For internal service requests, create a fake authenticated user
+        // This allows the endpoint to proceed without JWT validation
+        context.Items["IsInternalService"] = true;
+    }
+    await next();
+});
+
 // Map minimal API endpoints
 app.MapNotificationEndpoints();
 app.MapPreferenceEndpoints();

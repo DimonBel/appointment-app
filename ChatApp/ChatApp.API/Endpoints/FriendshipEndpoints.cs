@@ -62,28 +62,30 @@ public static class FriendshipEndpoints
             var friendship = await friendshipService.SendFriendRequestAsync(currentUserId.Value, dto.AddresseeId);
 
             // Send notification to the addressee via Notification service
+            // Capture user info before starting background task to avoid ObjectDisposedException
+            var currentUser = httpContext.User;
             _ = Task.Run(async () =>
             {
                 try
                 {
                     var requester = await chatService.GetUserByIdAsync(currentUserId.Value);
-                    var requesterName = ResolveDisplayName(httpContext.User, requester?.UserName ?? "Someone");
+                    var requesterName = ResolveDisplayName(currentUser, requester?.UserName ?? "Someone");
 
                     var httpClient = httpClientFactory.CreateClient("NotificationService");
-                    var eventPayload = JsonSerializer.Serialize(new
+                    AddInternalServiceKey(httpClient, configuration);
+
+                    var response = await httpClient.PostAsJsonAsync("/api/notifications/events", new
                     {
                         sourceService = "ChatApp",
                         eventName = "FriendRequestSent",
-                        payload = JsonSerializer.Serialize(new
+                        payload = new
                         {
                             receiverId = dto.AddresseeId,
                             senderId = currentUserId.Value,
                             senderName = requesterName,
                             friendshipId = friendship.Id
-                        })
+                        }
                     });
-                    var content = new StringContent(eventPayload, Encoding.UTF8, "application/json");
-                    var response = await httpClient.PostAsync("/api/notifications/events", content);
                     if (!response.IsSuccessStatusCode)
                     {
                         logger.LogWarning("Failed to dispatch FriendRequestSent event. StatusCode: {StatusCode}", response.StatusCode);
@@ -125,27 +127,30 @@ public static class FriendshipEndpoints
             var friendship = await friendshipService.AcceptFriendRequestAsync(id, currentUserId.Value);
 
             // Notify the requester
+            // Capture user info before starting background task to avoid ObjectDisposedException
+            var currentUser = httpContext.User;
             _ = Task.Run(async () =>
             {
                 try
                 {
                     var accepter = await chatService.GetUserByIdAsync(currentUserId.Value);
-                    var accepterName = ResolveDisplayName(httpContext.User, accepter?.UserName ?? "Someone");
+                    var accepterName = ResolveDisplayName(currentUser, accepter?.UserName ?? "Someone");
 
                     var httpClient = httpClientFactory.CreateClient("NotificationService");
-                    var eventPayload = JsonSerializer.Serialize(new
+                    AddInternalServiceKey(httpClient, configuration);
+
+                    var response = await httpClient.PostAsJsonAsync("/api/notifications/events", new
                     {
                         sourceService = "ChatApp",
                         eventName = "FriendRequestAccepted",
-                        payload = JsonSerializer.Serialize(new
+                        payload = new
                         {
                             requesterId = friendship.RequesterId,
+                            accepterId = currentUserId.Value,
                             accepterName,
                             friendshipId = friendship.Id
-                        })
+                        }
                     });
-                    var content = new StringContent(eventPayload, Encoding.UTF8, "application/json");
-                    var response = await httpClient.PostAsync("/api/notifications/events", content);
                     if (!response.IsSuccessStatusCode)
                     {
                         logger.LogWarning("Failed to dispatch FriendRequestAccepted event. StatusCode: {StatusCode}", response.StatusCode);
@@ -187,26 +192,28 @@ public static class FriendshipEndpoints
             var friendship = await friendshipService.DeclineFriendRequestAsync(id, currentUserId.Value);
 
             // Notify the requester
+            // Capture user info before starting background task to avoid ObjectDisposedException
+            var currentUser = httpContext.User;
             _ = Task.Run(async () =>
             {
                 try
                 {
                     var decliner = await chatService.GetUserByIdAsync(currentUserId.Value);
-                    var declinerName = ResolveDisplayName(httpContext.User, decliner?.UserName ?? "Someone");
+                    var declinerName = ResolveDisplayName(currentUser, decliner?.UserName ?? "Someone");
 
                     var httpClient = httpClientFactory.CreateClient("NotificationService");
-                    var eventPayload = JsonSerializer.Serialize(new
+                    AddInternalServiceKey(httpClient, configuration);
+
+                    var response = await httpClient.PostAsJsonAsync("/api/notifications/events", new
                     {
                         sourceService = "ChatApp",
                         eventName = "FriendRequestDeclined",
-                        payload = JsonSerializer.Serialize(new
+                        payload = new
                         {
                             requesterId = friendship.RequesterId,
                             declinerName
-                        })
+                        }
                     });
-                    var content = new StringContent(eventPayload, Encoding.UTF8, "application/json");
-                    var response = await httpClient.PostAsync("/api/notifications/events", content);
                     if (!response.IsSuccessStatusCode)
                     {
                         logger.LogWarning("Failed to dispatch FriendRequestDeclined event. StatusCode: {StatusCode}", response.StatusCode);
@@ -396,5 +403,12 @@ public static class FriendshipEndpoints
             ?? user.FindFirstValue("name")
             ?? user.FindFirstValue(ClaimTypes.Email)
             ?? fallback;
+    }
+
+    private static void AddInternalServiceKey(HttpClient client, IConfiguration configuration)
+    {
+        var key = configuration["InternalServiceKey"] ?? "internal-dev-key";
+        client.DefaultRequestHeaders.Remove("X-Internal-Key");
+        client.DefaultRequestHeaders.Add("X-Internal-Key", key);
     }
 }

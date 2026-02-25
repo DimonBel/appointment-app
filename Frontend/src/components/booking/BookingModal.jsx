@@ -161,7 +161,8 @@ export const BookingModal = ({ isOpen, doctor, loading = false, onClose, onConfi
       setUploadedFile(uploadedDoc)
     } catch (error) {
       console.error('Error uploading file:', error)
-      alert('Failed to upload file. Please try again.')
+      setUploadedFile(null) // Clear uploaded file on error
+      alert('Failed to upload file. Please try again or proceed without a file.')
     } finally {
       setUploading(false)
     }
@@ -349,10 +350,10 @@ export const BookingModal = ({ isOpen, doctor, loading = false, onClose, onConfi
                 <Button
                   type="submit"
                   variant="primary"
-                  disabled={loading || !selectedDate || !selectedTime}
+                  disabled={loading || uploading || !selectedDate || !selectedTime}
                   className="px-6 py-2.5 rounded-xl"
                 >
-                  {loading ? 'Booking...' : 'Confirm Booking'}
+                  {uploading ? 'Uploading file...' : loading ? 'Booking...' : 'Confirm Booking'}
                 </Button>
               </div>
             </div>

@@ -63,7 +63,7 @@ class AppointmentService {
     return response.data
   }
 
-  async d(userId, token) {
+  async getProfessionalByUserId(userId, token) {
     try {
       const response = await requestWithAuthRetry(
         {
@@ -87,6 +87,18 @@ class AppointmentService {
         method: 'post',
         url: `${PROFESSIONALS_API_URL}`,
         data: professionalData,
+      },
+      token
+    )
+    return response.data
+  }
+
+  async createOrder(orderData, token) {
+    const response = await requestWithAuthRetry(
+      {
+        method: 'post',
+        url: `${API_URL}/orders`,
+        data: orderData,
       },
       token
     )
