@@ -159,13 +159,12 @@ class AppointmentService {
   }
 
   async approveOrder(orderId, reason, token) {
+    const data = reason ? { reason } : {}
     const response = await requestWithAuthRetry(
       {
         method: 'post',
         url: `${API_URL}/orders/${orderId}/approve`,
-        data: {
-          reason: reason || null,
-        },
+        data,
       },
       token
     )

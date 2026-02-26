@@ -112,14 +112,12 @@ public class AvailabilityService : IAvailabilityService
 
     public async Task<bool> IsSlotAvailableAsync(Guid professionalId, DateTime dateTime, int durationMinutes)
     {
-        var slot = await _availabilitySlotRepository.GetSlotByDateTimeAsync(professionalId, dateTime);
-        if (slot == null || !slot.IsAvailable)
+        if (durationMinutes <= 0)
         {
             return false;
         }
 
-        var requestedEndTime = dateTime.TimeOfDay.Add(TimeSpan.FromMinutes(durationMinutes));
-        return requestedEndTime <= slot.EndTime;
+        return await _availabilitySlotRepository.IsSlotAvailableAsync(professionalId, dateTime, durationMinutes);
     }
 
     public async Task<IEnumerable<AvailabilitySlot>> GenerateSlotsForDateAsync(Guid professionalId, DateTime date)

@@ -150,6 +150,7 @@ public static class OrderEndpoints
                 ?? context.User.FindFirstValue("email")
                 ?? identityUser?.Email
                 ?? localUser?.Email;
+            var configuration = context.RequestServices.GetRequiredService<IConfiguration>();
 
             // Fire booking request notification for doctor only.
             // Client confirmation is sent only after doctor approves.
@@ -157,8 +158,6 @@ public static class OrderEndpoints
             {
                 try
                 {
-                    var configuration = context.RequestServices.GetRequiredService<IConfiguration>();
-
                     string? bookingDocumentDownloadUrl = null;
                     Guid? bookingDocumentId = null;
 
@@ -515,13 +514,15 @@ public static class OrderEndpoints
         // Approve order
         group.MapPost("/{id}/approve", async (
             Guid id,
-            [FromBody] ApproveOrderDto dto,
+            HttpContext context,
+            [FromBody] ApproveOrderDto? dto,
             [FromServices] IOrderApprovalService approvalService,
             [FromServices] IIdentityServiceClient identityServiceClient,
             [FromServices] IHttpClientFactory httpClientFactory,
-            [FromServices] UserManager<AppIdentityUser> userManager,
-            HttpContext context) =>
+            [FromServices] UserManager<AppIdentityUser> userManager) =>
         {
+            // Allow empty or null body
+            dto ??= new ApproveOrderDto();
             Guid? approvedByUserId = null;
             if (context.User.FindFirst("sub")?.Value != null)
             {
@@ -539,7 +540,7 @@ public static class OrderEndpoints
             Order order;
             try
             {
-                order = await approvalService.ApproveOrderAsync(id, dto.Reason, approvedByUserId);
+                order = await approvalService.ApproveOrderAsync(id, dto?.Reason, approvedByUserId);
             }
             catch (InvalidOperationException ex)
             {

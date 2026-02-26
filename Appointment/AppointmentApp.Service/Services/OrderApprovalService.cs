@@ -61,27 +61,35 @@ public class OrderApprovalService : IOrderApprovalService
         }
 
         var normalizedScheduledDateTime = NormalizeToUtc(order.ScheduledDateTime);
-        var isAvailable = await _availabilitySlotRepository.IsSlotAvailableAsync(
-            professional.Id,
-            normalizedScheduledDateTime,
-            order.DurationMinutes);
+        var requestedStartTime = normalizedScheduledDateTime.TimeOfDay;
+        var requestedEndTime = requestedStartTime.Add(TimeSpan.FromMinutes(order.DurationMinutes));
+        var requestedSlots = (await _availabilitySlotRepository.GetSlotsByDateAsync(professional.Id, normalizedScheduledDateTime.Date))
+            .Where(s => s.StartTime >= requestedStartTime && s.StartTime < requestedEndTime)
+            .OrderBy(s => s.StartTime)
+            .ToList();
 
-        if (!isAvailable)
+        if (requestedSlots.Count == 0)
         {
             throw new InvalidOperationException("Requested time slot is not available");
         }
 
-        var requestedStartTime = normalizedScheduledDateTime.TimeOfDay;
-        var requestedEndTime = requestedStartTime.Add(TimeSpan.FromMinutes(order.DurationMinutes));
-        var daySlots = (await _availabilitySlotRepository.GetSlotsByDateAsync(professional.Id, normalizedScheduledDateTime.Date))
-            .Where(s => s.IsAvailable && s.StartTime >= requestedStartTime && s.StartTime < requestedEndTime)
-            .OrderBy(s => s.StartTime)
-            .ToList();
+        var hasAvailableSlots = requestedSlots.Any(s => s.IsAvailable);
+        var hasReservedSlots = requestedSlots.Any(s => !s.IsAvailable);
 
-        foreach (var slot in daySlots)
+        // Mixed state means the interval is partially occupied by another booking.
+        if (hasAvailableSlots && hasReservedSlots)
         {
-            slot.IsAvailable = false;
-            await _availabilitySlotRepository.UpdateAsync(slot);
+            throw new InvalidOperationException("Requested time slot is not available");
+        }
+
+        // Reserve slots only for legacy orders where slots were not reserved during creation.
+        if (hasAvailableSlots)
+        {
+            foreach (var slot in requestedSlots)
+            {
+                slot.IsAvailable = false;
+                await _availabilitySlotRepository.UpdateAsync(slot);
+            }
         }
 
         var previousStatus = order.Status;

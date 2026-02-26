@@ -4,11 +4,20 @@ import { setCredentials, logout } from '../store/slices/authSlice'
 
 const REFRESH_URL = '/api/auth/refresh'
 
-const mergeHeaders = (headers = {}, token, userId = null) => ({
-  ...headers,
-  ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  ...(userId ? { 'X-User-Id': userId } : {}),
-})
+const mergeHeaders = (headers = {}, token, userId = null) => {
+  const baseHeaders = {
+    ...headers,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(userId ? { 'X-User-Id': userId } : {}),
+  }
+
+  // Only set Content-Type for JSON requests (not FormData for file uploads)
+  if (!headers['Content-Type']) {
+    baseHeaders['Content-Type'] = 'application/json'
+  }
+
+  return baseHeaders
+}
 
 const tryRefreshToken = async () => {
   const state = store.getState()

@@ -155,9 +155,7 @@ public class NotificationEventService : INotificationEventService
         var bookingDocumentDownloadUrl = payload.TryGetProperty("bookingDocumentDownloadUrl", out var docUrl)
             ? docUrl.GetString() ?? ""
             : "";
-        var bookingDocumentId = payload.TryGetProperty("bookingDocumentId", out var docId)
-            ? docId.GetGuid()
-            : (Guid?)null;
+        var bookingDocumentId = TryGetNullableGuid(payload, "bookingDocumentId");
 
         var data = new Dictionary<string, string>
         {
@@ -303,13 +301,11 @@ public class NotificationEventService : INotificationEventService
         var doctorName = payload.TryGetProperty("doctorName", out var dn) ? dn.GetString() ?? "Doctor" : "Doctor";
         var appointmentDate = payload.TryGetProperty("appointmentDate", out var ad) ? ad.GetString() ?? "" : "";
         var appointmentTime = payload.TryGetProperty("appointmentTime", out var at) ? at.GetString() ?? "" : "";
-        var orderId = payload.TryGetProperty("orderId", out var oi) ? oi.GetGuid() : (Guid?)null;
+        var orderId = TryGetNullableGuid(payload, "orderId");
         var bookingDocumentDownloadUrl = payload.TryGetProperty("bookingDocumentDownloadUrl", out var docUrl)
             ? docUrl.GetString() ?? ""
             : "";
-        var bookingDocumentId = payload.TryGetProperty("bookingDocumentId", out var docId)
-            ? docId.GetGuid()
-            : (Guid?)null;
+        var bookingDocumentId = TryGetNullableGuid(payload, "bookingDocumentId");
 
         var metadata = JsonSerializer.Serialize(new { bookingDocumentDownloadUrl, bookingDocumentId });
         var documentHint = string.IsNullOrWhiteSpace(bookingDocumentDownloadUrl)
@@ -334,8 +330,8 @@ Please arrive 10 minutes before your scheduled appointment.{documentHint}",
     {
         var receiverId = payload.GetProperty("receiverId").GetGuid();
         var senderName = payload.TryGetProperty("senderName", out var sn) ? sn.GetString() ?? "Someone" : "Someone";
-        var senderId = payload.TryGetProperty("senderId", out var si) ? si.GetGuid() : (Guid?)null;
-        var friendshipId = payload.TryGetProperty("friendshipId", out var fi) ? fi.GetGuid() : (Guid?)null;
+        var senderId = TryGetNullableGuid(payload, "senderId");
+        var friendshipId = TryGetNullableGuid(payload, "friendshipId");
 
         var metadata = JsonSerializer.Serialize(new { senderId, friendshipId, action = "friend_request" });
 
@@ -350,8 +346,8 @@ Please arrive 10 minutes before your scheduled appointment.{documentHint}",
     {
         var requesterId = payload.GetProperty("requesterId").GetGuid();
         var accepterName = payload.TryGetProperty("accepterName", out var an) ? an.GetString() ?? "Someone" : "Someone";
-        var accepterId = payload.TryGetProperty("accepterId", out var ai) ? ai.GetGuid() : (Guid?)null;
-        var friendshipId = payload.TryGetProperty("friendshipId", out var fi) ? fi.GetGuid() : (Guid?)null;
+        var accepterId = TryGetNullableGuid(payload, "accepterId");
+        var friendshipId = TryGetNullableGuid(payload, "friendshipId");
 
         var metadata = JsonSerializer.Serialize(new { accepterId, friendshipId, action = "friend_request_accepted" });
 
@@ -371,5 +367,33 @@ Please arrive 10 minutes before your scheduled appointment.{documentHint}",
             requesterId, NotificationType.FriendRequestDeclined,
             "Friend Request Declined",
             $"{declinerName} declined your friend request.");
+    }
+
+    private static Guid? TryGetNullableGuid(JsonElement payload, string propertyName)
+    {
+        if (!payload.TryGetProperty(propertyName, out var value))
+        {
+            return null;
+        }
+
+        if (value.ValueKind == JsonValueKind.Null || value.ValueKind == JsonValueKind.Undefined)
+        {
+            return null;
+        }
+
+        if (value.ValueKind == JsonValueKind.String)
+        {
+            var guidAsString = value.GetString();
+            return Guid.TryParse(guidAsString, out var parsedGuid) ? parsedGuid : null;
+        }
+
+        try
+        {
+            return value.GetGuid();
+        }
+        catch
+        {
+            return null;
+        }
     }
 }
