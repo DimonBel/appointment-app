@@ -1,7 +1,8 @@
 namespace ChatApp.API.DTOs;
 
-public record SendFriendRequestDto(Guid AddresseeId);
-
+/// <summary>
+/// DTO representing a friendship relationship between two users
+/// </summary>
 public record FriendshipDto(
     Guid Id,
     Guid RequesterId,
@@ -15,10 +16,4 @@ public record FriendshipDto(
     string Status,
     DateTime CreatedAt,
     DateTime? UpdatedAt
-);
-
-public record FriendStatusDto(
-    Guid UserId,
-    string Status, // "none", "pending_sent", "pending_received", "friends"
-    Guid? FriendshipId
 );

@@ -10,6 +10,10 @@ using AutomationApp.Domain.Entity;
 
 namespace AutomationApp.Service;
 
+/// <summary>
+/// LLM service integration with Ollama for AI-powered conversational booking assistance
+/// Supports streaming responses, context-aware conversations, and deterministic booking flows
+/// </summary>
 public class OllamaLLMService : ILLMService
 {
     private readonly HttpClient _httpClient;
@@ -37,6 +41,18 @@ public class OllamaLLMService : ILLMService
         _httpClient.Timeout = TimeSpan.FromSeconds(_requestTimeoutSeconds);
     }
 
+    /// <summary>
+    /// Processes a user message through the LLM with optional streaming response
+    /// Builds context-aware system prompt including conversation state and available professionals
+    /// </summary>
+    /// <param name="conversationId">ID of the current conversation</param>
+    /// <param name="userMessage">User's input message</param>
+    /// <param name="currentState">Current conversation state in booking flow</param>
+    /// <param name="context">Additional context data (selected doctor, date, etc.)</param>
+    /// <param name="availableProfessionals">List of available professionals for booking</param>
+    /// <param name="domainConfigurations">Available service types/specialties</param>
+    /// <param name="onPartialResponse">Optional callback for streaming response chunks</param>
+    /// <returns>LLM response with extracted data, suggestions, and next state</returns>
     public async Task<LLMResponse> ProcessUserMessageAsync(
         Guid conversationId,
         string userMessage,

@@ -2,6 +2,9 @@ using DocumentApp.Domain.Models;
 
 namespace DocumentApp.API.DTOs;
 
+/// <summary>
+/// DTO for generating a booking confirmation document
+/// </summary>
 public class GenerateBookingDocumentDto
 {
     public Guid OrderId { get; set; }
@@ -54,24 +57,4 @@ public class GenerateBookingDocumentDto
             }).ToList()
         };
     }
-}
-
-public class BookingDocumentLineItemDto
-{
-    public decimal Quantity { get; set; }
-    public string Description { get; set; } = string.Empty;
-    public decimal UnitPrice { get; set; }
-}
-
-public class SendBookingDocumentEmailDto
-{
-    public GenerateBookingDocumentDto Booking { get; set; } = new();
-    public string RecipientEmail { get; set; } = string.Empty;
-}
-
-public class BookingDocumentResponseDto
-{
-    public Guid DocumentId { get; set; }
-    public string FileName { get; set; } = string.Empty;
-    public string DownloadUrl { get; set; } = string.Empty;
 }

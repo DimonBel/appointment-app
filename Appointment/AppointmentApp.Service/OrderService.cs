@@ -6,6 +6,10 @@ using Microsoft.AspNetCore.Identity;
 
 namespace AppointmentApp.Service;
 
+/// <summary>
+/// Core service for managing appointment orders across multiple domains (medical, legal, consulting)
+/// Handles order creation, validation, availability checking, and cancellation with state machine enforcement
+/// </summary>
 public class OrderService : IOrderService
 {
     private readonly IOrderRepository _orderRepository;
@@ -25,6 +29,21 @@ public class OrderService : IOrderService
         _userManager = userManager;
     }
 
+    /// <summary>
+    /// Creates a new appointment order with full validation and availability checking
+    /// Automatically creates shadow user if client doesn't exist locally
+    /// Validates professional availability and time slot availability before creation
+    /// </summary>
+    /// <param name="clientId">ID of the client placing the order</param>
+    /// <param name="professionalId">ID of the professional to book</param>
+    /// <param name="scheduledDateTime">Appointment date and time</param>
+    /// <param name="durationMinutes">Duration of the appointment in minutes</param>
+    /// <param name="title">Optional title for the order</param>
+    /// <param name="description">Optional description for the order</param>
+    /// <param name="domainConfigurationId">Optional domain configuration ID</param>
+    /// <returns>Created order with status Requested</returns>
+    /// <exception cref="ArgumentException">Professional not found</exception>
+    /// <exception cref="InvalidOperationException">Professional unavailable or time slot not available</exception>
     public async Task<Order> CreateOrderAsync(Guid clientId, Guid professionalId, DateTime scheduledDateTime, int durationMinutes, string? title = null, string? description = null, Guid? domainConfigurationId = null)
     {
         var normalizedScheduledDateTime = NormalizeToUtc(scheduledDateTime);

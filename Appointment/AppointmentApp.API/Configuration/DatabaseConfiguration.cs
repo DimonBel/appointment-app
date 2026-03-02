@@ -7,13 +7,18 @@ using AppointmentApp.Postgres.Data;
 namespace AppointmentApp.API.Configuration;
 
 /// <summary>
-/// Database configuration and initialization
+/// Database configuration and initialization helper
+/// Configures PostgreSQL with JSON support and manages database creation/migration on startup
 /// </summary>
 public static class DatabaseConfiguration
 {
     /// <summary>
-    /// Configure PostgreSQL database with JSON support
+    /// Configures PostgreSQL database with JSON support for the application
+    /// Sets up DbContext with PostgreSQL provider and applies migrations assembly configuration
     /// </summary>
+    /// <param name="services">Service collection to add database services to</param>
+    /// <param name="configuration">Application configuration containing connection strings</param>
+    /// <returns>Service collection with database services configured</returns>
     public static IServiceCollection ConfigureDatabase(this IServiceCollection services, IConfiguration configuration)
     {
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(configuration.GetConnectionString("DefaultConnection"));
@@ -29,8 +34,12 @@ public static class DatabaseConfiguration
     }
 
     /// <summary>
-    /// Ensure database is created and migrations are applied
+    /// Ensures the database exists and all migrations are applied
+    /// Creates the database if it doesn't exist and runs EF Core migrations
     /// </summary>
+    /// <param name="services">Service provider for resolving DbContext</param>
+    /// <param name="configuration">Configuration containing connection strings</param>
+    /// <exception cref="InvalidOperationException">Connection string is missing or invalid</exception>
     public static async Task EnsureDatabaseCreatedAndMigratedAsync(IServiceProvider services, IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection");

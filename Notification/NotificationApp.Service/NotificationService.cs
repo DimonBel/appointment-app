@@ -7,6 +7,10 @@ using System.Text.Json;
 
 namespace NotificationApp.Service;
 
+/// <summary>
+/// Core notification service managing notification creation, delivery, and multi-channel distribution
+/// Supports email and real-time in-app notifications with user preference filtering
+/// </summary>
 public class NotificationService : INotificationService
 {
     private readonly INotificationRepository _notificationRepository;
@@ -29,6 +33,12 @@ public class NotificationService : INotificationService
         _logger = logger;
     }
 
+    /// <summary>
+    /// Creates and delivers a new notification to the specified user
+    /// Automatically delivers via enabled channels (email, in-app) based on user preferences
+    /// </summary>
+    /// <param name="notification">Notification to create and deliver</param>
+    /// <returns>Created notification with status and timestamps</returns>
     public async Task<Notification> CreateAsync(Notification notification)
     {
         notification.Status = NotificationStatus.Sent;

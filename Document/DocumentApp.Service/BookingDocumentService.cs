@@ -16,6 +16,10 @@ using StoredDocument = DocumentApp.Domain.Entity.Document;
 
 namespace DocumentApp.Service;
 
+/// <summary>
+/// Service for generating booking confirmation documents (PDF) and managing their lifecycle
+/// Uses QuestPDF for PDF generation and MinIO for storage
+/// </summary>
 public class BookingDocumentService : IBookingDocumentService
 {
     private readonly IDocumentService _documentService;
@@ -40,6 +44,12 @@ public class BookingDocumentService : IBookingDocumentService
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
+    /// <summary>
+    /// Generates a PDF booking confirmation document for an order
+    /// Returns existing document if already generated for this order
+    /// </summary>
+    /// <param name="model">Booking details including order ID, patient, doctor, appointment info</param>
+    /// <returns>Generated or existing stored document with MinIO download URL</returns>
     public async Task<StoredDocument> GenerateBookingDocumentAsync(BookingDocumentModel model)
     {
         var normalizedModel = EnsureDefaults(model);

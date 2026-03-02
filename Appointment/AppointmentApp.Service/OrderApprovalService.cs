@@ -5,6 +5,10 @@ using AppointmentApp.Repository.Interfaces;
 
 namespace AppointmentApp.Service;
 
+/// <summary>
+/// Service for managing order state transitions (approve, decline, complete, cancel)
+/// Enforces order state machine rules and maintains complete audit trail via OrderHistory
+/// </summary>
 public class OrderApprovalService : IOrderApprovalService
 {
     private readonly IOrderRepository _orderRepository;
@@ -24,6 +28,15 @@ public class OrderApprovalService : IOrderApprovalService
         _availabilitySlotRepository = availabilitySlotRepository;
     }
 
+    /// <summary>
+    /// Records a state transition in the order history for audit purposes
+    /// </summary>
+    /// <param name="orderId">ID of the order</param>
+    /// <param name="previousStatus">Status before transition</param>
+    /// <param name="newStatus">Status after transition</param>
+    /// <param name="reason">Optional reason for the transition</param>
+    /// <param name="changedByUserId">ID of user who initiated the transition</param>
+    /// <param name="notes">Additional notes about the transition</param>
     private async Task RecordOrderHistoryAsync(Guid orderId, OrderStatus previousStatus, OrderStatus newStatus, string? reason, Guid? changedByUserId, string? notes)
     {
         var history = new OrderHistory
@@ -41,6 +54,16 @@ public class OrderApprovalService : IOrderApprovalService
         await _orderHistoryRepository.CreateAsync(history);
     }
 
+    /// <summary>
+    /// Approves an order (Requested → Approved)
+    /// Records approval in order history with optional reason
+    /// </summary>
+    /// <param name="orderId">ID of the order to approve</param>
+    /// <param name="reason">Optional reason for approval</param>
+    /// <param name="approvedByUserId">ID of user approving the order</param>
+    /// <returns>Updated order with Approved status</returns>
+    /// <exception cref="ArgumentException">Order not found</exception>
+    /// <exception cref="InvalidOperationException">Order is not in Requested status</exception>
     public async Task<Order> ApproveOrderAsync(Guid orderId, string? reason = null, Guid? approvedByUserId = null)
     {
         var order = await _orderRepository.GetByIdAsync(orderId);

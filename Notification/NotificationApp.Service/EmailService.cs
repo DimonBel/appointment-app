@@ -9,6 +9,7 @@ namespace NotificationApp.Service;
 
 /// <summary>
 /// SMTP email sending service using MailKit
+/// Supports HTML email with automatic template wrapping and fallback to plain text
 /// </summary>
 public class EmailService : IEmailService
 {
@@ -21,6 +22,15 @@ public class EmailService : IEmailService
         _logger = logger;
     }
 
+    /// <summary>
+    /// Sends an email via SMTP using configured SMTP settings
+    /// Automatically wraps HTML content in a responsive template and generates plain text fallback
+    /// </summary>
+    /// <param name="toEmail">Recipient email address</param>
+    /// <param name="subject">Email subject line</param>
+    /// <param name="body">Email body content (HTML if isHtml=true)</param>
+    /// <param name="isHtml">Whether the body is HTML format (defaults to true)</param>
+    /// <returns>True if email sent successfully, false otherwise</returns>
     public async Task<bool> SendEmailAsync(string toEmail, string subject, string body, bool isHtml = true)
     {
         try
