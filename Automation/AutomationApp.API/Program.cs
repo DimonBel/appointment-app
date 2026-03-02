@@ -5,7 +5,7 @@ using AutomationApp.Domain.Interfaces;
 using AutomationApp.Postgres.Data;
 using AutomationApp.Postgres.Repositories;
 using AutomationApp.Repository.Interfaces;
-using AutomationApp.Service.Services;
+using AutomationApp.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -128,7 +128,7 @@ builder.Services.AddHttpClient<ILLMService, OllamaLLMService>((serviceProvider, 
 });
 builder.Services.AddScoped<IBookingAutomationService, BookingAutomationService>();
 builder.Services.AddScoped<IDataCollectionService, DataCollectionService>();
-builder.Services.AddScoped<AutomationApp.Service.Services.NotificationServiceClient>();
+builder.Services.AddScoped<AutomationApp.Service.NotificationServiceClient>();
 
 // Register Repository Layer
 builder.Services.AddScoped<IConversationRepository, AutomationApp.Postgres.Repositories.ConversationRepository>();

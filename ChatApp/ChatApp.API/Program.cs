@@ -1,6 +1,6 @@
 using ChatApp.Domain.Interfaces;
 using ChatApp.Domain.Entity;
-using ChatApp.Service.Services;
+using ChatApp.Service;
 using ChatApp.API.Hubs;
 using ChatApp.API.Endpoints;
 using ChatApp.API.Services;

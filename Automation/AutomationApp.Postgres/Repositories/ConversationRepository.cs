@@ -17,21 +17,21 @@ public class ConversationRepository : IConversationRepository
     public async Task<Conversation?> GetByIdAsync(Guid id)
     {
         return await _context.Conversations
-            .Include(c => c.Messages)
             .FirstOrDefaultAsync(c => c.Id == id);
     }
 
     public async Task<Conversation?> GetActiveByUserIdAsync(Guid userId)
     {
         return await _context.Conversations
-            .Include(c => c.Messages)
             .FirstOrDefaultAsync(c => c.UserId == userId && c.IsActive);
     }
 
     public async Task<IEnumerable<Conversation>> GetByUserIdAsync(Guid userId)
     {
         return await _context.Conversations
-            .Include(c => c.Messages)
+            .Include(c => c.Messages
+                .OrderBy(m => m.SentAt)
+                .Take(1))
             .Where(c => c.UserId == userId)
             .OrderByDescending(c => c.LastActivityAt ?? c.StartedAt)
             .ToListAsync();
@@ -40,7 +40,6 @@ public class ConversationRepository : IConversationRepository
     public async Task<IEnumerable<Conversation>> GetAllAsync()
     {
         return await _context.Conversations
-            .Include(c => c.Messages)
             .ToListAsync();
     }
 

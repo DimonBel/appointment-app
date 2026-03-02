@@ -3,7 +3,7 @@ using AutomationApp.API.Hubs;
 using AutomationApp.Domain.Entity;
 using AutomationApp.Domain.Enums;
 using AutomationApp.Domain.Interfaces;
-using AutomationApp.Service.Services;
+using AutomationApp.Service;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -16,6 +16,8 @@ namespace AutomationApp.API.Endpoints;
 
 public static class AutomationEndpoints
 {
+    private const string DefaultGreeting = "Hi there! 👋 How can I help you schedule your appointment today? 😊";
+
     public static void MapAutomationEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/automation")
@@ -89,8 +91,7 @@ public static class AutomationEndpoints
 
     private static async Task<IResult> StartConversationAsync(
         HttpContext httpContext,
-        IConversationService conversationService,
-        ILLMService llmService)
+        IConversationService conversationService)
     {
         var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userGuid))
@@ -109,11 +110,8 @@ public static class AutomationEndpoints
         // Create new conversation
         var conversation = await conversationService.CreateConversationAsync(userGuid);
         
-        // Generate AI greeting
-        var greeting = await llmService.GenerateGreetingAsync(userGuid);
-        
         // Add greeting as first message
-        await conversationService.AddMessageAsync(conversation.Id, greeting, false);
+        await conversationService.AddMessageAsync(conversation.Id, DefaultGreeting, false);
 
         var dto = MapToConversationDTO(conversation);
         return Results.Created($"/api/automation/conversations/{conversation.Id}", dto);
@@ -121,8 +119,7 @@ public static class AutomationEndpoints
 
     private static async Task<IResult> CreateNewConversationAsync(
         HttpContext httpContext,
-        IConversationService conversationService,
-        ILLMService llmService)
+        IConversationService conversationService)
     {
         var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userGuid))
@@ -133,11 +130,8 @@ public static class AutomationEndpoints
         // Create new conversation without checking for existing ones
         var conversation = await conversationService.CreateConversationAsync(userGuid);
         
-        // Generate AI greeting
-        var greeting = await llmService.GenerateGreetingAsync(userGuid);
-        
         // Add greeting as first message
-        await conversationService.AddMessageAsync(conversation.Id, greeting, false);
+        await conversationService.AddMessageAsync(conversation.Id, DefaultGreeting, false);
 
         var dto = MapToConversationDTO(conversation);
         return Results.Created($"/api/automation/conversations/{conversation.Id}", dto);
@@ -1077,7 +1071,9 @@ public static class AutomationEndpoints
 
     private static ConversationDTO MapToConversationDTO(Conversation conversation)
     {
-        var titleSource = conversation.Messages
+        var messages = conversation.Messages ?? [];
+
+        var titleSource = messages
             .OrderBy(m => m.SentAt)
             .Select(m => m.Content)
             .FirstOrDefault(c => !string.IsNullOrWhiteSpace(c));

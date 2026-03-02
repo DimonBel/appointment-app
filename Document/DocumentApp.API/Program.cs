@@ -3,7 +3,7 @@ using DocumentApp.Domain.Interfaces;
 using DocumentApp.Postgres.Data;
 using DocumentApp.Postgres.Repositories;
 using DocumentApp.Repository.Interfaces;
-using DocumentApp.Service.Services;
+using DocumentApp.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;

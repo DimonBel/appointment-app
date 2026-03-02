@@ -6,7 +6,7 @@ using AppointmentApp.Domain.Interfaces;
 using AppointmentApp.Postgres.Data;
 using AppointmentApp.Postgres.Repositories;
 using AppointmentApp.Repository.Interfaces;
-using AppointmentApp.Service.Services;
+using AppointmentApp.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

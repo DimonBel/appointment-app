@@ -21,6 +21,8 @@ export const AIAssistant = () => {
   const streamingMessageIdRef = useRef(null)
   const isConnectingRef = useRef(false)
   const joinedConversationRef = useRef(null)
+  const conversationIdRef = useRef(null)
+  const newConversationPromiseRef = useRef(null)
   const sendInFlightRef = useRef(false)
   const token = useSelector((state) => state.auth.token)
   const user = useSelector((state) => state.auth.user)
@@ -32,6 +34,10 @@ export const AIAssistant = () => {
       loadConversations()
     }
   }, [token])
+
+  useEffect(() => {
+    conversationIdRef.current = conversationId
+  }, [conversationId])
 
   const loadConversations = async () => {
     try {
@@ -63,24 +69,78 @@ export const AIAssistant = () => {
   }, [token])
 
   useEffect(() => {
-    const joinConversation = async () => {
-      if (!conversationId || !connectionRef.current) return
-      if (joinedConversationRef.current === conversationId) return
-      if (connectionRef.current.state !== 'Connected') return
-
-      try {
-        await connectionRef.current.invoke('JoinConversation', conversationId)
-        joinedConversationRef.current = conversationId
-      } catch (err) {
-        console.error('Failed to join conversation:', err)
-      }
+    if (conversationId) {
+      ensureJoinedConversation(conversationId)
     }
-
-    joinConversation()
   }, [conversationId])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const ensureJoinedConversation = async (targetConversationId = conversationIdRef.current) => {
+    const connection = connectionRef.current
+    if (!targetConversationId || !connection) return
+    if (connection.state !== 'Connected') return
+    if (joinedConversationRef.current === targetConversationId) return
+
+    const previousConversationId = joinedConversationRef.current
+
+    try {
+      if (previousConversationId && previousConversationId !== targetConversationId) {
+        await connection.invoke('LeaveConversation', previousConversationId)
+      }
+
+      await connection.invoke('JoinConversation', targetConversationId)
+      joinedConversationRef.current = targetConversationId
+    } catch (err) {
+      console.error('Failed to join conversation:', err)
+    }
+  }
+
+  const resolveConversationId = (value) => {
+    if (!value) return null
+    try {
+      return String(value)
+    } catch {
+      return null
+    }
+  }
+
+  const isCurrentConversationEvent = (payloadConversationId) => {
+    const activeId = resolveConversationId(conversationIdRef.current)
+    const incomingId = resolveConversationId(payloadConversationId)
+    if (!activeId || !incomingId) return true
+    return activeId === incomingId
+  }
+
+  const ensureConversationReady = async (preferredConversationId = null) => {
+    if (preferredConversationId) {
+      return preferredConversationId
+    }
+
+    if (conversationIdRef.current) {
+      return conversationIdRef.current
+    }
+
+    if (!newConversationPromiseRef.current) {
+      newConversationPromiseRef.current = automationService.startNewConversation()
+    }
+
+    try {
+      const newConversation = await newConversationPromiseRef.current
+      const newConversationId = newConversation?.id
+      if (!newConversationId) {
+        throw new Error('Failed to create a new conversation')
+      }
+
+      setConversationId(newConversationId)
+      await ensureJoinedConversation(newConversationId)
+      loadConversations()
+      return newConversationId
+    } finally {
+      newConversationPromiseRef.current = null
+    }
   }
 
   const setupSignalRConnection = async () => {
@@ -101,6 +161,8 @@ export const AIAssistant = () => {
         .withAutomaticReconnect()
         .build()
 
+      connectionRef.current = connection
+
       connection.onreconnecting(() => {
         setIsLoading(false)
         setIsStreaming(false)
@@ -111,14 +173,7 @@ export const AIAssistant = () => {
         setIsLoading(false)
         setIsStreaming(false)
         setStreamingContent('')
-        if (conversationId) {
-          try {
-            await connection.invoke('JoinConversation', conversationId)
-            joinedConversationRef.current = conversationId
-          } catch (err) {
-            console.error('Failed to rejoin conversation after reconnect:', err)
-          }
-        }
+        await ensureJoinedConversation()
       })
 
       connection.onclose(() => {
@@ -128,6 +183,10 @@ export const AIAssistant = () => {
       })
 
       connection.on('ReceiveStreamChunk', (data) => {
+        if (!isCurrentConversationEvent(data?.conversationId ?? data?.ConversationId)) {
+          return
+        }
+
         const chunk = typeof data === 'string'
           ? data
           : (data?.chunk ?? data?.Chunk ?? '')
@@ -175,14 +234,19 @@ export const AIAssistant = () => {
       })
 
       connection.on('ReceiveMessage', (data) => {
-        if (data?.message) {
+        const payload = data?.message ?? data
+        if (!isCurrentConversationEvent(payload?.conversationId ?? payload?.ConversationId)) {
+          return
+        }
+
+        if (payload) {
           const finalMessage = {
-            id: data.message.id || Date.now(),
-            content: data.message.content || '',
+            id: payload.id || Date.now(),
+            content: payload.content || '',
             isFromUser: false,
-            suggestedOptions: data.message.suggestedOptions || [],
+            suggestedOptions: payload.suggestedOptions || [],
             selectedOption: null,
-            timestamp: data.message.sentAt ? new Date(data.message.sentAt) : new Date()
+            timestamp: payload.sentAt ? new Date(payload.sentAt) : new Date()
           }
 
           setMessages(prev => {
@@ -194,7 +258,7 @@ export const AIAssistant = () => {
           })
 
           streamingMessageIdRef.current = null
-          setSuggestedOptions(data.message.suggestedOptions || [])
+          setSuggestedOptions(payload.suggestedOptions || [])
         }
         setStreamingContent('')
         setIsStreaming(false)
@@ -207,13 +271,7 @@ export const AIAssistant = () => {
       })
 
       await connection.start()
-
-      if (conversationId) {
-        await connection.invoke('JoinConversation', conversationId)
-        joinedConversationRef.current = conversationId
-      }
-
-      connectionRef.current = connection
+      await ensureJoinedConversation()
     } catch (err) {
       console.error('SignalR connection error:', err)
     } finally {
@@ -281,7 +339,7 @@ export const AIAssistant = () => {
       return
     }
 
-    const effectiveConversationId = conversationIdOverride ?? conversationId
+    const effectiveConversationId = await ensureConversationReady(conversationIdOverride ?? conversationIdRef.current)
 
     sendInFlightRef.current = true
 
@@ -312,6 +370,58 @@ export const AIAssistant = () => {
       // Update conversation ID if new
       if (response.conversationId && !effectiveConversationId) {
         setConversationId(response.conversationId)
+      }
+
+      // Fallback: ensure final assistant message appears even if SignalR event is delayed/missed
+      if (response.responseText) {
+        const fallbackMessageId = response.messageId || `fallback-${Date.now()}`
+        setMessages(prev => {
+          const existingIndex = prev.findIndex(msg => String(msg.id) === String(fallbackMessageId))
+
+          if (existingIndex >= 0) {
+            return prev.map((msg, index) =>
+              index === existingIndex
+                ? {
+                    ...msg,
+                    content: response.responseText,
+                    isFromUser: false,
+                    suggestedOptions: response.suggestedOptions || msg.suggestedOptions || [],
+                    timestamp: new Date()
+                  }
+                : msg
+            )
+          }
+
+          const streamId = streamingMessageIdRef.current
+          if (streamId && prev.some(msg => msg.id === streamId)) {
+            return prev.map(msg =>
+              msg.id === streamId
+                ? {
+                    ...msg,
+                    id: fallbackMessageId,
+                    content: response.responseText,
+                    isFromUser: false,
+                    suggestedOptions: response.suggestedOptions || [],
+                    timestamp: new Date()
+                  }
+                : msg
+            )
+          }
+
+          return [
+            ...prev,
+            {
+              id: fallbackMessageId,
+              content: response.responseText,
+              isFromUser: false,
+              suggestedOptions: response.suggestedOptions || [],
+              selectedOption: null,
+              timestamp: new Date()
+            }
+          ]
+        })
+
+        streamingMessageIdRef.current = null
       }
 
       // Once streaming is complete, add the final message
@@ -345,15 +455,7 @@ export const AIAssistant = () => {
 
       setConversationId(newConversationId)
       setMessages([])
-
-      if (connectionRef.current?.state === 'Connected') {
-        try {
-          await connectionRef.current.invoke('JoinConversation', newConversationId)
-          joinedConversationRef.current = newConversationId
-        } catch (err) {
-          console.error('Failed to join new booking conversation:', err)
-        }
-      }
+      await ensureJoinedConversation(newConversationId)
 
       await loadConversations()
       await handleSendMessage('Book a new appointment', newConversationId)
@@ -386,6 +488,8 @@ export const AIAssistant = () => {
 
   const handleNewChat = async () => {
     try {
+      const previousConversationId = conversationIdRef.current
+
       // Clear UI immediately for instant feedback
       setStreamingContent('')
       setShowNewChatButton(false)
@@ -394,22 +498,32 @@ export const AIAssistant = () => {
       setSuggestedOptions([])
       setIsBookingComplete(false)
       setError(null)
-      
-      // Add greeting immediately
-      addMessage("Hello! I'm your AI booking assistant. How can I help you today? You can tell me you want to book an appointment, check availability, or ask any questions.", false, [
-        "Book a new appointment",
-        "Check availability",
-        "View my appointments",
-        "Ask a question"
-      ])
-      
+      setIsLoading(false)
+      setIsStreaming(false)
+      streamingMessageIdRef.current = null
+
+      // Leave previously joined conversation to avoid receiving stale events
+      if (connectionRef.current?.state === 'Connected' && previousConversationId) {
+        try {
+          await connectionRef.current.invoke('LeaveConversation', previousConversationId)
+        } catch (err) {
+          console.error('Failed to leave previous conversation:', err)
+        }
+      }
+      joinedConversationRef.current = null
+
       // Create conversation in background
-      const newConversation = await automationService.startNewConversation()
+      if (!newConversationPromiseRef.current) {
+        newConversationPromiseRef.current = automationService.startNewConversation()
+      }
+      const newConversation = await newConversationPromiseRef.current
       setConversationId(newConversation.id)
       await loadConversations()
     } catch (error) {
       console.error('Failed to create new conversation:', error)
       setError('Unable to start a new conversation. Please try again.')
+    } finally {
+      newConversationPromiseRef.current = null
     }
   }
 

@@ -4,7 +4,7 @@ using NotificationApp.Domain.Interfaces;
 using NotificationApp.Postgres.Data;
 using NotificationApp.Postgres.Repositories;
 using NotificationApp.Repository.Interfaces;
-using NotificationApp.Service.Services;
+using NotificationApp.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -84,7 +84,7 @@ builder.Services.AddScoped<INotificationEventRepository, NotificationEventReposi
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Register Service Layer
-builder.Services.AddScoped<INotificationService, NotificationApp.Service.Services.NotificationService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
 builder.Services.AddScoped<INotificationTemplateService, NotificationTemplateService>();
 builder.Services.AddScoped<INotificationScheduleService, NotificationScheduleService>();

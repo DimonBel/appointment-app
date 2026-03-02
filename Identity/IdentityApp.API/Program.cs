@@ -4,7 +4,7 @@ using IdentityApp.Domain.Interfaces;
 using IdentityApp.Postgres.Data;
 using IdentityApp.Postgres.Repositories;
 using IdentityApp.Repository.Interfaces;
-using IdentityApp.Service.Services;
+using IdentityApp.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
