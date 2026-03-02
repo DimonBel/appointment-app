@@ -1,4 +1,5 @@
 using DocumentApp.API.Endpoints;
+using DocumentApp.API.Configuration;
 using DocumentApp.Domain.Interfaces;
 using DocumentApp.Postgres.Data;
 using DocumentApp.Postgres.Repositories;
@@ -17,11 +18,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Database
-builder.Services.AddDbContext<DocumentDbContext>(options =>
-{
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
-        npgsqlOptions => npgsqlOptions.EnableRetryOnFailure());
-});
+builder.Services.ConfigureDatabase(builder.Configuration);
 
 // Register repositories
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
@@ -94,7 +91,7 @@ builder.WebHost.ConfigureKestrel(options =>
 var app = builder.Build();
 
 // Ensure database is created and migrated
-await EnsureDatabaseCreatedAndMigratedAsync(app.Services, app.Configuration);
+await DatabaseConfiguration.EnsureDatabaseCreatedAndMigratedAsync(app.Services, app.Configuration, app.Logger);
 
 // Configure middleware
 if (app.Environment.IsDevelopment())
@@ -112,46 +109,3 @@ app.MapDocumentEndpoints();
 app.MapBookingDocumentEndpoints();
 
 app.Run();
-
-static async Task EnsureDatabaseCreatedAndMigratedAsync(IServiceProvider services, IConfiguration configuration)
-{
-    using var scope = services.CreateScope();
-    var context = scope.ServiceProvider.GetRequiredService<DocumentDbContext>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-
-    try
-    {
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
-        var builder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
-
-        // Check if database exists
-        var dbName = builder.Database;
-        builder.Database = "postgres";
-
-        using var connection = new Npgsql.NpgsqlConnection(builder.ConnectionString);
-        await connection.OpenAsync();
-
-        var checkDbCommand = connection.CreateCommand();
-        checkDbCommand.CommandText = $"SELECT 1 FROM pg_database WHERE datname = '{dbName}'";
-        var dbExists = await checkDbCommand.ExecuteScalarAsync() != null;
-
-        if (!dbExists)
-        {
-            var createDbCommand = connection.CreateCommand();
-            createDbCommand.CommandText = $"CREATE DATABASE \"{dbName}\"";
-            await createDbCommand.ExecuteNonQueryAsync();
-            logger.LogInformation("Created database: {DatabaseName}", dbName);
-        }
-
-        await connection.CloseAsync();
-
-        // Apply migrations
-        await context.Database.MigrateAsync();
-        logger.LogInformation("Database migrations applied successfully");
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Error ensuring database created and migrated");
-        throw;
-    }
-}

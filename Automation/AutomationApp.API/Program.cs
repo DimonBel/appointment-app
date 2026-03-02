@@ -1,6 +1,7 @@
 using AutomationApp.API.Endpoints;
 using AutomationApp.API.Hubs;
 using AutomationApp.API.Services;
+using AutomationApp.API.Configuration;
 using AutomationApp.Domain.Interfaces;
 using AutomationApp.Postgres.Data;
 using AutomationApp.Postgres.Repositories;
@@ -10,7 +11,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Npgsql;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,14 +20,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 
 // Configure PostgreSQL Database with dynamic JSON support
-NpgsqlDataSourceBuilder dataSourceBuilder = new NpgsqlDataSourceBuilder(builder.Configuration.GetConnectionString("DefaultConnection"));
-dataSourceBuilder.EnableDynamicJson();
-var dataSource = dataSourceBuilder.Build();
-
-builder.Services.AddDbContext<AutomationDbContext>(options =>
-    options.UseNpgsql(dataSource,
-        b => b.MigrationsAssembly("AutomationApp.Postgres"))
-    .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
+builder.Services.ConfigureDatabase(builder.Configuration);
 
 // Configure Identity
 builder.Services.AddIdentity<AutomationApp.Domain.Entity.AppIdentityUser, AutomationApp.Domain.Entity.AppIdentityRole>(options =>
@@ -151,7 +144,7 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Apply database migrations automatically
-await EnsureDatabaseCreatedAndMigratedAsync(app.Services, app.Configuration);
+await DatabaseConfiguration.EnsureDatabaseCreatedAndMigratedAsync(app.Services, app.Configuration);
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
@@ -176,47 +169,3 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "Auto
     .WithTags("Health");
 
 app.Run();
-
-static async Task EnsureDatabaseCreatedAndMigratedAsync(IServiceProvider services, IConfiguration configuration)
-{
-    var connectionString = configuration.GetConnectionString("DefaultConnection");
-    if (string.IsNullOrWhiteSpace(connectionString))
-    {
-        throw new InvalidOperationException("Connection string 'DefaultConnection' is missing.");
-    }
-
-    var csb = new NpgsqlConnectionStringBuilder(connectionString);
-    var databaseName = csb.Database;
-    if (string.IsNullOrWhiteSpace(databaseName))
-    {
-        throw new InvalidOperationException("Database name is missing in 'DefaultConnection'.");
-    }
-
-    var adminCsb = new NpgsqlConnectionStringBuilder(connectionString)
-    {
-        Database = "postgres"
-    };
-
-    await using (var adminConnection = new NpgsqlConnection(adminCsb.ConnectionString))
-    {
-        await adminConnection.OpenAsync();
-
-        await using (var existsCmd = new NpgsqlCommand(
-                         "SELECT 1 FROM pg_database WHERE datname = @name;",
-                         adminConnection))
-        {
-            existsCmd.Parameters.AddWithValue("name", databaseName);
-            var exists = await existsCmd.ExecuteScalarAsync() != null;
-            if (!exists)
-            {
-                await using var createCmd =
-                    new NpgsqlCommand($"CREATE DATABASE \"{databaseName}\";", adminConnection);
-                await createCmd.ExecuteNonQueryAsync();
-            }
-        }
-    }
-
-    using var scope = services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<AutomationDbContext>();
-    await dbContext.Database.MigrateAsync();
-}

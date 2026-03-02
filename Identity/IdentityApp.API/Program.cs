@@ -1,4 +1,5 @@
 using IdentityApp.API.Endpoints;
+using IdentityApp.API.Configuration;
 using IdentityApp.Domain.Entity;
 using IdentityApp.Domain.Interfaces;
 using IdentityApp.Postgres.Data;
@@ -9,7 +10,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Npgsql;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,13 +19,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 
 // Configure PostgreSQL Database
-var dataSourceBuilder = new NpgsqlDataSourceBuilder(builder.Configuration.GetConnectionString("DefaultConnection"));
-var dataSource = dataSourceBuilder.Build();
-
-builder.Services.AddDbContext<IdentityDbContext>(options =>
-    options.UseNpgsql(dataSource,
-        b => b.MigrationsAssembly("IdentityApp.Postgres"))
-    .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
+builder.Services.ConfigureDatabase(builder.Configuration);
 
 // Configure Identity
 builder.Services.AddIdentity<AppIdentityUser, AppIdentityRole>(options =>
@@ -111,11 +105,7 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Apply database migrations automatically
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-    dbContext.Database.Migrate();
-}
+await DatabaseConfiguration.EnsureDatabaseCreatedAndMigratedAsync(app.Services, app.Configuration);
 
 await SeedDefaultAdminAsync(app.Services, builder.Configuration, app.Logger);
 
