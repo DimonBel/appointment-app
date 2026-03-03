@@ -21,6 +21,7 @@ public class TokenService : ITokenService
         _unitOfWork = unitOfWork;
     }
 
+    /// <inheritdoc/>
     public string GenerateAccessToken(AppIdentityUser user, IList<string> roles)
     {
         var claims = new List<Claim>
@@ -57,6 +58,7 @@ public class TokenService : ITokenService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    /// <inheritdoc/>
     public string GenerateRefreshToken()
     {
         var randomNumber = new byte[64];
@@ -65,11 +67,13 @@ public class TokenService : ITokenService
         return Convert.ToBase64String(randomNumber);
     }
 
+    /// <inheritdoc/>
     public async Task<RefreshToken?> GetRefreshTokenAsync(string token)
     {
         return await _unitOfWork.RefreshTokens.GetByTokenAsync(token);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> SaveRefreshTokenAsync(RefreshToken refreshToken)
     {
         var result = await _unitOfWork.RefreshTokens.AddAsync(refreshToken);
@@ -80,6 +84,7 @@ public class TokenService : ITokenService
         return result;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> RevokeRefreshTokenAsync(string token)
     {
         var refreshToken = await _unitOfWork.RefreshTokens.GetByTokenAsync(token);
@@ -91,6 +96,7 @@ public class TokenService : ITokenService
         return true;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> RevokeAllUserTokensAsync(Guid userId)
     {
         var result = await _unitOfWork.RefreshTokens.RevokeAllUserTokensAsync(userId);
@@ -101,6 +107,7 @@ public class TokenService : ITokenService
         return result;
     }
 
+    /// <inheritdoc/>
     public string? ValidateToken(string token)
     {
         try

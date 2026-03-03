@@ -73,26 +73,31 @@ public class DocumentService : IDocumentService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<Document?> GetDocumentByIdAsync(Guid id)
     {
         return await _documentRepository.GetByIdAsync(id);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<Document>> GetDocumentsByOwnerAsync(Guid ownerId, int page = 1, int pageSize = 20)
     {
         return await _documentRepository.GetByOwnerIdAsync(ownerId, page, pageSize);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<Document>> GetDocumentsByLinkedEntityAsync(LinkedEntityType entityType, Guid entityId)
     {
         return await _documentRepository.GetByLinkedEntityAsync(entityType, entityId);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<Document>> GetAllDocumentsAsync(int page = 1, int pageSize = 50, DocumentType? documentType = null)
     {
         return await _documentRepository.GetAllAsync(page, pageSize, documentType);
     }
 
+    /// <inheritdoc/>
     public async Task<Stream> DownloadDocumentAsync(Guid id, Guid userId, bool bypassAccessControl = false)
     {
         var document = await _documentRepository.GetByIdAsync(id);
@@ -115,6 +120,7 @@ public class DocumentService : IDocumentService
         return await _storageService.DownloadFileAsync(document.MinioPath, document.MinioBucket);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> DeleteDocumentAsync(Guid id, Guid userId, bool bypassOwnershipCheck = false)
     {
         var document = await _documentRepository.GetByIdAsync(id);
@@ -136,6 +142,7 @@ public class DocumentService : IDocumentService
         return await _documentRepository.DeleteAsync(id);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> GrantAccessAsync(Guid documentId, Guid userId, AccessControlType accessType, Guid grantedBy)
     {
         var document = await _documentRepository.GetByIdAsync(documentId);
@@ -175,6 +182,7 @@ public class DocumentService : IDocumentService
         return true;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> RevokeAccessAsync(Guid documentId, Guid userId)
     {
         var access = await _documentAccessRepository.GetByDocumentAndUserAsync(documentId, userId);
@@ -186,6 +194,7 @@ public class DocumentService : IDocumentService
         return await _documentAccessRepository.DeleteAsync(access.Id);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> HasAccessAsync(Guid documentId, Guid userId, AccessControlType requiredAccess)
     {
         var document = await _documentRepository.GetByIdAsync(documentId);
@@ -203,6 +212,7 @@ public class DocumentService : IDocumentService
         return await _documentAccessRepository.HasAccessAsync(documentId, userId, requiredAccess);
     }
 
+    /// <inheritdoc/>
     public async Task<Document?> UpdateDocumentMetadataAsync(Guid id, string? fileName = null)
     {
         var document = await _documentRepository.GetByIdAsync(id);
@@ -219,6 +229,7 @@ public class DocumentService : IDocumentService
         return await _documentRepository.UpdateAsync(document);
     }
 
+    /// <inheritdoc/>
     public async Task UpdateLinkedEntityAsync(Guid id, LinkedEntityType linkedEntityType, Guid linkedEntityId)
     {
         var document = await _documentRepository.GetByIdAsync(id);

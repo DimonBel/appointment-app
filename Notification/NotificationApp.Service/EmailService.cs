@@ -100,6 +100,7 @@ public class EmailService : IEmailService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<bool> SendEmailToUserAsync(Guid userId, string subject, string body, bool isHtml = true, string? toEmail = null)
     {
         if (string.IsNullOrEmpty(toEmail))

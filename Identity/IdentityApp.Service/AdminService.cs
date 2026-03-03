@@ -16,6 +16,7 @@ public class AdminService : IAdminService
         _roleManager = roleManager;
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<AdminUserDto>> GetAllUsersWithDetailsAsync()
     {
         var users = _userManager.Users.ToList();
@@ -30,6 +31,7 @@ public class AdminService : IAdminService
         return userDtos.OrderByDescending(u => u.CreatedAt);
     }
 
+    /// <inheritdoc/>
     public async Task<UserStatisticsDto> GetUserStatisticsAsync()
     {
         var users = _userManager.Users.ToList();
@@ -60,6 +62,7 @@ public class AdminService : IAdminService
         };
     }
 
+    /// <inheritdoc/>
     public async Task<UserDto?> CreateUserAsync(CreateUserDto createUserDto)
     {
         var user = new AppIdentityUser
@@ -89,6 +92,7 @@ public class AdminService : IAdminService
         return MapToUserDto(user, roles.ToList());
     }
 
+    /// <inheritdoc/>
     public async Task<bool> UpdateUserAsync(Guid userId, UserDto userDto)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
@@ -119,6 +123,7 @@ public class AdminService : IAdminService
         return result.Succeeded;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> DeleteUserAsync(Guid userId)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
@@ -128,6 +133,7 @@ public class AdminService : IAdminService
         return result.Succeeded;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> ToggleUserActiveStatusAsync(Guid userId)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
@@ -138,6 +144,7 @@ public class AdminService : IAdminService
         return result.Succeeded;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> AssignRoleAsync(Guid userId, string roleName)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
@@ -152,6 +159,7 @@ public class AdminService : IAdminService
         return result.Succeeded;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> RemoveRoleAsync(Guid userId, string roleName)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
@@ -161,6 +169,7 @@ public class AdminService : IAdminService
         return result.Succeeded;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> ResetUserPasswordAsync(Guid userId, string newPassword)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());

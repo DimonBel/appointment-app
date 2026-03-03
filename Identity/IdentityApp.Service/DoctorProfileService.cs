@@ -15,6 +15,7 @@ public class DoctorProfileService : IDoctorProfileService
         _profileRepository = profileRepository;
     }
 
+    /// <inheritdoc/>
     public async Task<(bool Success, string Message, DoctorProfileDto? Profile)> GetProfileByIdAsync(Guid id)
     {
         var profile = await _profileRepository.GetByIdAsync(id);
@@ -26,6 +27,7 @@ public class DoctorProfileService : IDoctorProfileService
         return (true, "Profile retrieved successfully", MapToDto(profile));
     }
 
+    /// <inheritdoc/>
     public async Task<(bool Success, string Message, DoctorProfileDto? Profile)> GetProfileByUserIdAsync(Guid userId)
     {
         var profile = await _profileRepository.GetByUserIdAsync(userId);
@@ -37,6 +39,7 @@ public class DoctorProfileService : IDoctorProfileService
         return (true, "Profile retrieved successfully", MapToDto(profile));
     }
 
+    /// <inheritdoc/>
     public async Task<(bool Success, string Message, IEnumerable<DoctorProfileDto> Profiles)> GetAllProfilesAsync()
     {
         var profiles = await _profileRepository.GetAllAsync();
@@ -44,6 +47,7 @@ public class DoctorProfileService : IDoctorProfileService
         return (true, "Profiles retrieved successfully", dtos);
     }
 
+    /// <inheritdoc/>
     public async Task<(bool Success, string Message, IEnumerable<DoctorProfileDto> Profiles)> GetProfilesBySpecialtyAsync(string specialty)
     {
         var profiles = await _profileRepository.GetBySpecialtyAsync(specialty);
@@ -51,6 +55,7 @@ public class DoctorProfileService : IDoctorProfileService
         return (true, "Profiles retrieved successfully", dtos);
     }
 
+    /// <inheritdoc/>
     public async Task<(bool Success, string Message, IEnumerable<DoctorProfileDto> Profiles)> SearchProfilesAsync(string query)
     {
         var profiles = await _profileRepository.SearchAsync(query);
@@ -58,6 +63,7 @@ public class DoctorProfileService : IDoctorProfileService
         return (true, "Profiles retrieved successfully", dtos);
     }
 
+    /// <inheritdoc/>
     public async Task<(bool Success, string Message, DoctorProfileDto? Profile)> CreateProfileAsync(Guid userId, CreateDoctorProfileDto dto)
     {
         // Check if profile already exists
@@ -88,6 +94,7 @@ public class DoctorProfileService : IDoctorProfileService
         return (true, "Profile created successfully", MapToDto(created));
     }
 
+    /// <inheritdoc/>
     public async Task<(bool Success, string Message, DoctorProfileDto? Profile)> UpdateProfileAsync(Guid userId, UpdateDoctorProfileDto dto)
     {
         var profile = await _profileRepository.GetByUserIdAsync(userId);
@@ -113,6 +120,7 @@ public class DoctorProfileService : IDoctorProfileService
         return (true, "Profile updated successfully", MapToDto(updated));
     }
 
+    /// <inheritdoc/>
     public async Task<(bool Success, string Message)> DeleteProfileAsync(Guid userId)
     {
         var profile = await _profileRepository.GetByUserIdAsync(userId);

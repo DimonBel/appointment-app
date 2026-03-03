@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using IdentityApp.Postgres.Data;
 
-namespace IdentityApp.API.Configuration;
+namespace IdentityApp.Postgres;
 
 /// <summary>
 /// Database configuration and initialization

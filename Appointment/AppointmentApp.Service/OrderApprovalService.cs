@@ -64,6 +64,7 @@ public class OrderApprovalService : IOrderApprovalService
     /// <returns>Updated order with Approved status</returns>
     /// <exception cref="ArgumentException">Order not found</exception>
     /// <exception cref="InvalidOperationException">Order is not in Requested status</exception>
+    /// <inheritdoc/>
     public async Task<Order> ApproveOrderAsync(Guid orderId, string? reason = null, Guid? approvedByUserId = null)
     {
         var order = await _orderRepository.GetByIdAsync(orderId);
@@ -141,6 +142,7 @@ public class OrderApprovalService : IOrderApprovalService
         return DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
     }
 
+    /// <inheritdoc/>
     public async Task<Order> DeclineOrderAsync(Guid orderId, string reason, Guid? declinedByUserId = null)
     {
         var order = await _orderRepository.GetByIdAsync(orderId);
@@ -172,6 +174,7 @@ public class OrderApprovalService : IOrderApprovalService
         return updatedOrder;
     }
 
+    /// <inheritdoc/>
     public async Task<Order> CompleteOrderAsync(Guid orderId, string? notes = null, Guid? completedByUserId = null)
     {
         var order = await _orderRepository.GetByIdAsync(orderId);
@@ -197,6 +200,7 @@ public class OrderApprovalService : IOrderApprovalService
         return updatedOrder;
     }
 
+    /// <inheritdoc/>
     public async Task<Order> MarkAsNoShowAsync(Guid orderId, string? notes = null, Guid? markedByUserId = null)
     {
         var order = await _orderRepository.GetByIdAsync(orderId);
@@ -221,6 +225,7 @@ public class OrderApprovalService : IOrderApprovalService
         return updatedOrder;
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<OrderHistory>> GetOrderHistoryAsync(Guid orderId)
     {
         return await _orderHistoryRepository.GetByOrderIdAsync(orderId);

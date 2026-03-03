@@ -2,6 +2,7 @@ using ChatApp.API.DTOs;
 using ChatApp.Domain.Entity;
 using ChatApp.Domain.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;

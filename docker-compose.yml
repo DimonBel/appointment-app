@@ -1,7 +1,31 @@
+version: '3.8'
+
+# YAML Anchors for reusable configurations
+x-default-env: &default-env
+  POSTGRES_USER: ${POSTGRES_USER:-postgres}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
+
+x-db-healthcheck: &db-healthcheck
+  test: ["CMD-SHELL", "pg_isready -U postgres"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+
+x-postgres-template: &postgres-template
+  image: postgres:16-alpine
+  restart: unless-stopped
+  environment:
+    <<: *default-env
+  networks:
+    - app-network
+  healthcheck: *db-healthcheck
+
+x-common-service-deps: &common-service-deps
+  identity-service:
+    condition: service_healthy
+
 services:
   # Ollama LLM Service for AI Assistant
-  # To run this container independently for testing: docker-compose up ollama
-  # After starting, pull a model: docker exec -it ollama ollama pull llama-3.1-8b
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
@@ -17,133 +41,74 @@ services:
       - OLLAMA_NUM_PARALLEL=2
     command: serve
 
-  # PostgreSQL Database for Identity Service
+  # PostgreSQL Databases
   identity-db:
-    image: postgres:16-alpine
+    <<: *postgres-template
     container_name: identity-db
-    restart: unless-stopped
     environment:
+      <<: *default-env
       POSTGRES_DB: ${IDENTITY_DB_NAME:-IdentityDb}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
     ports:
       - "5436:5432"
     volumes:
       - identity-db-data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  # PostgreSQL Database for Appointment Service
   appointment-db:
-    image: postgres:16-alpine
+    <<: *postgres-template
     container_name: appointment-db
-    restart: unless-stopped
     environment:
+      <<: *default-env
       POSTGRES_DB: ${APPOINTMENT_DB_NAME:-appointmentdb}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
     ports:
       - "5433:5432"
     volumes:
       - appointment-db-data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  # PostgreSQL Database for Chat Service
   chat-db:
-    image: postgres:16-alpine
+    <<: *postgres-template
     container_name: chat-db
-    restart: unless-stopped
     environment:
+      <<: *default-env
       POSTGRES_DB: ${CHAT_DB_NAME:-chatappdb}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
     ports:
       - "5434:5432"
     volumes:
       - chat-db-data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  # PostgreSQL Database for Notification Service
   notification-db:
-    image: postgres:16-alpine
+    <<: *postgres-template
     container_name: notification-db
-    restart: unless-stopped
     environment:
+      <<: *default-env
       POSTGRES_DB: ${NOTIFICATION_DB_NAME:-notificationdb}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
     ports:
       - "5435:5432"
     volumes:
       - notification-db-data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  # PostgreSQL Database for Document Service
   document-db:
-    image: postgres:16-alpine
+    <<: *postgres-template
     container_name: document-db
-    restart: unless-stopped
     environment:
+      <<: *default-env
       POSTGRES_DB: ${DOCUMENT_DB_NAME:-DocumentDb}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
     ports:
       - "5437:5432"
     volumes:
       - document-db-data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  # PostgreSQL Database for Automation Service
   automation-db:
-    image: postgres:16-alpine
+    <<: *postgres-template
     container_name: automation-db
-    restart: unless-stopped
     environment:
+      <<: *default-env
       POSTGRES_DB: ${AUTOMATION_DB_NAME:-automationdb}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
     ports:
       - "5438:5432"
     volumes:
       - automation-db-data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  # MinIO Object Storage for avatars and documents
+  # MinIO Object Storage
   minio:
     image: minio/minio:latest
     container_name: minio
@@ -161,22 +126,18 @@ services:
     networks:
       - app-network
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -f http://localhost:9000/minio/health/live || exit 1",
-        ]
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
 
-  # Identity Service
+  # Backend Services
   identity-service:
+    container_name: identity-service
+    restart: unless-stopped
     build:
       context: ./Identity
       dockerfile: Dockerfile
-    container_name: identity-service
-    restart: unless-stopped
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5005
@@ -226,13 +187,12 @@ services:
       retries: 3
       start_period: 40s
 
-  # Appointment Service
   appointment-service:
+    container_name: appointment-service
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Appointment/Dockerfile
-    container_name: appointment-service
-    restart: unless-stopped
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5001
@@ -251,8 +211,7 @@ services:
     depends_on:
       appointment-db:
         condition: service_healthy
-      identity-service:
-        condition: service_healthy
+      <<: *common-service-deps
     networks:
       - app-network
     healthcheck:
@@ -262,13 +221,12 @@ services:
       retries: 3
       start_period: 40s
 
-  # Chat Service
   chat-service:
+    container_name: chat-service
+    restart: unless-stopped
     build:
       context: ./ChatApp
       dockerfile: Dockerfile
-    container_name: chat-service
-    restart: unless-stopped
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5002
@@ -283,8 +241,7 @@ services:
     depends_on:
       chat-db:
         condition: service_healthy
-      identity-service:
-        condition: service_healthy
+      <<: *common-service-deps
     networks:
       - app-network
     healthcheck:
@@ -294,13 +251,12 @@ services:
       retries: 3
       start_period: 40s
 
-  # Notification Service
   notification-service:
+    container_name: notification-service
+    restart: unless-stopped
     build:
       context: ./Notification
       dockerfile: Dockerfile
-    container_name: notification-service
-    restart: unless-stopped
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5003
@@ -323,8 +279,7 @@ services:
     depends_on:
       notification-db:
         condition: service_healthy
-      identity-service:
-        condition: service_healthy
+      <<: *common-service-deps
     networks:
       - app-network
     healthcheck:
@@ -334,13 +289,12 @@ services:
       retries: 3
       start_period: 40s
 
-  # Document Service
   document-service:
+    container_name: document-service
+    restart: unless-stopped
     build:
       context: ./Document
       dockerfile: Dockerfile
-    container_name: document-service
-    restart: unless-stopped
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5004
@@ -379,13 +333,12 @@ services:
       retries: 3
       start_period: 40s
 
-  # Automation Service (AI Assistant)
   automation-service:
+    container_name: automation-service
+    restart: unless-stopped
     build:
       context: ./Automation
       dockerfile: Dockerfile
-    container_name: automation-service
-    restart: unless-stopped
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5006
@@ -407,8 +360,7 @@ services:
     depends_on:
       automation-db:
         condition: service_healthy
-      identity-service:
-        condition: service_healthy
+      <<: *common-service-deps
       appointment-service:
         condition: service_healthy
       ollama:

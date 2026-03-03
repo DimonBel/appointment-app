@@ -14,16 +14,19 @@ public class NotificationPreferenceService : INotificationPreferenceService
         _preferenceRepository = preferenceRepository;
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<NotificationPreference>> GetByUserIdAsync(Guid userId)
     {
         return await _preferenceRepository.GetByUserIdAsync(userId);
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationPreference?> GetByUserAndTypeAsync(Guid userId, NotificationType type)
     {
         return await _preferenceRepository.GetByUserAndTypeAsync(userId, type);
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationPreference> CreateOrUpdateAsync(NotificationPreference preference)
     {
         var existing = await _preferenceRepository.GetByUserAndTypeAsync(
@@ -40,6 +43,7 @@ public class NotificationPreferenceService : INotificationPreferenceService
         return await _preferenceRepository.CreateAsync(preference);
     }
 
+    /// <inheritdoc/>
     public async Task SetDefaultPreferencesAsync(Guid userId)
     {
         // Create default preferences for all notification types
@@ -62,6 +66,7 @@ public class NotificationPreferenceService : INotificationPreferenceService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<bool> IsChannelEnabledAsync(Guid userId, NotificationType type, NotificationChannel channel)
     {
         var preference = await _preferenceRepository.GetByUserAndTypeAsync(userId, type);

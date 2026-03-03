@@ -13,6 +13,7 @@ public class PreOrderDataService : IPreOrderDataService
         _preOrderDataRepository = preOrderDataRepository;
     }
 
+    /// <inheritdoc/>
     public async Task<PreOrderData> CreatePreOrderDataAsync(Guid orderId, Guid clientId, Dictionary<string, string> dataFields)
     {
         var preOrderData = new PreOrderData
@@ -28,11 +29,13 @@ public class PreOrderDataService : IPreOrderDataService
         return await _preOrderDataRepository.CreateAsync(preOrderData);
     }
 
+    /// <inheritdoc/>
     public async Task<PreOrderData?> GetPreOrderDataByOrderIdAsync(Guid orderId)
     {
         return await _preOrderDataRepository.GetByOrderIdAsync(orderId);
     }
 
+    /// <inheritdoc/>
     public async Task<PreOrderData> UpdatePreOrderDataAsync(Guid preOrderDataId, Dictionary<string, string> dataFields)
     {
         var preOrderData = await _preOrderDataRepository.GetByIdAsync(preOrderDataId);
@@ -58,6 +61,7 @@ public class PreOrderDataService : IPreOrderDataService
         return await _preOrderDataRepository.UpdateAsync(preOrderData);
     }
 
+    /// <inheritdoc/>
     public async Task<PreOrderData> MarkAsCompletedAsync(Guid preOrderDataId)
     {
         var preOrderData = await _preOrderDataRepository.GetByIdAsync(preOrderDataId);
@@ -72,6 +76,7 @@ public class PreOrderDataService : IPreOrderDataService
         return await _preOrderDataRepository.UpdateAsync(preOrderData);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> ValidatePreOrderDataAsync(Guid preOrderDataId, Dictionary<string, string> requiredFields)
     {
         var preOrderData = await _preOrderDataRepository.GetByIdAsync(preOrderDataId);
@@ -92,6 +97,7 @@ public class PreOrderDataService : IPreOrderDataService
         return true;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> DeletePreOrderDataAsync(Guid preOrderDataId)
     {
         return await _preOrderDataRepository.DeleteAsync(preOrderDataId);

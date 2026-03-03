@@ -1,5 +1,6 @@
 using DocumentApp.API.DTOs;
 using DocumentApp.Domain.Interfaces;
+using Microsoft.Extensions.Configuration;
 
 namespace DocumentApp.API.Endpoints;
 

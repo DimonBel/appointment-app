@@ -15,41 +15,49 @@ public class NotificationTemplateService : INotificationTemplateService
         _templateRepository = templateRepository;
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationTemplate> CreateAsync(NotificationTemplate template)
     {
         return await _templateRepository.CreateAsync(template);
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationTemplate?> GetByIdAsync(Guid id)
     {
         return await _templateRepository.GetByIdAsync(id);
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationTemplate?> GetByKeyAsync(string key)
     {
         return await _templateRepository.GetByKeyAsync(key);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<NotificationTemplate>> GetAllAsync()
     {
         return await _templateRepository.GetAllAsync();
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<NotificationTemplate>> GetByTypeAsync(NotificationType type)
     {
         return await _templateRepository.GetByTypeAsync(type);
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationTemplate> UpdateAsync(NotificationTemplate template)
     {
         return await _templateRepository.UpdateAsync(template);
     }
 
+    /// <inheritdoc/>
     public async Task DeleteAsync(Guid id)
     {
         await _templateRepository.DeleteAsync(id);
     }
 
+    /// <inheritdoc/>
     public async Task<(string title, string body)> RenderTemplateAsync(string templateKey, Dictionary<string, string> data)
     {
         var template = await _templateRepository.GetByKeyAsync(templateKey);

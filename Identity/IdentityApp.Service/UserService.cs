@@ -14,6 +14,7 @@ public class UserService : IUserService
         _userManager = userManager;
     }
 
+    /// <inheritdoc/>
     public async Task<UserDto?> GetUserByIdAsync(Guid userId)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
@@ -23,6 +24,7 @@ public class UserService : IUserService
         return MapToUserDto(user, roles.ToList());
     }
 
+    /// <inheritdoc/>
     public async Task<UserDto?> GetUserByEmailAsync(string email)
     {
         var user = await _userManager.FindByEmailAsync(email);
@@ -32,6 +34,7 @@ public class UserService : IUserService
         return MapToUserDto(user, roles.ToList());
     }
 
+    /// <inheritdoc/>
     public async Task<UserDto?> GetUserByUsernameAsync(string username)
     {
         var user = await _userManager.FindByNameAsync(username);
@@ -41,6 +44,7 @@ public class UserService : IUserService
         return MapToUserDto(user, roles.ToList());
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<UserDto>> GetAllUsersAsync()
     {
         var users = _userManager.Users.ToList();
@@ -55,6 +59,7 @@ public class UserService : IUserService
         return userDtos;
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<UserDto>> SearchUsersAsync(string query)
     {
         if (string.IsNullOrWhiteSpace(query))
@@ -81,6 +86,7 @@ public class UserService : IUserService
         return userDtos;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> UpdateUserAsync(Guid userId, UserDto userDto)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
@@ -111,6 +117,7 @@ public class UserService : IUserService
         return result.Succeeded;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> DeleteUserAsync(Guid userId)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
@@ -120,6 +127,7 @@ public class UserService : IUserService
         return result.Succeeded;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> SetUserOnlineStatusAsync(Guid userId, bool isOnline)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());

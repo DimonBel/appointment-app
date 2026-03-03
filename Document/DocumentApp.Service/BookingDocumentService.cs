@@ -93,6 +93,7 @@ public class BookingDocumentService : IBookingDocumentService
         return createdDocument;
     }
 
+    /// <inheritdoc/>
     public async Task<StoredDocument> GenerateAndEmailBookingDocumentAsync(BookingDocumentModel model, string recipientEmail)
     {
         if (string.IsNullOrWhiteSpace(recipientEmail))

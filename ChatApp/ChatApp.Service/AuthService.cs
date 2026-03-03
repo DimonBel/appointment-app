@@ -26,6 +26,7 @@ public class AuthService : IAuthService
         _httpContextAccessor = httpContextAccessor;
     }
 
+    /// <inheritdoc/>
     public async Task<(bool Success, string Message, User? User)> RegisterAsync(string email, string password, string userName)
     {
         var existingUser = await _userManager.FindByEmailAsync(email);
@@ -63,6 +64,7 @@ public class AuthService : IAuthService
         return (true, "Registration successful", user);
     }
 
+    /// <inheritdoc/>
     public async Task<(bool Success, string Message, User? User)> LoginAsync(string email, string password, bool rememberMe)
     {
         var user = await _userManager.FindByEmailAsync(email);
@@ -94,6 +96,7 @@ public class AuthService : IAuthService
         return (true, "Login successful", appUser);
     }
 
+    /// <inheritdoc/>
     public async Task LogoutAsync()
     {
         await _signInManager.SignOutAsync();
@@ -110,6 +113,7 @@ public class AuthService : IAuthService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<User?> GetCurrentUserAsync()
     {
         var userId = GetCurrentUserId();

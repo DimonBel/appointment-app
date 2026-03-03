@@ -21,26 +21,31 @@ public class NotificationScheduleService : INotificationScheduleService
         _templateService = templateService;
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationSchedule> CreateAsync(NotificationSchedule schedule)
     {
         return await _scheduleRepository.CreateAsync(schedule);
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationSchedule?> GetByIdAsync(Guid id)
     {
         return await _scheduleRepository.GetByIdAsync(id);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<NotificationSchedule>> GetPendingSchedulesAsync()
     {
         return await _scheduleRepository.GetPendingAsync(DateTime.UtcNow);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<NotificationSchedule>> GetByUserIdAsync(Guid userId)
     {
         return await _scheduleRepository.GetByUserIdAsync(userId);
     }
 
+    /// <inheritdoc/>
     public async Task CancelAsync(Guid id)
     {
         var schedule = await _scheduleRepository.GetByIdAsync(id);
@@ -51,6 +56,7 @@ public class NotificationScheduleService : INotificationScheduleService
         }
     }
 
+    /// <inheritdoc/>
     public async Task MarkAsProcessedAsync(Guid id)
     {
         var schedule = await _scheduleRepository.GetByIdAsync(id);
@@ -62,6 +68,7 @@ public class NotificationScheduleService : INotificationScheduleService
         }
     }
 
+    /// <inheritdoc/>
     public async Task ScheduleAppointmentReminderAsync(Guid userId, Guid orderId, DateTime appointmentTime, int minutesBefore = 60)
     {
         var schedule = new NotificationSchedule
@@ -82,6 +89,7 @@ public class NotificationScheduleService : INotificationScheduleService
         await _scheduleRepository.CreateAsync(schedule);
     }
 
+    /// <inheritdoc/>
     public async Task ProcessPendingSchedulesAsync()
     {
         var pendingSchedules = await _scheduleRepository.GetPendingAsync(DateTime.UtcNow);

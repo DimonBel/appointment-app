@@ -32,6 +32,7 @@ public class MinioAvatarStorageService : IAvatarStorageService
             .Build();
     }
 
+    /// <inheritdoc/>
     public async Task<string> UploadAvatarAsync(Stream stream, long size, string fileName, string contentType, string userKey)
     {
         if (stream == null) throw new ArgumentNullException(nameof(stream));

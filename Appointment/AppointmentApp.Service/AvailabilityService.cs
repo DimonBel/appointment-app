@@ -21,6 +21,7 @@ public class AvailabilityService : IAvailabilityService
         _professionalRepository = professionalRepository;
     }
 
+    /// <inheritdoc/>
     public async Task<Availability> CreateAvailabilityAsync(Guid professionalId, DayOfWeek dayOfWeek, TimeSpan startTime, TimeSpan endTime, ScheduleType scheduleType, DateTime? startDate = null, DateTime? endDate = null)
     {
         var professional = await _professionalRepository.GetByIdAsync(professionalId);
@@ -51,21 +52,25 @@ public class AvailabilityService : IAvailabilityService
         return await _availabilityRepository.CreateAsync(availability);
     }
 
+    /// <inheritdoc/>
     public async Task<Availability?> GetAvailabilityByIdAsync(Guid availabilityId)
     {
         return await _availabilityRepository.GetByIdAsync(availabilityId);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<Availability>> GetAllAvailabilitiesAsync()
     {
         return await _availabilityRepository.GetAllAsync();
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<Availability>> GetAvailabilitiesByProfessionalAsync(Guid professionalId)
     {
         return await _availabilityRepository.GetByProfessionalAsync(professionalId);
     }
 
+    /// <inheritdoc/>
     public async Task<Availability> UpdateAvailabilityAsync(Guid availabilityId, DayOfWeek? dayOfWeek = null, TimeSpan? startTime = null, TimeSpan? endTime = null, DateTime? endDate = null)
     {
         var availability = await _availabilityRepository.GetByIdAsync(availabilityId);
@@ -86,11 +91,13 @@ public class AvailabilityService : IAvailabilityService
         return await _availabilityRepository.UpdateAsync(availability);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> DeleteAvailabilityAsync(Guid availabilityId)
     {
         return await _availabilityRepository.DeleteAsync(availabilityId);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<AvailabilitySlot>> GetSlotsByDateAsync(Guid professionalId, DateTime date)
     {
         var existingSlots = (await _availabilitySlotRepository.GetSlotsByDateAsync(professionalId, date)).ToList();
@@ -104,12 +111,14 @@ public class AvailabilityService : IAvailabilityService
         return existingSlots;
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<AvailabilitySlot>> GetAvailableSlotsAsync(Guid professionalId, DateTime date)
     {
         await GetSlotsByDateAsync(professionalId, date);
         return await _availabilitySlotRepository.GetAvailableSlotsAsync(professionalId, date);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> IsSlotAvailableAsync(Guid professionalId, DateTime dateTime, int durationMinutes)
     {
         if (durationMinutes <= 0)
@@ -120,6 +129,7 @@ public class AvailabilityService : IAvailabilityService
         return await _availabilitySlotRepository.IsSlotAvailableAsync(professionalId, dateTime, durationMinutes);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<AvailabilitySlot>> GenerateSlotsForDateAsync(Guid professionalId, DateTime date)
     {
         var availabilities = await _availabilityRepository.GetByProfessionalAsync(professionalId);

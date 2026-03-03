@@ -14,6 +14,7 @@ public class DomainConfigurationService : IDomainConfigurationService
         _domainConfigurationRepository = domainConfigurationRepository;
     }
 
+    /// <inheritdoc/>
     public async Task<DomainConfiguration> CreateDomainConfigurationAsync(DomainType domainType, string name, string? description = null, int defaultDurationMinutes = 60)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -35,16 +36,19 @@ public class DomainConfigurationService : IDomainConfigurationService
         return await _domainConfigurationRepository.CreateAsync(domainConfiguration);
     }
 
+    /// <inheritdoc/>
     public async Task<DomainConfiguration?> GetDomainConfigurationByIdAsync(Guid configurationId)
     {
         return await _domainConfigurationRepository.GetByIdAsync(configurationId);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<DomainConfiguration>> GetAllDomainConfigurationsAsync(bool onlyActive = true)
     {
         return await _domainConfigurationRepository.GetAllAsync(onlyActive);
     }
 
+    /// <inheritdoc/>
     public async Task<DomainConfiguration> UpdateDomainConfigurationAsync(Guid configurationId, string? name = null, string? description = null, int? defaultDurationMinutes = null)
     {
         var configuration = await _domainConfigurationRepository.GetByIdAsync(configurationId);
@@ -61,6 +65,7 @@ public class DomainConfigurationService : IDomainConfigurationService
         return await _domainConfigurationRepository.UpdateAsync(configuration);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> ActivateDomainConfigurationAsync(Guid configurationId)
     {
         var configuration = await _domainConfigurationRepository.GetByIdAsync(configurationId);
@@ -76,6 +81,7 @@ public class DomainConfigurationService : IDomainConfigurationService
         return true;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> DeactivateDomainConfigurationAsync(Guid configurationId)
     {
         var configuration = await _domainConfigurationRepository.GetByIdAsync(configurationId);
@@ -91,6 +97,7 @@ public class DomainConfigurationService : IDomainConfigurationService
         return true;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> DeleteDomainConfigurationAsync(Guid configurationId)
     {
         return await _domainConfigurationRepository.DeleteAsync(configurationId);

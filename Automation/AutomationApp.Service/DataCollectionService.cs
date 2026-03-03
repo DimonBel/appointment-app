@@ -5,6 +5,7 @@ namespace AutomationApp.Service;
 
 public class DataCollectionService : IDataCollectionService
 {
+    /// <inheritdoc/>
     public async Task<Dictionary<string, object>> ExtractBookingInfoAsync(string userMessage, ConversationState currentState)
     {
         var extractedData = new Dictionary<string, object>();
@@ -122,6 +123,7 @@ public class DataCollectionService : IDataCollectionService
         return await Task.FromResult(extractedData);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> ValidateBookingInfoAsync(Dictionary<string, object> bookingData)
     {
         // Validate required fields based on current state

@@ -34,6 +34,7 @@ public class MinioDocumentStorageService : IMinioDocumentStorageService
             .Build();
     }
 
+    /// <inheritdoc/>
     public async Task EnsureBucketExistsAsync(string bucketName)
     {
         try
@@ -55,6 +56,7 @@ public class MinioDocumentStorageService : IMinioDocumentStorageService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<string> UploadFileAsync(Stream fileStream, long fileSize, string objectName, string bucketName, string contentType)
     {
         try
@@ -80,6 +82,7 @@ public class MinioDocumentStorageService : IMinioDocumentStorageService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<Stream> DownloadFileAsync(string objectName, string bucketName)
     {
         try
@@ -101,6 +104,7 @@ public class MinioDocumentStorageService : IMinioDocumentStorageService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<bool> DeleteFileAsync(string objectName, string bucketName)
     {
         try
@@ -120,6 +124,7 @@ public class MinioDocumentStorageService : IMinioDocumentStorageService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<string> GetPresignedUrlAsync(string objectName, string bucketName, int expiresInMinutes = 60)
     {
         try

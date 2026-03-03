@@ -18,6 +18,7 @@ public class ConversationService : IConversationService
         _messageRepository = messageRepository;
     }
 
+    /// <inheritdoc/>
     public async Task<Conversation> CreateConversationAsync(Guid userId)
     {
         var conversation = new Conversation
@@ -30,26 +31,31 @@ public class ConversationService : IConversationService
         return await _conversationRepository.AddAsync(conversation);
     }
 
+    /// <inheritdoc/>
     public async Task<Conversation?> GetConversationByIdAsync(Guid conversationId)
     {
         return await _conversationRepository.GetByIdAsync(conversationId);
     }
 
+    /// <inheritdoc/>
     public async Task<Conversation?> GetActiveConversationByUserIdAsync(Guid userId)
     {
         return await _conversationRepository.GetActiveByUserIdAsync(userId);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<Conversation>> GetConversationsByUserIdAsync(Guid userId)
     {
         return await _conversationRepository.GetByUserIdAsync(userId);
     }
 
+    /// <inheritdoc/>
     public async Task DeleteConversationAsync(Guid conversationId)
     {
         await _conversationRepository.DeleteAsync(conversationId);
     }
 
+    /// <inheritdoc/>
     public async Task<ConversationMessage> AddMessageAsync(Guid conversationId, string content, bool isFromUser, List<string>? suggestedOptions = null, string? selectedOption = null)
     {
         var message = new ConversationMessage
@@ -65,11 +71,13 @@ public class ConversationService : IConversationService
         return await _messageRepository.AddAsync(message);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<ConversationMessage>> GetConversationMessagesAsync(Guid conversationId)
     {
         return await _messageRepository.GetByConversationIdAsync(conversationId);
     }
 
+    /// <inheritdoc/>
     public async Task<Conversation> UpdateConversationStateAsync(Guid conversationId, ConversationState newState)
     {
         var conversation = await _conversationRepository.GetByIdAsync(conversationId);
@@ -81,6 +89,7 @@ public class ConversationService : IConversationService
         return await _conversationRepository.UpdateAsync(conversation);
     }
 
+    /// <inheritdoc/>
     public async Task<Conversation> UpdateConversationContextAsync(Guid conversationId, Dictionary<string, object> contextData)
     {
         var conversation = await _conversationRepository.GetByIdAsync(conversationId);

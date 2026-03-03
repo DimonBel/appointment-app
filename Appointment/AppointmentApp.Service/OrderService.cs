@@ -44,6 +44,7 @@ public class OrderService : IOrderService
     /// <returns>Created order with status Requested</returns>
     /// <exception cref="ArgumentException">Professional not found</exception>
     /// <exception cref="InvalidOperationException">Professional unavailable or time slot not available</exception>
+    /// <inheritdoc/>
     public async Task<Order> CreateOrderAsync(Guid clientId, Guid professionalId, DateTime scheduledDateTime, int durationMinutes, string? title = null, string? description = null, Guid? domainConfigurationId = null)
     {
         var normalizedScheduledDateTime = NormalizeToUtc(scheduledDateTime);
@@ -137,31 +138,37 @@ public class OrderService : IOrderService
         return DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
     }
 
+    /// <inheritdoc/>
     public async Task<Order?> GetOrderByIdAsync(Guid orderId)
     {
         return await _orderRepository.GetByIdAsync(orderId);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<Order>> GetAllOrdersAsync(OrderStatus? status = null, int page = 1, int pageSize = 100, string? sortBy = null, bool descending = false)
     {
         return await _orderRepository.GetAllAsync(status, page, pageSize, sortBy, descending);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<Order>> GetOrdersByClientAsync(Guid clientId, OrderStatus? status = null, int page = 1, int pageSize = 20)
     {
         return await _orderRepository.GetByClientAsync(clientId, status, page, pageSize);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<Order>> GetOrdersByProfessionalAsync(Guid professionalId, OrderStatus? status = null, int page = 1, int pageSize = 20)
     {
         return await _orderRepository.GetByProfessionalAsync(professionalId, status, page, pageSize);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<AppIdentityUser>> GetClientsByProfessionalAsync(Guid professionalId)
     {
         return await _orderRepository.GetClientsByProfessionalAsync(professionalId);
     }
 
+    /// <inheritdoc/>
     public async Task<Order> UpdateOrderAsync(Guid orderId, string? title = null, string? description = null, string? notes = null)
     {
         var order = await _orderRepository.GetByIdAsync(orderId);
@@ -177,6 +184,7 @@ public class OrderService : IOrderService
         return await _orderRepository.UpdateAsync(order);
     }
 
+    /// <inheritdoc/>
     public async Task<Order> CancelOrderAsync(Guid orderId, string? reason = null, Guid? cancelledByUserId = null)
     {
         var order = await _orderRepository.GetByIdAsync(orderId);
@@ -200,6 +208,7 @@ public class OrderService : IOrderService
         return await _orderRepository.UpdateAsync(order);
     }
 
+    /// <inheritdoc/>
     public async Task<Order> RescheduleOrderAsync(Guid orderId, DateTime newScheduledDateTime, string? notes = null)
     {
         var order = await _orderRepository.GetByIdAsync(orderId);
@@ -228,6 +237,7 @@ public class OrderService : IOrderService
         return await _orderRepository.UpdateAsync(order);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> DeleteOrderAsync(Guid orderId)
     {
         return await _orderRepository.DeleteAsync(orderId);

@@ -16,6 +16,7 @@ public class FriendshipService : IFriendshipService
         _userRepository = userRepository;
     }
 
+    /// <inheritdoc/>
     public async Task<Friendship> SendFriendRequestAsync(Guid requesterId, Guid addresseeId)
     {
         if (requesterId == addresseeId)
@@ -87,6 +88,7 @@ public class FriendshipService : IFriendshipService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<Friendship> AcceptFriendRequestAsync(Guid friendshipId, Guid userId)
     {
         var friendship = await _friendshipRepository.GetByIdAsync(friendshipId)
@@ -104,6 +106,7 @@ public class FriendshipService : IFriendshipService
         return friendship;
     }
 
+    /// <inheritdoc/>
     public async Task<Friendship> DeclineFriendRequestAsync(Guid friendshipId, Guid userId)
     {
         var friendship = await _friendshipRepository.GetByIdAsync(friendshipId)
@@ -121,6 +124,7 @@ public class FriendshipService : IFriendshipService
         return friendship;
     }
 
+    /// <inheritdoc/>
     public async Task RemoveFriendAsync(Guid friendshipId, Guid userId)
     {
         var friendship = await _friendshipRepository.GetByIdAsync(friendshipId)
@@ -132,31 +136,37 @@ public class FriendshipService : IFriendshipService
         await _friendshipRepository.DeleteAsync(friendshipId);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<Friendship>> GetFriendsAsync(Guid userId)
     {
         return await _friendshipRepository.GetFriendsAsync(userId);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<Friendship>> GetPendingRequestsAsync(Guid userId)
     {
         return await _friendshipRepository.GetPendingRequestsAsync(userId);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<Friendship>> GetSentRequestsAsync(Guid userId)
     {
         return await _friendshipRepository.GetSentRequestsAsync(userId);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> AreFriendsAsync(Guid userId1, Guid userId2)
     {
         return await _friendshipRepository.AreFriendsAsync(userId1, userId2);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<Guid>> GetFriendIdsAsync(Guid userId)
     {
         return await _friendshipRepository.GetFriendIdsAsync(userId);
     }
 
+    /// <inheritdoc/>
     public async Task<Friendship?> GetFriendshipBetweenAsync(Guid userId1, Guid userId2)
     {
         return await _friendshipRepository.GetBetweenUsersAsync(userId1, userId2);

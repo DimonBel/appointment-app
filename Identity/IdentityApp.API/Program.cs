@@ -1,7 +1,7 @@
 using IdentityApp.API.Endpoints;
-using IdentityApp.API.Configuration;
 using IdentityApp.Domain.Entity;
 using IdentityApp.Domain.Interfaces;
+using IdentityApp.Postgres;
 using IdentityApp.Postgres.Data;
 using IdentityApp.Postgres.Repositories;
 using IdentityApp.Repository.Interfaces;

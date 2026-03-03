@@ -184,6 +184,7 @@ public class OllamaLLMService : ILLMService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<string> GenerateGreetingAsync(Guid userId)
     {
         _httpClient.Timeout = TimeSpan.FromSeconds(_requestTimeoutSeconds);
@@ -227,6 +228,7 @@ public class OllamaLLMService : ILLMService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<List<string>> GenerateBookingOptionsAsync()
     {
         var requestPayload = new

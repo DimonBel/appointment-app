@@ -32,6 +32,7 @@ public class AuthService : IAuthService
         _identityEmailService = identityEmailService;
     }
 
+    /// <inheritdoc/>
     public async Task<(bool Success, string Message, AuthResponseDto? Response)> RegisterAsync(RegisterDto model)
     {
         // Check if user already exists
@@ -133,6 +134,7 @@ public class AuthService : IAuthService
         return (true, "Registration successful.", null);
     }
 
+    /// <inheritdoc/>
     public async Task<(bool Success, string Message, AuthResponseDto? Response)> LoginAsync(LoginDto model)
     {
         var user = await _userManager.FindByEmailAsync(model.Email);
@@ -163,6 +165,7 @@ public class AuthService : IAuthService
         return (true, "Login successful", response);
     }
 
+    /// <inheritdoc/>
     public async Task<(bool Success, string Message, AuthResponseDto? Response)> RefreshTokenAsync(RefreshTokenDto model)
     {
         // Validate access token
@@ -243,6 +246,7 @@ public class AuthService : IAuthService
         return (true, "Token refreshed successfully", response);
     }
 
+    /// <inheritdoc/>
     public async Task<(bool Success, string Message, AuthResponseDto? Response)> ConfirmEmailAsync(Guid userId, string token)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString());
@@ -274,6 +278,7 @@ public class AuthService : IAuthService
         return (true, "Email confirmed successfully. Redirecting to home page...", response);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> RevokeTokenAsync(string userId)
     {
         if (!Guid.TryParse(userId, out var userGuid))
@@ -284,12 +289,14 @@ public class AuthService : IAuthService
         return await _tokenService.RevokeAllUserTokensAsync(userGuid);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> ValidateTokenAsync(string token)
     {
         var jwtId = _tokenService.ValidateToken(token);
         return jwtId != null;
     }
 
+    /// <inheritdoc/>
     public async Task<UserDto?> GetUserByIdAsync(string userId)
     {
         if (!Guid.TryParse(userId, out var userGuid))
@@ -304,6 +311,7 @@ public class AuthService : IAuthService
         return MapToUserDto(user, roles.ToList());
     }
 
+    /// <inheritdoc/>
     public async Task<UserDto?> GetUserByEmailAsync(string email)
     {
         var user = await _userManager.FindByEmailAsync(email);

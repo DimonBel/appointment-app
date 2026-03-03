@@ -29,6 +29,7 @@ public class NotificationEventService : INotificationEventService
         _scheduleService = scheduleService;
     }
 
+    /// <inheritdoc/>
     public async Task<NotificationEvent> RecordEventAsync(string sourceService, string eventName, string payload)
     {
         var notificationEvent = new NotificationEvent
@@ -41,6 +42,7 @@ public class NotificationEventService : INotificationEventService
         return await _eventRepository.CreateAsync(notificationEvent);
     }
 
+    /// <inheritdoc/>
     public async Task ProcessEventAsync(Guid eventId)
     {
         System.Console.WriteLine($"[NotificationEventService] Processing event {eventId}");
@@ -75,16 +77,19 @@ public class NotificationEventService : INotificationEventService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<NotificationEvent>> GetUnprocessedEventsAsync()
     {
         return await _eventRepository.GetUnprocessedAsync();
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<NotificationEvent>> GetFailedEventsAsync()
     {
         return await _eventRepository.GetFailedAsync();
     }
 
+    /// <inheritdoc/>
     public async Task RetryFailedEventAsync(Guid eventId)
     {
         var ev = await _eventRepository.GetByIdAsync(eventId);

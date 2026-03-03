@@ -18,6 +18,7 @@ public class ProfessionalService : IProfessionalService
         _userManager = userManager;
     }
 
+    /// <inheritdoc/>
     public async Task<Professional> CreateProfessionalAsync(Guid userId, string? title = null, string? qualifications = null, string? specialization = null)
     {
         var existingProfessional = await _professionalRepository.GetByUserIdAsync(userId);
@@ -64,21 +65,25 @@ public class ProfessionalService : IProfessionalService
         return await _professionalRepository.CreateAsync(professional);
     }
 
+    /// <inheritdoc/>
     public async Task<Professional?> GetProfessionalByIdAsync(Guid professionalId)
     {
         return await _professionalRepository.GetByIdAsync(professionalId);
     }
 
+    /// <inheritdoc/>
     public async Task<Professional?> GetProfessionalByUserIdAsync(Guid userId)
     {
         return await _professionalRepository.GetByUserIdAsync(userId);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<Professional>> GetAllProfessionalsAsync(bool onlyAvailable = true, int page = 1, int pageSize = 20)
     {
         return await _professionalRepository.GetAllAsync(onlyAvailable, page, pageSize);
     }
 
+    /// <inheritdoc/>
     public async Task<Professional> UpdateProfessionalAsync(Guid professionalId, string? title = null, string? qualifications = null, string? specialization = null, decimal? hourlyRate = null, int? experienceYears = null, string? bio = null)
     {
         var professional = await _professionalRepository.GetByIdAsync(professionalId);
@@ -98,6 +103,7 @@ public class ProfessionalService : IProfessionalService
         return await _professionalRepository.UpdateAsync(professional);
     }
 
+    /// <inheritdoc/>
     public async Task<bool> SetProfessionalAvailabilityAsync(Guid professionalId, bool isAvailable)
     {
         var professional = await _professionalRepository.GetByIdAsync(professionalId);
@@ -113,6 +119,7 @@ public class ProfessionalService : IProfessionalService
         return true;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> DeleteProfessionalAsync(Guid professionalId)
     {
         return await _professionalRepository.DeleteAsync(professionalId);

@@ -81,6 +81,7 @@ public class GroqLLMService : ILLMService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<string> GenerateGreetingAsync(Guid userId)
     {
         var requestPayload = new
@@ -120,6 +121,7 @@ public class GroqLLMService : ILLMService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<List<string>> GenerateBookingOptionsAsync()
     {
         var requestPayload = new

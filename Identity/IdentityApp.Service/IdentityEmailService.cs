@@ -18,6 +18,7 @@ public class IdentityEmailService : IIdentityEmailService
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> SendEmailAsync(string toEmail, string subject, string body, bool isHtml = true)
     {
         try

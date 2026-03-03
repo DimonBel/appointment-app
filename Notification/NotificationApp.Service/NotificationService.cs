@@ -46,26 +46,31 @@ public class NotificationService : INotificationService
         return await _notificationRepository.CreateAsync(notification);
     }
 
+    /// <inheritdoc/>
     public async Task<Notification?> GetByIdAsync(Guid id)
     {
         return await _notificationRepository.GetByIdAsync(id);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<Notification>> GetByUserIdAsync(Guid userId, int page = 1, int pageSize = 20)
     {
         return await _notificationRepository.GetByUserIdAsync(userId, page, pageSize);
     }
 
+    /// <inheritdoc/>
     public async Task<int> GetUnreadCountAsync(Guid userId)
     {
         return await _notificationRepository.GetUnreadCountAsync(userId);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<Notification>> GetUnreadByUserIdAsync(Guid userId, int page = 1, int pageSize = 20)
     {
         return await _notificationRepository.GetUnreadByUserIdAsync(userId, page, pageSize);
     }
 
+    /// <inheritdoc/>
     public async Task MarkAsReadAsync(Guid id)
     {
         var notification = await _notificationRepository.GetByIdAsync(id);
@@ -77,21 +82,25 @@ public class NotificationService : INotificationService
         }
     }
 
+    /// <inheritdoc/>
     public async Task MarkAllAsReadAsync(Guid userId)
     {
         await _notificationRepository.MarkAllAsReadAsync(userId);
     }
 
+    /// <inheritdoc/>
     public async Task DeleteAsync(Guid id)
     {
         await _notificationRepository.DeleteAsync(id);
     }
 
+    /// <inheritdoc/>
     public async Task<IEnumerable<Notification>> GetByTypeAsync(Guid userId, NotificationType type)
     {
         return await _notificationRepository.GetByTypeAsync(userId, type);
     }
 
+    /// <inheritdoc/>
     public async Task SendNotificationAsync(Guid userId, NotificationType type, string title, string message,
         Guid? referenceId = null, string? referenceType = null, string? metadata = null)
     {
