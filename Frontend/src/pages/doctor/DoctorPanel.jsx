@@ -8,9 +8,27 @@ import { Avatar } from '../../components/ui/Avatar'
 import { Loader } from '../../components/ui/Loader'
 import { appointmentService } from '../../services/appointmentService'
 import documentService from '../../services/documentService'
-import { Users, Search, ChevronLeft, ChevronRight, Eye, Stethoscope, AlertCircle, SortAsc, SortDesc } from 'lucide-react'
+import { Users, Search, ChevronLeft, ChevronRight, Eye, Stethoscope, AlertCircle, SortAsc, SortDesc, Grid3x3, Calendar, ChevronUp, ChevronDown, Phone, MapPin, Clock, X } from 'lucide-react'
 
 const ITEMS_PER_PAGE = 10
+
+// Time slots from 08:00 to 17:00 (working hours)
+const TIME_SLOTS = [
+  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+  '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+  '16:00', '16:30', '17:00'
+]
+
+const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+const statusConfig = {
+  0: { text: 'Pending', color: 'bg-yellow-100 text-yellow-800', borderColor: 'border-l-yellow-500' },
+  1: { text: 'Approved', color: 'bg-green-100 text-green-800', borderColor: 'border-l-green-500' },
+  2: { text: 'Declined', color: 'bg-red-100 text-red-800', borderColor: 'border-l-red-500' },
+  3: { text: 'Cancelled', color: 'bg-red-600 text-white', borderColor: 'border-l-red-600' },
+  4: { text: 'Completed', color: 'bg-blue-100 text-blue-800', borderColor: 'border-l-blue-500' },
+  5: { text: 'No-show', color: 'bg-orange-100 text-orange-800', borderColor: 'border-l-orange-500' },
+}
 
 export const DoctorPanel = () => {
   const navigate = useNavigate()
@@ -29,10 +47,180 @@ export const DoctorPanel = () => {
   const [sortField, setSortField] = useState('name')
   const [sortOrder, setSortOrder] = useState('asc')
 
+  // Schedule Matrix State
+  const [activeTab, setActiveTab] = useState('clients')
+  const [selectedWeekStart, setSelectedWeekStart] = useState(getMondayOfWeek(new Date()))
+  const [orders, setOrders] = useState([])
+  const [scheduleLoading, setScheduleLoading] = useState(false)
+  const [selectedBooking, setSelectedBooking] = useState(null)
+  const [actionLoadingId, setActionLoadingId] = useState(null)
+
+  function getMondayOfWeek(date) {
+    const d = new Date(date)
+    const day = d.getDay()
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1) // Adjust when day is Sunday
+    d.setDate(diff)
+    d.setHours(0, 0, 0, 0)
+    return d
+  }
+
+  function addDays(date, days) {
+    const result = new Date(date)
+    result.setDate(result.getDate() + days)
+    return result
+  }
+
+  function getDateKey(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  function getTimeSlot(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${hours}:${minutes}`
+  }
+
+  function getProfessionalId() {
+    // Check if user has professional entity
+    const professionalEntity = currentUser?.professionalEntity
+    if (professionalEntity?.id) {
+      return professionalEntity.id
+    }
+    // Fall back to userId if professional entity not set
+    return currentUser?.id
+  }
+
   useEffect(() => {
     if (!isDoctor) return
     loadClients()
   }, [isDoctor, token])
+
+  useEffect(() => {
+    if (activeTab === 'schedule' && isDoctor) {
+      loadOrders()
+    }
+  }, [activeTab, selectedWeekStart, isDoctor, token])
+
+  const loadOrders = async () => {
+    setScheduleLoading(true)
+    try {
+      const professionalId = getProfessionalId()
+      const allOrders = await appointmentService.getAllOrdersForManagement(token, null, 1, 1000, 'scheduledDate', true)
+      
+      // Filter orders for current doctor and within selected week
+      const weekEnd = addDays(selectedWeekStart, 7)
+      const filteredOrders = Array.isArray(allOrders) ? allOrders.filter(order => {
+        if (!order.scheduledDateTime) return false
+        const orderDate = new Date(order.scheduledDateTime)
+        const orderDateKey = getDateKey(orderDate)
+        
+        // Check if order belongs to this doctor
+        const orderUserId = String(order.professionalId || '').toLowerCase()
+        const doctorUserId = String(currentUser?.id || '').toLowerCase()
+        const doctorProfessionalId = String(professionalId || '').toLowerCase()
+        
+        const belongsToDoctor = orderUserId === doctorUserId || orderUserId === doctorProfessionalId
+        
+        // Check if order is within the selected week
+        const isInWeek = orderDate >= selectedWeekStart && orderDate < weekEnd
+        
+        return belongsToDoctor && isInWeek
+      }) : []
+      
+      setOrders(filteredOrders)
+    } catch (error) {
+      console.error('Failed to load orders:', error)
+      setOrders([])
+    } finally {
+      setScheduleLoading(false)
+    }
+  }
+
+  const handleApproveBooking = async (orderId) => {
+    if (!orderId) return
+    const reason = prompt('Enter approval reason (optional):') || ''
+    try {
+      setActionLoadingId(orderId)
+      await appointmentService.approveOrder(orderId, reason, token)
+      await loadOrders()
+      setSelectedBooking(null)
+    } catch (error) {
+      console.error('Error approving booking:', error)
+      alert(error?.response?.data?.message || 'Failed to approve booking')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleDeclineBooking = async (orderId) => {
+    if (!orderId) return
+    const reason = prompt('Enter decline reason:') || 'Declined by doctor'
+    if (!reason) return
+    try {
+      setActionLoadingId(orderId)
+      await appointmentService.declineOrder(orderId, reason, token)
+      await loadOrders()
+      setSelectedBooking(null)
+    } catch (error) {
+      console.error('Error declining booking:', error)
+      alert(error?.response?.data?.message || 'Failed to decline booking')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleCancelBooking = async (orderId) => {
+    if (!orderId) return
+    if (!confirm('Are you sure you want to cancel this booking?')) return
+    try {
+      setActionLoadingId(orderId)
+      await appointmentService.cancelOrder(orderId, token)
+      await loadOrders()
+      setSelectedBooking(null)
+    } catch (error) {
+      console.error('Error cancelling booking:', error)
+      alert(error?.response?.data?.message || 'Failed to cancel booking')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleCompleteBooking = async (orderId) => {
+    if (!orderId) return
+    const notes = prompt('Enter completion notes (optional):') || ''
+    if (!confirm('Mark this booking as completed?')) return
+    try {
+      setActionLoadingId(orderId)
+      await appointmentService.completeOrder(orderId, notes, token)
+      await loadOrders()
+      setSelectedBooking(null)
+    } catch (error) {
+      console.error('Error completing booking:', error)
+      alert(error?.response?.data?.message || 'Failed to complete booking')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleReschedule = async (orderId, newDateTime, notes) => {
+    if (!orderId || !newDateTime) return
+    try {
+      setActionLoadingId(orderId)
+      await appointmentService.rescheduleOrder(orderId, newDateTime, notes, token)
+      await loadOrders()
+      setSelectedBooking(null)
+    } catch (error) {
+      console.error('Error rescheduling booking:', error)
+      alert(error?.response?.data?.message || 'Failed to reschedule booking')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
 
   const loadClients = async () => {
     setLoading(true)
@@ -126,6 +314,59 @@ export const DoctorPanel = () => {
     return sortOrder === 'asc' ? compareValue : -compareValue
   })
 
+  // Schedule Matrix Computation
+  const getScheduleMatrix = () => {
+    const matrix = {}
+    
+    // Initialize matrix with days as keys
+    DAYS_OF_WEEK.forEach(day => {
+      matrix[day] = {}
+      TIME_SLOTS.forEach(slot => {
+        matrix[day][slot] = null
+      })
+    })
+    
+    // Populate matrix with orders
+    orders.forEach(order => {
+      if (!order.scheduledDateTime) return
+      
+      const orderDate = new Date(order.scheduledDateTime)
+      const dayIndex = orderDate.getDay() // 0 = Sunday, 1 = Monday, etc.
+      const dayName = DAYS_OF_WEEK[(dayIndex + 6) % 7] // Convert to Monday-based (0 = Monday)
+      
+      const timeSlot = getTimeSlot(orderDate)
+      if (!timeSlot || !matrix[dayName]) return
+      
+      const slotIndex = TIME_SLOTS.indexOf(timeSlot)
+      if (slotIndex < 0) return
+      
+      const durationSlots = Math.ceil((order.durationMinutes || 30) / 30)
+      
+      for (let i = 0; i < durationSlots; i++) {
+                  if (slotIndex + i < TIME_SLOTS.length) {
+                    const slotTime = TIME_SLOTS[slotIndex + i]
+                    matrix[dayName][slotTime] = {
+                      clientName: order.client ? `${order.client.firstName} ${order.client.lastName}`.trim() : 'Unknown',
+                      status: order.status,
+                      isFirstSlot: i === 0,
+                      isLastSlot: i === durationSlots - 1,
+                      totalSlots: durationSlots,
+                      durationMinutes: order.durationMinutes,
+                      appointment: order,
+                    }
+                  }
+                }    })
+    
+    return matrix
+  }
+
+  const scheduleMatrix = getScheduleMatrix()
+
+  const navigateWeek = (direction) => {
+    const newDate = addDays(selectedWeekStart, direction * 7)
+    setSelectedWeekStart(newDate)
+  }
+
   const totalPages = Math.ceil(processedClients.length / ITEMS_PER_PAGE)
   const paginatedClients = processedClients.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
@@ -149,9 +390,42 @@ export const DoctorPanel = () => {
   return (
     <MainContent>
       <SectionHeader
-        title="My Clients"
+        title="Doctor Panel"
         subtitle={`${processedClients.length} client${processedClients.length !== 1 ? 's' : ''}`}
       />
+
+      {/* Tab Navigation */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <button
+          onClick={() => setActiveTab('clients')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+            activeTab === 'clients'
+              ? 'bg-primary-dark text-white shadow-md'
+              : 'bg-white border border-gray-300 text-text-secondary hover:bg-gray-50'
+          }`}
+        >
+          <Users size={18} />
+          Clients
+        </button>
+        <button
+          onClick={() => setActiveTab('schedule')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+            activeTab === 'schedule'
+              ? 'bg-primary-dark text-white shadow-md'
+              : 'bg-white border border-gray-300 text-text-secondary hover:bg-gray-50'
+          }`}
+        >
+          <Grid3x3 size={18} />
+          Schedule Matrix
+        </button>
+      </div>
+
+      {activeTab === 'clients' && (
+        <>
+          <SectionHeader
+            title="My Clients"
+            subtitle={`${processedClients.length} client${processedClients.length !== 1 ? 's' : ''}`}
+          />
 
       {loadError && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center gap-3">
@@ -344,6 +618,326 @@ export const DoctorPanel = () => {
           )}
         </CardContent>
       </Card>
+        </>
+      )}
+
+      {activeTab === 'schedule' && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Grid3x3 size={18} className="text-primary-dark" />
+                <h3 className="text-lg font-semibold text-text-primary">My Schedule</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => navigateWeek(-1)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <span className="font-medium text-text-primary min-w-[200px] text-center text-sm">
+                  {selectedWeekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {' - '}
+                  {addDays(selectedWeekStart, 6).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+                <button
+                  onClick={() => navigateWeek(1)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            </div>
+
+            {scheduleLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader size="lg" />
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[1000px]">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-sm text-text-secondary">
+                      <th className="text-left py-3 px-3 w-20 font-medium">Time</th>
+                      {DAYS_OF_WEEK.map((day, index) => {
+                        const dayDate = addDays(selectedWeekStart, index)
+                        const isToday = getDateKey(dayDate) === getDateKey(new Date())
+                        return (
+                          <th key={day} className={`py-3 px-2 text-center font-medium min-w-[130px] ${isToday ? 'bg-blue-50' : ''}`}>
+                            <div className="text-xs text-text-secondary">{day.slice(0, 3)}</div>
+                            <div className={`text-sm font-semibold ${isToday ? 'text-blue-600' : 'text-text-primary'}`}>
+                              {dayDate.getDate()}
+                            </div>
+                          </th>
+                        )
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {TIME_SLOTS.map((slot) => (
+                      <tr key={slot} className="border-b border-gray-100">
+                        <td className="py-2 px-3 text-sm font-medium text-text-secondary whitespace-nowrap">
+                          {slot}
+                        </td>
+                        {DAYS_OF_WEEK.map((day, index) => {
+                          const cellData = scheduleMatrix[day]?.[slot]
+                          const dayDate = addDays(selectedWeekStart, index)
+                          const isToday = getDateKey(dayDate) === getDateKey(new Date())
+                          
+                          if (!cellData) {
+                            return (
+                              <td key={`${day}-${slot}`} className={`py-1 px-1 min-w-[130px] ${isToday ? 'bg-blue-50/30' : ''}`}>
+                                <div className="h-14 bg-gray-50 rounded"></div>
+                              </td>
+                            )
+                          }
+                          
+                          const { clientName, status, isFirstSlot, appointment } = cellData
+                          const statusInfo = statusConfig[status] || statusConfig[0]
+                          
+                          if (!isFirstSlot) {
+                            return (
+                              <td key={`${day}-${slot}`} className={`py-1 px-1 min-w-[130px] ${isToday ? 'bg-blue-50/30' : ''}`}>
+                                <div className={`h-14 rounded ${statusInfo.color} opacity-50`}></div>
+                              </td>
+                            )
+                          }
+                          
+                          return (
+                            <td key={`${day}-${slot}`} className={`py-1 px-1 min-w-[130px] ${isToday ? 'bg-blue-50/30' : ''}`}>
+                              <div 
+                                className={`h-14 rounded p-2 border-l-4 ${statusInfo.borderColor} ${statusInfo.color} cursor-pointer hover:opacity-90 transition-opacity`}
+                                onClick={() => appointment && setSelectedBooking(appointment)}
+                              >
+                                <div className="text-xs font-semibold text-text-primary truncate">
+                                  {clientName || 'Unknown'}
+                                </div>
+                                <div className="text-xs text-text-secondary mt-0.5">
+                                  {statusInfo.text}
+                                </div>
+                              </div>
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {orders.length === 0 && (
+                  <div className="text-center py-12">
+                    <Calendar size={48} className="mx-auto text-gray-300 mb-3" />
+                    <h3 className="text-lg font-medium text-text-primary mb-2">No Appointments This Week</h3>
+                    <p className="text-text-secondary">You don't have any scheduled appointments for this week.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Booking Details Modal */}
+      {selectedBooking && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-text-primary">Booking Details</h3>
+              <button
+                onClick={() => setSelectedBooking(null)}
+                className="text-text-secondary hover:text-text-primary"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Client Information */}
+              <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                <Avatar 
+                  src={selectedBooking.client?.avatarUrl}
+                  alt={selectedBooking.client?.firstName || 'Client'}
+                  size={64}
+                />
+                <div className="flex-1">
+                  <h4 className="font-semibold text-text-primary text-lg">
+                    {selectedBooking.client?.firstName} {selectedBooking.client?.lastName}
+                  </h4>
+                  <p className="text-text-secondary text-sm">@{selectedBooking.client?.userName || selectedBooking.client?.email}</p>
+                  {selectedBooking.client?.email && (
+                    <p className="text-text-secondary text-sm mt-1">{selectedBooking.client.email}</p>
+                  )}
+                  {selectedBooking.client?.phoneNumber && (
+                    <p className="text-text-secondary text-sm mt-1 flex items-center gap-2">
+                      <Phone size={14} />
+                      {selectedBooking.client.phoneNumber}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Appointment Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2 text-text-secondary text-sm mb-2">
+                    <Calendar size={16} />
+                    <span>Date</span>
+                  </div>
+                  <p className="font-medium text-text-primary">
+                    {selectedBooking.scheduledDateTime 
+                      ? new Date(selectedBooking.scheduledDateTime).toLocaleDateString('en-US', { 
+                          weekday: 'long', 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })
+                      : '-'}
+                  </p>
+                </div>
+
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2 text-text-secondary text-sm mb-2">
+                    <Clock size={16} />
+                    <span>Time</span>
+                  </div>
+                  <p className="font-medium text-text-primary">
+                    {selectedBooking.scheduledDateTime 
+                      ? new Date(selectedBooking.scheduledDateTime).toLocaleTimeString('en-US', { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })
+                      : '-'}
+                  </p>
+                  <p className="text-sm text-text-secondary mt-1">
+                    Duration: {selectedBooking.durationMinutes || 30} minutes
+                  </p>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 text-text-secondary text-sm mb-2">
+                      <Stethoscope size={16} />
+                      <span>Status</span>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusConfig[selectedBooking.status]?.color || statusConfig[0].color}`}>
+                      {statusConfig[selectedBooking.status]?.text || 'Unknown'}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-text-secondary">Booking ID</p>
+                    <p className="font-mono text-sm text-text-primary">{selectedBooking.id}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Title and Description */}
+              {selectedBooking.title && (
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2 text-text-secondary text-sm mb-2">
+                    <Stethoscope size={16} />
+                    <span>Appointment Type</span>
+                  </div>
+                  <p className="font-medium text-text-primary">{selectedBooking.title}</p>
+                </div>
+              )}
+
+              {selectedBooking.description && (
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2 text-text-secondary text-sm mb-2">
+                    <MapPin size={16} />
+                    <span>Location / Description</span>
+                  </div>
+                  <p className="text-text-primary">{selectedBooking.description}</p>
+                </div>
+              )}
+
+              {selectedBooking.notes && (
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2 text-text-secondary text-sm mb-2">
+                    <AlertCircle size={16} />
+                    <span>Notes</span>
+                  </div>
+                  <p className="text-text-primary">{selectedBooking.notes}</p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-200">
+                {selectedBooking.status === 0 && (
+                  <>
+                    <Button 
+                      variant="primary" 
+                      onClick={() => handleApproveBooking(selectedBooking.id)}
+                      disabled={actionLoadingId === selectedBooking.id}
+                    >
+                      {actionLoadingId === selectedBooking.id ? 'Approving...' : 'Approve'}
+                    </Button>
+                    <Button 
+                      variant="danger" 
+                      onClick={() => handleDeclineBooking(selectedBooking.id)}
+                      disabled={actionLoadingId === selectedBooking.id}
+                    >
+                      {actionLoadingId === selectedBooking.id ? 'Declining...' : 'Decline'}
+                    </Button>
+                  </>
+                )}
+                {selectedBooking.status === 1 && (
+                  <>
+                    <Button 
+                      variant="success" 
+                      onClick={() => handleCompleteBooking(selectedBooking.id)}
+                      disabled={actionLoadingId === selectedBooking.id}
+                    >
+                      {actionLoadingId === selectedBooking.id ? 'Completing...' : 'Complete'}
+                    </Button>
+                    <Button 
+                      variant="danger" 
+                      onClick={() => handleCancelBooking(selectedBooking.id)}
+                      disabled={actionLoadingId === selectedBooking.id}
+                    >
+                      {actionLoadingId === selectedBooking.id ? 'Cancelling...' : 'Cancel'}
+                    </Button>
+                  </>
+                )}
+                {(selectedBooking.status === 0 || selectedBooking.status === 1) && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      const dateInput = prompt('Enter new date and time (YYYY-MM-DDTHH:mm), e.g. 2026-02-20T14:30')
+                      if (!dateInput) return
+                      const parsed = new Date(dateInput)
+                      if (Number.isNaN(parsed.getTime())) {
+                        alert('Invalid date format')
+                        return
+                      }
+                      const notes = prompt('Reschedule note (optional)') || ''
+                      handleReschedule(selectedBooking.id, parsed.toISOString(), notes)
+                    }}
+                    disabled={actionLoadingId === selectedBooking.id}
+                  >
+                    Reschedule
+                  </Button>
+                )}
+                <Button 
+                  variant="outline" 
+                  onClick={() => setSelectedBooking(null)}
+                >
+                  Close
+                </Button>
+              </div>
+
+              {/* Creation Date */}
+              <div className="text-center text-xs text-text-secondary pt-2">
+                Created on {new Date(selectedBooking.createdAt).toLocaleString()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </MainContent>
   )
 }
