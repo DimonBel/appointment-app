@@ -1,6 +1,7 @@
 using ChatApp.API.DTOs.Identity;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace ChatApp.API.Services;
 
@@ -12,6 +13,7 @@ public interface IIdentityServiceClient
     Task<IdentityUserDto?> GetUserByIdAsync(string userId, string accessToken);
     Task<bool> ValidateTokenAsync(string accessToken);
     Task<bool> RevokeTokenAsync(string refreshToken, string accessToken);
+    Task<IEnumerable<string>?> GetUserRolesAsync(string userId, string accessToken);
 }
 
 public class IdentityServiceClient : IIdentityServiceClient
@@ -140,6 +142,42 @@ public class IdentityServiceClient : IIdentityServiceClient
         {
             _logger.LogError(ex, "Error revoking token with Identity Service");
             return false;
+        }
+    }
+
+    public async Task<IEnumerable<string>?> GetUserRolesAsync(string userId, string accessToken)
+    {
+        try
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+            var response = await _httpClient.GetAsync($"/api/roles/user/{userId}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Get user roles failed: {StatusCode}", response.StatusCode);
+                return null;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(json);
+            
+            if (doc.RootElement.TryGetProperty("roles", out var rolesElement))
+            {
+                var roles = new List<string>();
+                foreach (var role in rolesElement.EnumerateArray())
+                {
+                    roles.Add(role.GetString() ?? string.Empty);
+                }
+                return roles;
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling Identity Service get user roles endpoint");
+            return null;
         }
     }
 }

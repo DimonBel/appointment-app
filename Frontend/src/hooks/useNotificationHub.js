@@ -131,7 +131,10 @@ export function useNotificationHub() {
   const showToast = (title, message, type) => {
     console.log('showToast called:', { title, message, type })
     const safeTitle = normalizeMessageText(title)
-    const safeMessage = normalizeMessageText(message)
+    let safeMessage = normalizeMessageText(message)
+
+    // Remove last line containing file download URL
+    safeMessage = safeMessage.replace(/\n\n(?:Review|Download) booking document:.*$/i, '').trim()
 
     let shortTitle = safeTitle
     let shortMessage = safeMessage
@@ -265,6 +268,7 @@ export function useNotificationHub() {
 
         const onReceiveNotification = (notification) => {
           console.log('ReceiveNotification handler called with:', notification)
+          console.log('Notification type:', notification.type, 'Notification title:', notification.title)
           const normalizedNotification = normalizeIncomingNotification(notification)
 
           if (normalizedNotification?.id && processedNotificationIdsRef.current.has(normalizedNotification.id)) {
@@ -286,8 +290,8 @@ export function useNotificationHub() {
               const meta = typeof normalizedNotification.metadata === 'string'
                 ? JSON.parse(normalizedNotification.metadata)
                 : normalizedNotification.metadata
-              if (meta.senderId) {
-                dispatch(addFriendId(meta.senderId))
+              if (meta.accepterId) {
+                dispatch(addFriendId(meta.accepterId))
               }
             } catch { /* ignore */ }
           }
@@ -322,6 +326,8 @@ export function useNotificationHub() {
       if (toastTimeoutRef.current) {
         clearTimeout(toastTimeoutRef.current)
       }
+      // Clear processed notification IDs to allow new notifications to show after reconnection
+      processedNotificationIdsRef.current.clear()
     }
   }, [isAuthenticated, token, dispatch])
 
@@ -341,6 +347,8 @@ export function useNotificationHub() {
           .sort((a, b) => new Date(a?.createdAt || 0).getTime() - new Date(b?.createdAt || 0).getTime())
           .forEach((item) => {
             if (!item?.id || existingIds.has(item.id)) return
+            // Add to processed IDs to track these notifications
+            processedNotificationIdsRef.current.add(item.id)
             dispatch(addNotification(item))
           })
 

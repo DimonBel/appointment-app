@@ -1,4 +1,4 @@
-using Identity.API.DTOs;
+using IdentityApp.Domain.DTOs;
 using System.Text.Json;
 
 namespace AppointmentApp.API.Services;
@@ -8,8 +8,8 @@ public interface IIdentityServiceClient
     Task<AuthResponseDto?> RegisterAsync(RegisterDto model);
     Task<AuthResponseDto?> LoginAsync(LoginDto model);
     Task<AuthResponseDto?> RefreshTokenAsync(RefreshTokenDto model);
-    Task<IdentityUserDto?> GetUserByIdAsync(Guid userId, string accessToken);
-    Task<IdentityUserDto?> GetUserByEmailAsync(string email, string accessToken);
+    Task<UserDto?> GetUserByIdAsync(Guid userId, string accessToken);
+    Task<UserDto?> GetUserByEmailAsync(string email, string accessToken);
     Task<bool> ValidateTokenAsync(string token);
     Task<bool> RevokeTokenAsync(Guid userId, string accessToken);
 }
@@ -91,7 +91,7 @@ public class IdentityServiceClient : IIdentityServiceClient
         }
     }
 
-    public async Task<IdentityUserDto?> GetUserByIdAsync(Guid userId, string accessToken)
+    public async Task<UserDto?> GetUserByIdAsync(Guid userId, string accessToken)
     {
         try
         {
@@ -106,7 +106,7 @@ public class IdentityServiceClient : IIdentityServiceClient
                 return null;
             }
 
-            return await response.Content.ReadFromJsonAsync<IdentityUserDto>();
+            return await response.Content.ReadFromJsonAsync<UserDto>();
         }
         catch (Exception ex)
         {
@@ -115,7 +115,7 @@ public class IdentityServiceClient : IIdentityServiceClient
         }
     }
 
-    public async Task<IdentityUserDto?> GetUserByEmailAsync(string email, string accessToken)
+    public async Task<UserDto?> GetUserByEmailAsync(string email, string accessToken)
     {
         try
         {
@@ -130,7 +130,7 @@ public class IdentityServiceClient : IIdentityServiceClient
                 return null;
             }
 
-            return await response.Content.ReadFromJsonAsync<IdentityUserDto>();
+            return await response.Content.ReadFromJsonAsync<UserDto>();
         }
         catch (Exception ex)
         {

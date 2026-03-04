@@ -74,6 +74,10 @@ bower_components/
 *.o
 *.so
 
+# .NET Build Outputs
+obj/
+bin/
+
 # Package Files
 *.jar
 *.war

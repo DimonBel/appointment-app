@@ -1,7 +1,53 @@
+version: '3.8'
+
+# YAML Anchors for reusable configurations
+x-default-env: &default-env
+  POSTGRES_USER: ${POSTGRES_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+x-db-healthcheck: &db-healthcheck
+  test: ["CMD-SHELL", "pg_isready -U postgres"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+
+x-postgres-template: &postgres-template
+  image: postgres:16-alpine
+  restart: unless-stopped
+  environment:
+    <<: *default-env
+  networks:
+    - app-network
+  healthcheck: *db-healthcheck
+
+x-common-service-deps: &common-service-deps
+  identity-service:
+    condition: service_healthy
+
+x-smtp-env: &smtp-env
+  - Smtp__Host=${SMTP_HOST}
+  - Smtp__Port=${SMTP_PORT}
+  - Smtp__Username=${SMTP_USERNAME}
+  - Smtp__Password=${SMTP_PASSWORD}
+  - Smtp__FromEmail=${SMTP_FROM_EMAIL}
+  - Smtp__FromName=${SMTP_FROM_NAME}
+  - Smtp__SecureSocket=${SMTP_SECURE_SOCKET}
+  - Smtp__UseSsl=false
+  - Smtp__UseStartTls=true
+
+x-minio-env: &minio-env
+  - Minio__Endpoint=${MINIO_ENDPOINT}
+  - Minio__AccessKey=${MINIO_ROOT_USER}
+  - Minio__SecretKey=${MINIO_ROOT_PASSWORD}
+  - Minio__UseSSL=${MINIO_USE_SSL}
+
+x-jwt-env: &jwt-env
+  - Jwt__SecretKey=${JWT_SECRET_KEY}
+  - Jwt__Issuer=${JWT_ISSUER}
+  - Jwt__Audience=${JWT_AUDIENCE}
+
 services:
   # Ollama LLM Service for AI Assistant
-  # To run this container independently for testing: docker-compose up ollama
-  # After starting, pull a model: docker exec -it ollama ollama pull llama-3.1-8b
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
@@ -17,141 +63,82 @@ services:
       - OLLAMA_NUM_PARALLEL=2
     command: serve
 
-  # PostgreSQL Database for Identity Service
+  # PostgreSQL Databases
   identity-db:
-    image: postgres:16-alpine
+    <<: *postgres-template
     container_name: identity-db
-    restart: unless-stopped
     environment:
-      POSTGRES_DB: ${IDENTITY_DB_NAME:-IdentityDb}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
+      <<: *default-env
+      POSTGRES_DB: ${IDENTITY_DB_NAME}
     ports:
       - "5436:5432"
     volumes:
       - identity-db-data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  # PostgreSQL Database for Appointment Service
   appointment-db:
-    image: postgres:16-alpine
+    <<: *postgres-template
     container_name: appointment-db
-    restart: unless-stopped
     environment:
-      POSTGRES_DB: ${APPOINTMENT_DB_NAME:-appointmentdb}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
+      <<: *default-env
+      POSTGRES_DB: ${APPOINTMENT_DB_NAME}
     ports:
       - "5433:5432"
     volumes:
       - appointment-db-data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  # PostgreSQL Database for Chat Service
   chat-db:
-    image: postgres:16-alpine
+    <<: *postgres-template
     container_name: chat-db
-    restart: unless-stopped
     environment:
-      POSTGRES_DB: ${CHAT_DB_NAME:-chatappdb}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
+      <<: *default-env
+      POSTGRES_DB: ${CHAT_DB_NAME}
     ports:
       - "5434:5432"
     volumes:
       - chat-db-data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  # PostgreSQL Database for Notification Service
   notification-db:
-    image: postgres:16-alpine
+    <<: *postgres-template
     container_name: notification-db
-    restart: unless-stopped
     environment:
-      POSTGRES_DB: ${NOTIFICATION_DB_NAME:-notificationdb}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
+      <<: *default-env
+      POSTGRES_DB: ${NOTIFICATION_DB_NAME}
     ports:
       - "5435:5432"
     volumes:
       - notification-db-data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  # PostgreSQL Database for Document Service
   document-db:
-    image: postgres:16-alpine
+    <<: *postgres-template
     container_name: document-db
-    restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DOCUMENT_DB_NAME:-DocumentDb}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
+      <<: *default-env
+      POSTGRES_DB: ${DOCUMENT_DB_NAME}
     ports:
       - "5437:5432"
     volumes:
       - document-db-data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  # PostgreSQL Database for Automation Service
   automation-db:
-    image: postgres:16-alpine
+    <<: *postgres-template
     container_name: automation-db
-    restart: unless-stopped
     environment:
-      POSTGRES_DB: ${AUTOMATION_DB_NAME:-automationdb}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
+      <<: *default-env
+      POSTGRES_DB: ${AUTOMATION_DB_NAME}
     ports:
       - "5438:5432"
     volumes:
       - automation-db-data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  # MinIO Object Storage for avatars and documents
+  # MinIO Object Storage
   minio:
     image: minio/minio:latest
     container_name: minio
     restart: unless-stopped
     entrypoint: ["/entrypoint.sh"]
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -161,55 +148,38 @@ services:
     networks:
       - app-network
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -f http://localhost:9000/minio/health/live || exit 1",
-        ]
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
 
-  # Identity Service
+  # Backend Services
   identity-service:
+    container_name: identity-service
+    restart: unless-stopped
     build:
       context: ./Identity
       dockerfile: Dockerfile
-    container_name: identity-service
-    restart: unless-stopped
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5005
-      - ConnectionStrings__DefaultConnection=Host=identity-db;Port=5432;Database=${IDENTITY_DB_NAME:-IdentityDb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
-      - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
-      - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
-      - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
-      - Jwt__AccessTokenExpirationMinutes=${JWT_ACCESS_EXPIRATION:-30}
-      - Jwt__RefreshTokenExpirationDays=${JWT_REFRESH_EXPIRATION:-7}
+      - ConnectionStrings__DefaultConnection=Host=identity-db;Port=5432;Database=${IDENTITY_DB_NAME};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - Jwt__AccessTokenExpirationMinutes=${JWT_ACCESS_EXPIRATION}
+      - Jwt__RefreshTokenExpirationDays=${JWT_REFRESH_EXPIRATION}
       - NotificationService__BaseUrl=http://notification-service:5003
-      - Frontend__PublicBaseUrl=${FRONTEND_PUBLIC_BASE_URL:-http://localhost:8080}
-      - IdentityService__PublicBaseUrl=${IDENTITY_PUBLIC_BASE_URL:-http://localhost:5005}
-      - Minio__Endpoint=${MINIO_ENDPOINT:-minio:9000}
-      - Minio__AccessKey=${MINIO_ROOT_USER:-minioadmin}
-      - Minio__SecretKey=${MINIO_ROOT_PASSWORD:-minioadmin}
-      - Minio__Bucket=${MINIO_BUCKET:-avatars}
-      - Minio__UseSsl=${MINIO_USE_SSL:-false}
-      - Minio__PublicBaseUrl=${MINIO_PUBLIC_BASE_URL:-http://localhost:9000}
-      - Smtp__Host=${SMTP_HOST:-mail.kubzle.com}
-      - Smtp__Port=${SMTP_PORT:-587}
-      - Smtp__Username=${SMTP_USERNAME:-Test-internship@rts.md}
-      - Smtp__Password=${SMTP_PASSWORD:-5517bBueeT8z}
-      - Smtp__FromEmail=${SMTP_FROM_EMAIL:-Test-internship@rts.md}
-      - Smtp__FromName=${SMTP_FROM_NAME:-Booking-app}
-      - Smtp__SecureSocket=${SMTP_SECURE_SOCKET:-StartTls}
-      - Smtp__UseSsl=false
-      - Smtp__UseStartTls=true
-      - SeedAdmin__Email=${SEED_ADMIN_EMAIL:-admin@appointment-app.com}
-      - SeedAdmin__Password=${SEED_ADMIN_PASSWORD:-Admin123!}
-      - SeedAdmin__UserName=${SEED_ADMIN_USERNAME:-admin}
-      - SeedAdmin__FirstName=${SEED_ADMIN_FIRSTNAME:-System}
-      - SeedAdmin__LastName=${SEED_ADMIN_LASTNAME:-Admin}
-      - SeedAdmin__ResetPasswordOnStartup=${SEED_ADMIN_RESET_PASSWORD_ON_STARTUP:-false}
+      - Frontend__PublicBaseUrl=${FRONTEND_PUBLIC_BASE_URL}
+      - IdentityService__PublicBaseUrl=${IDENTITY_PUBLIC_BASE_URL}
+      - Minio__Bucket=${MINIO_BUCKET}
+      - Minio__PublicBaseUrl=${MINIO_PUBLIC_BASE_URL}
+      - *jwt-env
+      - *minio-env
+      - *smtp-env
+      - SeedAdmin__Email=${SEED_ADMIN_EMAIL}
+      - SeedAdmin__Password=${SEED_ADMIN_PASSWORD}
+      - SeedAdmin__UserName=${SEED_ADMIN_USERNAME}
+      - SeedAdmin__FirstName=${SEED_ADMIN_FIRSTNAME}
+      - SeedAdmin__LastName=${SEED_ADMIN_LASTNAME}
+      - SeedAdmin__ResetPasswordOnStartup=${SEED_ADMIN_RESET_PASSWORD_ON_STARTUP}
     ports:
       - "5005:5005"
     depends_on:
@@ -226,33 +196,29 @@ services:
       retries: 3
       start_period: 40s
 
-  # Appointment Service
   appointment-service:
+    container_name: appointment-service
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Appointment/Dockerfile
-    container_name: appointment-service
-    restart: unless-stopped
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5001
-      - ConnectionStrings__DefaultConnection=Host=appointment-db;Port=5432;Database=${APPOINTMENT_DB_NAME:-appointmentdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
+      - ConnectionStrings__DefaultConnection=Host=appointment-db;Port=5432;Database=${APPOINTMENT_DB_NAME};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - IdentityService__BaseUrl=http://identity-service:5005
       - NotificationService__BaseUrl=http://notification-service:5003
       - DocumentService__BaseUrl=http://document-service:5004
-      - DocumentService__PublicBaseUrl=${DOCUMENT_PUBLIC_BASE_URL:-http://localhost:5004}
-      - InternalServiceKey=${INTERNAL_SERVICE_KEY:-internal-dev-key}
-      - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
-      - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
-      - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
-      - Jwt__ExpirationMinutes=${JWT_ACCESS_EXPIRATION:-30}
+      - DocumentService__PublicBaseUrl=${DOCUMENT_PUBLIC_BASE_URL}
+      - InternalServiceKey=${INTERNAL_SERVICE_KEY}
+      - Jwt__ExpirationMinutes=${JWT_ACCESS_EXPIRATION}
+      - *jwt-env
     ports:
       - "5001:5001"
     depends_on:
       appointment-db:
         condition: service_healthy
-      identity-service:
-        condition: service_healthy
+      <<: *common-service-deps
     networks:
       - app-network
     healthcheck:
@@ -262,29 +228,25 @@ services:
       retries: 3
       start_period: 40s
 
-  # Chat Service
   chat-service:
+    container_name: chat-service
+    restart: unless-stopped
     build:
       context: ./ChatApp
       dockerfile: Dockerfile
-    container_name: chat-service
-    restart: unless-stopped
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5002
-      - ConnectionStrings__DefaultConnection=Host=chat-db;Port=5432;Database=${CHAT_DB_NAME:-chatappdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
+      - ConnectionStrings__DefaultConnection=Host=chat-db;Port=5432;Database=${CHAT_DB_NAME};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - IdentityService__BaseUrl=http://identity-service:5005
       - NotificationService__BaseUrl=http://notification-service:5003
-      - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
-      - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
-      - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
+      - *jwt-env
     ports:
       - "5002:5002"
     depends_on:
       chat-db:
         condition: service_healthy
-      identity-service:
-        condition: service_healthy
+      <<: *common-service-deps
     networks:
       - app-network
     healthcheck:
@@ -294,37 +256,25 @@ services:
       retries: 3
       start_period: 40s
 
-  # Notification Service
   notification-service:
+    container_name: notification-service
+    restart: unless-stopped
     build:
       context: ./Notification
       dockerfile: Dockerfile
-    container_name: notification-service
-    restart: unless-stopped
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5003
-      - ConnectionStrings__DefaultConnection=Host=notification-db;Port=5432;Database=${NOTIFICATION_DB_NAME:-notificationdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
+      - ConnectionStrings__DefaultConnection=Host=notification-db;Port=5432;Database=${NOTIFICATION_DB_NAME};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - IdentityService__BaseUrl=http://identity-service:5005
-      - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
-      - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
-      - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
-      - Smtp__Host=${SMTP_HOST:-mail.kubzle.com}
-      - Smtp__Port=${SMTP_PORT:-587}
-      - Smtp__Username=${SMTP_USERNAME:-Test-internship@rts.md}
-      - Smtp__Password=${SMTP_PASSWORD:-5517bBueeT8z}
-      - Smtp__FromEmail=${SMTP_FROM_EMAIL:-Test-internship@rts.md}
-      - Smtp__FromName=${SMTP_FROM_NAME:-Booking-app}
-      - Smtp__SecureSocket=${SMTP_SECURE_SOCKET:-StartTls}
-      - Smtp__UseSsl=false
-      - Smtp__UseStartTls=true
+      - *jwt-env
+      - *smtp-env
     ports:
       - "5003:5003"
     depends_on:
       notification-db:
         condition: service_healthy
-      identity-service:
-        condition: service_healthy
+      <<: *common-service-deps
     networks:
       - app-network
     healthcheck:
@@ -334,35 +284,21 @@ services:
       retries: 3
       start_period: 40s
 
-  # Document Service
   document-service:
+    container_name: document-service
+    restart: unless-stopped
     build:
       context: ./Document
       dockerfile: Dockerfile
-    container_name: document-service
-    restart: unless-stopped
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5004
-      - ConnectionStrings__DefaultConnection=Host=document-db;Port=5432;Database=${DOCUMENT_DB_NAME:-DocumentDb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
-      - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
-      - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
-      - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
-      - Minio__Endpoint=${MINIO_ENDPOINT:-minio:9000}
-      - Minio__AccessKey=${MINIO_ROOT_USER:-minioadmin}
-      - Minio__SecretKey=${MINIO_ROOT_PASSWORD:-minioadmin}
-      - Minio__UseSSL=${MINIO_USE_SSL:-false}
-      - Minio__Bucket=${MINIO_BUCKET_DOCUMENTS:-documents}
-      - InternalServiceKey=${INTERNAL_SERVICE_KEY:-internal-dev-key}
-      - Smtp__Host=${SMTP_HOST:-mail.kubzle.com}
-      - Smtp__Port=${SMTP_PORT:-587}
-      - Smtp__Username=${SMTP_USERNAME:-Test-internship@rts.md}
-      - Smtp__Password=${SMTP_PASSWORD:-5517bBueeT8z}
-      - Smtp__FromEmail=${SMTP_FROM_EMAIL:-Test-internship@rts.md}
-      - Smtp__FromName=${SMTP_FROM_NAME:-Booking-app}
-      - Smtp__SecureSocket=${SMTP_SECURE_SOCKET:-StartTls}
-      - Smtp__UseSsl=false
-      - Smtp__UseStartTls=true
+      - ConnectionStrings__DefaultConnection=Host=document-db;Port=5432;Database=${DOCUMENT_DB_NAME};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - Minio__Bucket=${MINIO_BUCKET_DOCUMENTS}
+      - InternalServiceKey=${INTERNAL_SERVICE_KEY}
+      - *jwt-env
+      - *minio-env
+      - *smtp-env
     ports:
       - "5004:5004"
     depends_on:
@@ -379,36 +315,32 @@ services:
       retries: 3
       start_period: 40s
 
-  # Automation Service (AI Assistant)
   automation-service:
+    container_name: automation-service
+    restart: unless-stopped
     build:
       context: ./Automation
       dockerfile: Dockerfile
-    container_name: automation-service
-    restart: unless-stopped
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5006
-      - ConnectionStrings__DefaultConnection=Host=automation-db;Port=5432;Database=${AUTOMATION_DB_NAME:-automationdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123123}
+      - ConnectionStrings__DefaultConnection=Host=automation-db;Port=5432;Database=${AUTOMATION_DB_NAME};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - IdentityService__BaseUrl=http://identity-service:5005
       - AppointmentService__BaseUrl=http://appointment-service:5001
       - NotificationService__BaseUrl=http://notification-service:5003
-      - Jwt__SecretKey=${JWT_SECRET_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLongForIdentityService!}
-      - Jwt__Issuer=${JWT_ISSUER:-IdentityApp}
-      - Jwt__Audience=${JWT_AUDIENCE:-IdentityAppClients}
-      - Ollama__BaseUrl=${OLLAMA_BASE_URL:-http://ollama:11434}
-      - Ollama__ModelName=${OLLAMA_MODEL_NAME:-gemma2:2b}
-      - Ollama__RequestTimeoutSeconds=${OLLAMA_REQUEST_TIMEOUT_SECONDS:-2}
-      - Ollama__NumPredict=${OLLAMA_NUM_PREDICT:-128}
-      - Ollama__NumCtx=${OLLAMA_NUM_CTX:-1536}
-      - Ollama__NumThread=${OLLAMA_NUM_THREAD:-4}
+      - Ollama__BaseUrl=${OLLAMA_BASE_URL}
+      - Ollama__ModelName=${OLLAMA_MODEL_NAME}
+      - Ollama__RequestTimeoutSeconds=${OLLAMA_REQUEST_TIMEOUT_SECONDS}
+      - Ollama__NumPredict=${OLLAMA_NUM_PREDICT}
+      - Ollama__NumCtx=${OLLAMA_NUM_CTX}
+      - Ollama__NumThread=${OLLAMA_NUM_THREAD}
+      - *jwt-env
     ports:
       - "5006:5006"
     depends_on:
       automation-db:
         condition: service_healthy
-      identity-service:
-        condition: service_healthy
+      <<: *common-service-deps
       appointment-service:
         condition: service_healthy
       ollama:

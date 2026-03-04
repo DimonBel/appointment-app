@@ -1,7 +1,18 @@
 import React, { useState, useMemo } from 'react'
 
-export const Calendar = ({ selectedDate, onSelectDate, minDate, maxDate, availableDates = [] }) => {
-  const [currentMonth, setCurrentMonth] = useState(new Date())
+export const Calendar = ({ 
+  selectedDate, 
+  onSelectDate, 
+  minDate, 
+  maxDate, 
+  availableDates = [],
+  availabilityStatus = {},
+  loadingAvailability = false,
+  currentMonth: controlledMonth,
+  onMonthChange
+}) => {
+  const [internalMonth, setInternalMonth] = useState(new Date())
+  const currentMonth = controlledMonth || internalMonth
 
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -52,13 +63,28 @@ export const Calendar = ({ selectedDate, onSelectDate, minDate, maxDate, availab
       if (dateOnly > maxDateOnly) return true
     }
 
+    // Only disable dates BEFORE today, not today itself
     if (dateOnly < today) return true
+
+    // Check if date has available slots from availability status
+    const dateKey = formatDateKey(date)
+    if (availabilityStatus[dateKey]) {
+      return !availabilityStatus[dateKey].hasAvailableSlots
+    }
 
     if (availableDates.length > 0) {
       return !availableDates.includes(formatDateKey(date))
     }
 
     return false
+  }
+
+  const isPastDate = (date) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const dateOnly = new Date(date)
+    dateOnly.setHours(0, 0, 0, 0)
+    return dateOnly < today
   }
 
   const isSelected = (date) => {
@@ -72,11 +98,21 @@ export const Calendar = ({ selectedDate, onSelectDate, minDate, maxDate, availab
   }
 
   const goToPreviousMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))
+    const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1)
+    if (onMonthChange) {
+      onMonthChange(newMonth)
+    } else {
+      setInternalMonth(newMonth)
+    }
   }
 
   const goToNextMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))
+    const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1)
+    if (onMonthChange) {
+      onMonthChange(newMonth)
+    } else {
+      setInternalMonth(newMonth)
+    }
   }
 
   const days = getDaysInMonth(currentMonth)
@@ -123,6 +159,23 @@ export const Calendar = ({ selectedDate, onSelectDate, minDate, maxDate, availab
 
           const disabled = isDateDisabled(date)
           const selected = isSelected(date)
+          const past = isPastDate(date)
+          const dateKey = formatDateKey(date)
+          const status = availabilityStatus[dateKey]
+
+          // Determine availability indicator - ONLY show for non-past dates
+          let showIndicator = false
+          let indicatorColor = 'transparent'
+          
+          if (status && !past) {
+            if (status.hasAvailableSlots) {
+              showIndicator = true
+              indicatorColor = 'bg-green-500'
+            } else if (status.hasSlots && !status.hasAvailableSlots) {
+              showIndicator = true
+              indicatorColor = 'bg-gray-400'
+            }
+          }
 
           return (
             <button
@@ -131,19 +184,40 @@ export const Calendar = ({ selectedDate, onSelectDate, minDate, maxDate, availab
               onClick={() => handleDateClick(date)}
               disabled={disabled}
               className={`
-                aspect-square rounded-2xl flex items-center justify-center text-sm font-medium transition-all duration-200
+                aspect-square rounded-2xl flex flex-col items-center justify-center text-sm font-medium transition-all duration-200 relative
                 ${selected
                   ? 'bg-primary-dark text-white shadow-lg scale-105'
                   : disabled
-                    ? 'text-gray-300 cursor-not-allowed'
-                    : 'text-gray-700 hover:bg-gray-100 hover:scale-105'
+                    ? past
+                      ? 'text-gray-400 cursor-not-allowed bg-gray-100'
+                      : 'text-gray-300 cursor-not-allowed bg-gray-50'
+                    : 'text-gray-700 hover:bg-gray-100 hover:scale-105 bg-white'
                 }
               `}
             >
-              {date.getDate()}
+              <span className="relative z-10">{date.getDate()}</span>
+              {showIndicator && !selected && (
+                <div className={`absolute top-2 right-2 w-2 h-2 rounded-full ${indicatorColor} shadow-sm`} />
+              )}
             </button>
           )
         })}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-gray-100">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-green-500 shadow-sm" />
+          <span className="text-xs text-gray-600">Available</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-gray-400 shadow-sm" />
+          <span className="text-xs text-gray-600">Fully Booked</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-gray-50 border border-gray-200" />
+          <span className="text-xs text-gray-600">Unavailable</span>
+        </div>
       </div>
     </div>
   )

@@ -179,20 +179,22 @@ export const DoctorList = () => {
         domainConfigurationId: null,
       }, token)
 
+      const orderId = order?.id || order?.Id || order?.orderId
+
       // Link uploaded file to the order if present
-      if (uploadedFile && order?.id) {
+      if (uploadedFile && orderId) {
         try {
-          // Check what ID field is available (backend returns 'Id' with capital I)
-          const documentId = uploadedFile.Id || uploadedFile.id
-          console.log('Attempting to link document:', { documentId, orderId: order.id, uploadedFile })
+          const documentId = uploadedFile?.Id || uploadedFile?.id || uploadedFile?.documentId
+          console.log('Attempting to link document:', { documentId, orderId, uploadedFile })
           if (!documentId) {
             console.error('No document ID found in uploadedFile:', uploadedFile)
+            alert('Warning: Could not link uploaded file to booking. File ID is missing.')
           } else {
             // Update the document's linked entity to the new order
             await documentService.updateDocumentLinkedEntity(
               documentId,
               'Order',
-              order.id,
+              orderId,
               token
             )
             console.log('Document linked successfully')
@@ -200,7 +202,10 @@ export const DoctorList = () => {
         } catch (fileError) {
           console.error('Error linking file to order:', fileError)
           console.error('Error response:', fileError.response?.data)
+          console.error('Error status:', fileError.response?.status)
           console.error('uploadedFile object:', uploadedFile)
+          const errorMessage = fileError.response?.data?.detail || fileError.response?.data?.message || fileError.response?.data?.error || fileError.message
+          alert(`Warning: Could not link uploaded file to booking. Error: ${errorMessage}`)
           // Don't fail the booking if file linking fails
         }
       }

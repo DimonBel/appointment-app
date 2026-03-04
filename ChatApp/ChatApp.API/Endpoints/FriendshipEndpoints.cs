@@ -1,7 +1,10 @@
 using ChatApp.API.DTOs;
+using ChatApp.API.DTOs.Identity;
+using ChatApp.API.Services;
 using ChatApp.Domain.Entity;
 using ChatApp.Domain.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
@@ -47,6 +50,7 @@ public static class FriendshipEndpoints
     private static async Task<IResult> SendFriendRequestAsync(
         IFriendshipService friendshipService,
         IChatService chatService,
+        IIdentityServiceClient identityServiceClient,
         HttpContext httpContext,
         IConfiguration configuration,
         IHttpClientFactory httpClientFactory,
@@ -57,33 +61,105 @@ public static class FriendshipEndpoints
         var currentUserId = TryGetUserId(httpContext.User);
         if (!currentUserId.HasValue) return Results.Unauthorized();
 
+        // Extract access token from Authorization header
+        var accessToken = ExtractAccessToken(httpContext);
+        if (string.IsNullOrEmpty(accessToken))
+        {
+            return Results.Unauthorized();
+        }
+
+        // Validate roles: Only clients (User/Patient) can add doctors (Doctor/Professional) as friends
+        try
+        {
+            var requesterRoles = await identityServiceClient.GetUserRolesAsync(currentUserId.Value.ToString(), accessToken);
+            var addresseeRoles = await identityServiceClient.GetUserRolesAsync(dto.AddresseeId.ToString(), accessToken);
+
+            if (requesterRoles == null || addresseeRoles == null)
+            {
+                return Results.BadRequest(new { error = "Unable to verify user roles." });
+            }
+
+            var requesterRolesList = requesterRoles.ToList();
+            var addresseeRolesList = addresseeRoles.ToList();
+
+            // Define valid client roles and doctor roles
+            var clientRoles = new[] { "User", "Patient" };
+            var doctorRoles = new[] { "Doctor", "Professional" };
+
+            // Check if requester is a client (User or Patient)
+            bool isRequesterClient = requesterRolesList.Any(role => clientRoles.Contains(role, StringComparer.OrdinalIgnoreCase));
+
+            // Check if addressee is a doctor (Doctor or Professional)
+            bool isAddresseeDoctor = addresseeRolesList.Any(role => doctorRoles.Contains(role, StringComparer.OrdinalIgnoreCase));
+
+            // Check if addressee is an admin
+            bool isAddresseeAdmin = addresseeRolesList.Any(role => role.Equals("Admin", StringComparison.OrdinalIgnoreCase));
+
+            // Check if addressee is another client (User or Patient)
+            bool isAddresseeClient = addresseeRolesList.Any(role => clientRoles.Contains(role, StringComparer.OrdinalIgnoreCase));
+
+            // Validation rules:
+            // 1. Only clients can send friend requests
+            // 2. Only doctors can receive friend requests
+            // 3. Admins cannot be added as friends
+            // 4. Clients cannot add other clients as friends
+
+            if (!isRequesterClient)
+            {
+                return Results.BadRequest(new { error = "Only clients can send friend requests." });
+            }
+
+            if (!isAddresseeDoctor)
+            {
+                if (isAddresseeAdmin)
+                {
+                    return Results.BadRequest(new { error = "Cannot add admins as friends." });
+                }
+                else if (isAddresseeClient)
+                {
+                    return Results.BadRequest(new { error = "Cannot add other clients as friends. You can only add doctors." });
+                }
+                else
+                {
+                    return Results.BadRequest(new { error = "You can only add doctors as friends." });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error validating user roles for friendship request");
+            return Results.BadRequest(new { error = "Failed to validate user roles." });
+        }
+
         try
         {
             var friendship = await friendshipService.SendFriendRequestAsync(currentUserId.Value, dto.AddresseeId);
 
             // Send notification to the addressee via Notification service
+            // Capture user info before starting background task to avoid ObjectDisposedException
+            var currentUser = httpContext.User;
             _ = Task.Run(async () =>
             {
                 try
                 {
                     var requester = await chatService.GetUserByIdAsync(currentUserId.Value);
-                    var requesterName = ResolveDisplayName(httpContext.User, requester?.UserName ?? "Someone");
+                    var requesterName = ResolveDisplayName(currentUser, requester?.UserName ?? "Someone");
 
                     var httpClient = httpClientFactory.CreateClient("NotificationService");
-                    var eventPayload = JsonSerializer.Serialize(new
+                    AddInternalServiceKey(httpClient, configuration);
+
+                    var response = await httpClient.PostAsJsonAsync("/api/notifications/events", new
                     {
                         sourceService = "ChatApp",
                         eventName = "FriendRequestSent",
-                        payload = JsonSerializer.Serialize(new
+                        payload = new
                         {
                             receiverId = dto.AddresseeId,
                             senderId = currentUserId.Value,
                             senderName = requesterName,
                             friendshipId = friendship.Id
-                        })
+                        }
                     });
-                    var content = new StringContent(eventPayload, Encoding.UTF8, "application/json");
-                    var response = await httpClient.PostAsync("/api/notifications/events", content);
                     if (!response.IsSuccessStatusCode)
                     {
                         logger.LogWarning("Failed to dispatch FriendRequestSent event. StatusCode: {StatusCode}", response.StatusCode);
@@ -125,27 +201,30 @@ public static class FriendshipEndpoints
             var friendship = await friendshipService.AcceptFriendRequestAsync(id, currentUserId.Value);
 
             // Notify the requester
+            // Capture user info before starting background task to avoid ObjectDisposedException
+            var currentUser = httpContext.User;
             _ = Task.Run(async () =>
             {
                 try
                 {
                     var accepter = await chatService.GetUserByIdAsync(currentUserId.Value);
-                    var accepterName = ResolveDisplayName(httpContext.User, accepter?.UserName ?? "Someone");
+                    var accepterName = ResolveDisplayName(currentUser, accepter?.UserName ?? "Someone");
 
                     var httpClient = httpClientFactory.CreateClient("NotificationService");
-                    var eventPayload = JsonSerializer.Serialize(new
+                    AddInternalServiceKey(httpClient, configuration);
+
+                    var response = await httpClient.PostAsJsonAsync("/api/notifications/events", new
                     {
                         sourceService = "ChatApp",
                         eventName = "FriendRequestAccepted",
-                        payload = JsonSerializer.Serialize(new
+                        payload = new
                         {
                             requesterId = friendship.RequesterId,
+                            accepterId = currentUserId.Value,
                             accepterName,
                             friendshipId = friendship.Id
-                        })
+                        }
                     });
-                    var content = new StringContent(eventPayload, Encoding.UTF8, "application/json");
-                    var response = await httpClient.PostAsync("/api/notifications/events", content);
                     if (!response.IsSuccessStatusCode)
                     {
                         logger.LogWarning("Failed to dispatch FriendRequestAccepted event. StatusCode: {StatusCode}", response.StatusCode);
@@ -187,26 +266,28 @@ public static class FriendshipEndpoints
             var friendship = await friendshipService.DeclineFriendRequestAsync(id, currentUserId.Value);
 
             // Notify the requester
+            // Capture user info before starting background task to avoid ObjectDisposedException
+            var currentUser = httpContext.User;
             _ = Task.Run(async () =>
             {
                 try
                 {
                     var decliner = await chatService.GetUserByIdAsync(currentUserId.Value);
-                    var declinerName = ResolveDisplayName(httpContext.User, decliner?.UserName ?? "Someone");
+                    var declinerName = ResolveDisplayName(currentUser, decliner?.UserName ?? "Someone");
 
                     var httpClient = httpClientFactory.CreateClient("NotificationService");
-                    var eventPayload = JsonSerializer.Serialize(new
+                    AddInternalServiceKey(httpClient, configuration);
+
+                    var response = await httpClient.PostAsJsonAsync("/api/notifications/events", new
                     {
                         sourceService = "ChatApp",
                         eventName = "FriendRequestDeclined",
-                        payload = JsonSerializer.Serialize(new
+                        payload = new
                         {
                             requesterId = friendship.RequesterId,
                             declinerName
-                        })
+                        }
                     });
-                    var content = new StringContent(eventPayload, Encoding.UTF8, "application/json");
-                    var response = await httpClient.PostAsync("/api/notifications/events", content);
                     if (!response.IsSuccessStatusCode)
                     {
                         logger.LogWarning("Failed to dispatch FriendRequestDeclined event. StatusCode: {StatusCode}", response.StatusCode);
@@ -377,6 +458,16 @@ public static class FriendshipEndpoints
         return Guid.TryParse(claimValue, out var userId) ? userId : null;
     }
 
+    private static string? ExtractAccessToken(HttpContext httpContext)
+    {
+        var authHeader = httpContext.Request.Headers["Authorization"].FirstOrDefault();
+        if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+        return authHeader.Substring("Bearer ".Length).Trim();
+    }
+
     private static string ResolveDisplayName(ClaimsPrincipal user, string fallback)
     {
         var customFirstName = user.FindFirstValue("FirstName");
@@ -396,5 +487,12 @@ public static class FriendshipEndpoints
             ?? user.FindFirstValue("name")
             ?? user.FindFirstValue(ClaimTypes.Email)
             ?? fallback;
+    }
+
+    private static void AddInternalServiceKey(HttpClient client, IConfiguration configuration)
+    {
+        var key = configuration["InternalServiceKey"] ?? "internal-dev-key";
+        client.DefaultRequestHeaders.Remove("X-Internal-Key");
+        client.DefaultRequestHeaders.Add("X-Internal-Key", key);
     }
 }

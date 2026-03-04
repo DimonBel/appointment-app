@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
+import { createPortal } from 'react-dom'
 import { MainContent } from '../../components/layout/MainContent'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -326,14 +327,31 @@ export const Chat = () => {
         displayName: getDisplayName(item),
       }))
 
+      // Store all people (with roles) for future reference
       if (!allPeople.length && !userSearchQuery.trim()) {
         setAllPeople(normalized)
       }
 
       const q = userSearchQuery.toLowerCase()
-      const inMode = normalized.filter((person) =>
-        searchMode === 'all' ? true : friendIds.includes(person.id)
-      )
+      
+      // Filter by search mode and roles - only show doctors (Doctor or Professional roles)
+      const inMode = normalized.filter((person) => {
+        const isFriend = friendIds.includes(person.id)
+        
+        // In friends mode, show only friends
+        if (searchMode === 'friends') {
+          return isFriend
+        }
+        
+        // In all mode, show doctors only for adding friends, plus existing friends
+        const roles = person.roles || []
+        const isDoctor = roles.some(role => 
+          ['Doctor', 'Professional'].includes(role)
+        )
+        
+        // Show if friend OR if doctor (for potential friend requests)
+        return isFriend || isDoctor
+      })
 
       const filtered = inMode.filter((person) =>
         !q ||
@@ -344,9 +362,17 @@ export const Chat = () => {
 
       setSearchResults(filtered)
 
-      // Load friendship statuses for non-friend users in "all" mode
+      // Load friendship statuses for non-friend users in "all" mode (only for doctors)
       if (searchMode === 'all') {
-        const unknownUsers = filtered.filter(p => !friendIds.includes(p.id) && !friendStatuses[p.id])
+        const unknownUsers = filtered.filter(p => {
+          const isNotFriend = !friendIds.includes(p.id) && !friendStatuses[p.id]
+          // Only check statuses for doctors
+          const roles = p.roles || []
+          const isDoctor = roles.some(role => 
+            ['Doctor', 'Professional'].includes(role)
+          )
+          return isNotFriend && isDoctor
+        })
         const statusPromises = unknownUsers.map(async (p) => {
           try {
             const status = await friendService.getFriendshipStatus(p.id, token)
@@ -661,8 +687,14 @@ export const Chat = () => {
       </div>
 
       {/* User Search Modal */}
-      {showUserSearch && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      {showUserSearch && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] backdrop-blur-sm" onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setShowUserSearch(false)
+            setUserSearchQuery('')
+            setSearchResults([])
+          }
+        }}>
           <div className="bg-white rounded-lg w-full max-w-md mx-4">
             <div className="p-4 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-text-primary">Search Users</h3>
@@ -749,6 +781,16 @@ export const Chat = () => {
 
                         {searchMode === 'all' && !friendIds.includes(searchUser.id) && (
                           (() => {
+                            // Check if user is a doctor - only show friend actions for doctors
+                            const roles = searchUser.roles || []
+                            const isDoctor = roles.some(role => 
+                              ['Doctor', 'Professional'].includes(role)
+                            )
+                            
+                            if (!isDoctor) {
+                              return null // Don't show any action for non-doctors
+                            }
+                            
                             const fs = friendStatuses[searchUser.id]
                             const status = fs?.status || 'none'
                             if (status === 'pending_sent') {
@@ -805,7 +847,8 @@ export const Chat = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

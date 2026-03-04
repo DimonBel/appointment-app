@@ -1,9 +1,10 @@
 using ChatApp.Domain.Interfaces;
 using ChatApp.Domain.Entity;
-using ChatApp.Service.Services;
+using ChatApp.Service;
 using ChatApp.API.Hubs;
 using ChatApp.API.Endpoints;
 using ChatApp.API.Services;
+using ChatApp.API.Configuration;
 using ChatApp.Repository.Interfaces;
 using ChatApp.Postgres.Data;
 using ChatApp.Postgres.Repositories;
@@ -11,9 +12,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Npgsql;
 using System.Text;
-using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,10 +21,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 
 // Configure PostgreSQL Database
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
-        b => b.MigrationsAssembly("ChatApp.Postgres"))
-    .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
+builder.Services.ConfigureDatabase(builder.Configuration);
 
 // Configure Identity
 builder.Services.AddIdentity<AppIdentityUser, AppIdentityRole>(options =>
@@ -131,8 +127,8 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Apply database migrations automatically (changed from Development-only to always run)
-await EnsureDatabaseCreatedAndMigratedAsync(app.Services, app.Configuration);
+// Apply database migrations automatically
+await DatabaseConfiguration.EnsureDatabaseCreatedAndMigratedAsync(app.Services, app.Configuration);
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
@@ -164,53 +160,3 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "Chat
     .WithTags("Health");
 
 app.Run();
-
-static async Task EnsureDatabaseCreatedAndMigratedAsync(IServiceProvider services, IConfiguration configuration)
-{
-    var connectionString = configuration.GetConnectionString("DefaultConnection");
-    if (string.IsNullOrWhiteSpace(connectionString))
-    {
-        throw new InvalidOperationException("Connection string 'DefaultConnection' is missing.");
-    }
-
-    var csb = new NpgsqlConnectionStringBuilder(connectionString);
-    var databaseName = csb.Database;
-    if (string.IsNullOrWhiteSpace(databaseName))
-    {
-        throw new InvalidOperationException("Database name is missing in 'DefaultConnection'.");
-    }
-
-    if (!Regex.IsMatch(databaseName, "^[A-Za-z0-9_]+$"))
-    {
-        throw new InvalidOperationException(
-            $"Unsafe database name '{databaseName}'. Only letters, digits, and '_' are allowed.");
-    }
-
-    var adminCsb = new NpgsqlConnectionStringBuilder(connectionString)
-    {
-        Database = "postgres"
-    };
-
-    await using (var adminConnection = new NpgsqlConnection(adminCsb.ConnectionString))
-    {
-        await adminConnection.OpenAsync();
-
-        await using (var existsCmd = new NpgsqlCommand(
-                         "SELECT 1 FROM pg_database WHERE datname = @name;",
-                         adminConnection))
-        {
-            existsCmd.Parameters.AddWithValue("name", databaseName);
-            var exists = await existsCmd.ExecuteScalarAsync() != null;
-            if (!exists)
-            {
-                await using var createCmd =
-                    new NpgsqlCommand($"CREATE DATABASE \"{databaseName}\";", adminConnection);
-                await createCmd.ExecuteNonQueryAsync();
-            }
-        }
-    }
-
-    using var scope = services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await dbContext.Database.MigrateAsync();
-}

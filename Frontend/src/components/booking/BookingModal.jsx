@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { Button } from '../ui/Button'
-import { Input, Textarea, Select } from '../ui/Input'
+import { Input, Textarea } from '../ui/Input'
 import { appointmentService } from '../../services/appointmentService'
 import documentService from '../../services/documentService'
 import { Calendar } from './Calendar'
@@ -12,23 +12,55 @@ export const BookingModal = ({ isOpen, doctor, loading = false, onClose, onConfi
   const token = useSelector((state) => state.auth.token)
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
-  const [durationMinutes, setDurationMinutes] = useState(60)
   const [notes, setNotes] = useState('')
   const [timeSlots, setTimeSlots] = useState([])
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [uploadedFile, setUploadedFile] = useState(null)
   const [uploading, setUploading] = useState(false)
+  const [availabilityStatus, setAvailabilityStatus] = useState({})
+  const [loadingAvailability, setLoadingAvailability] = useState(false)
+  const [currentMonth, setCurrentMonth] = useState(new Date())
 
   useEffect(() => {
     if (isOpen) {
       setSelectedDate('')
       setSelectedTime('')
-      setDurationMinutes(60)
       setNotes('')
       setTimeSlots([])
       setUploadedFile(null)
+      setCurrentMonth(new Date())
+      loadMonthlyAvailability(new Date())
     }
   }, [isOpen])
+
+  const loadMonthlyAvailability = async (date) => {
+    if (!isOpen || !doctor?.professionalId || !token) {
+      setAvailabilityStatus({})
+      setCurrentMonth(date)
+      return
+    }
+
+    try {
+      setLoadingAvailability(true)
+      setCurrentMonth(date)
+      const year = date.getFullYear()
+      const month = date.getMonth() + 1
+      console.log('Loading availability for:', { professionalId: doctor.professionalId, year, month })
+      const status = await appointmentService.getMonthlyAvailabilityStatus(
+        doctor.professionalId,
+        year,
+        month,
+        token
+      )
+      console.log('Availability status loaded:', status)
+      setAvailabilityStatus(status)
+    } catch (error) {
+      console.error('Error loading monthly availability:', error)
+      setAvailabilityStatus({})
+    } finally {
+      setLoadingAvailability(false)
+    }
+  }
 
   useEffect(() => {
     const loadSlots = async () => {
@@ -91,34 +123,8 @@ export const BookingModal = ({ isOpen, doctor, loading = false, onClose, onConfi
 
   if (!isOpen || !doctor) return null
 
-  const toMinutes = (time) => {
-    const [hour, minute] = time.split(':').map(Number)
-    return hour * 60 + minute
-  }
-
-  const getMaxContinuousDuration = (startTime) => {
-    if (!startTime) return 0
-
-    const availableSlots = [...timeSlots]
-      .filter((slot) => slot.isAvailable && slot.time && slot.endTime)
-      .sort((left, right) => toMinutes(left.time) - toMinutes(right.time))
-
-    const startSlot = availableSlots.find((slot) => slot.time === startTime)
-    if (!startSlot) return 0
-
-    let currentEnd = startSlot.endTime
-
-    while (true) {
-      const nextSlot = availableSlots.find((slot) => slot.time === currentEnd)
-      if (!nextSlot) break
-      currentEnd = nextSlot.endTime
-    }
-
-    return toMinutes(currentEnd) - toMinutes(startTime)
-  }
-
   const minDate = new Date()
-  minDate.setDate(minDate.getDate() + 1)
+  minDate.setDate(minDate.getDate())
   const maxDate = new Date()
   maxDate.setMonth(maxDate.getMonth() + 3)
 
@@ -126,7 +132,6 @@ export const BookingModal = ({ isOpen, doctor, loading = false, onClose, onConfi
     const file = e.target.files[0]
     if (!file) return
 
-    // Validate file type
     const allowedTypes = [
       'application/pdf',
       'application/msword',
@@ -140,7 +145,6 @@ export const BookingModal = ({ isOpen, doctor, loading = false, onClose, onConfi
       return
     }
 
-    // Validate file size (100MB max)
     if (file.size > 100 * 1024 * 1024) {
       alert('File size must be less than 100MB')
       return
@@ -153,7 +157,7 @@ export const BookingModal = ({ isOpen, doctor, loading = false, onClose, onConfi
         {
           documentType: 'BookingFile',
           linkedEntityType: 'Order',
-          linkedEntityId: null // Will be set after booking is created
+          linkedEntityId: null
         },
         token
       )
@@ -161,7 +165,8 @@ export const BookingModal = ({ isOpen, doctor, loading = false, onClose, onConfi
       setUploadedFile(uploadedDoc)
     } catch (error) {
       console.error('Error uploading file:', error)
-      alert('Failed to upload file. Please try again.')
+      setUploadedFile(null)
+      alert('Failed to upload file. Please try again or proceed without a file.')
     } finally {
       setUploading(false)
     }
@@ -185,15 +190,9 @@ export const BookingModal = ({ isOpen, doctor, loading = false, onClose, onConfi
       return
     }
 
-    const maxDuration = getMaxContinuousDuration(selectedTime)
-    if (maxDuration > 0 && durationMinutes > maxDuration) {
-      alert(`Selected time supports up to ${maxDuration} minutes. Please choose a shorter duration.`)
-      return
-    }
-
     onConfirm({
       scheduledDateTime: `${selectedDate}T${selectedTime}:00`,
-      durationMinutes,
+      durationMinutes: 60,
       notes,
       uploadedFile,
     })
@@ -233,6 +232,10 @@ export const BookingModal = ({ isOpen, doctor, loading = false, onClose, onConfi
                   onSelectDate={setSelectedDate}
                   minDate={minDate}
                   maxDate={maxDate}
+                  availabilityStatus={availabilityStatus}
+                  loadingAvailability={loadingAvailability}
+                  currentMonth={currentMonth}
+                  onMonthChange={loadMonthlyAvailability}
                 />
                 
                 {selectedDate ? (
@@ -241,6 +244,7 @@ export const BookingModal = ({ isOpen, doctor, loading = false, onClose, onConfi
                     selectedTime={selectedTime}
                     onSelectTime={setSelectedTime}
                     loading={slotsLoading}
+                    selectedDate={selectedDate}
                   />
                 ) : (
                   <div className="bg-white rounded-3xl shadow-medium p-5 flex items-center justify-center">
@@ -256,34 +260,18 @@ export const BookingModal = ({ isOpen, doctor, loading = false, onClose, onConfi
 
               <div className="bg-white rounded-3xl shadow-medium p-5 mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Appointment Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Duration</label>
-                    <select
-                      value={durationMinutes}
-                      onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-accent focus:border-transparent transition-all"
-                    >
-                      <option value={30}>30 minutes</option>
-                      <option value={60}>60 minutes</option>
-                      <option value={90}>90 minutes</option>
-                      <option value={120}>120 minutes</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optional)</label>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Describe symptoms or reason for visit"
-                      rows={1}
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-accent focus:border-transparent transition-all resize-none"
-                    />
-                  </div>
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Describe symptoms or reason for visit"
+                    rows={3}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-accent focus:border-transparent transition-all resize-none"
+                  />
                 </div>
                 
-                {/* File Upload */}
-                <div className="mt-3">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Attach File (optional)</label>
                   {uploadedFile ? (
                     <div className="flex items-center gap-3 p-2.5 bg-primary-accent/10 border border-primary-accent/20 rounded-xl">
@@ -349,10 +337,10 @@ export const BookingModal = ({ isOpen, doctor, loading = false, onClose, onConfi
                 <Button
                   type="submit"
                   variant="primary"
-                  disabled={loading || !selectedDate || !selectedTime}
+                  disabled={loading || uploading || !selectedDate || !selectedTime}
                   className="px-6 py-2.5 rounded-xl"
                 >
-                  {loading ? 'Booking...' : 'Confirm Booking'}
+                  {uploading ? 'Uploading file...' : loading ? 'Booking...' : 'Confirm Booking'}
                 </Button>
               </div>
             </div>

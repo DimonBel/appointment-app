@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { Header } from './components/layout/Header'
-import { Sidebar } from './components/layout/Sidebar'
 import { MainContent } from './components/layout/MainContent'
 import { Login } from './pages/auth/Login'
 import { Register } from './pages/auth/Register'
@@ -25,7 +24,6 @@ import './App.css'
 
 function App() {
   const [activeItem, setActiveItem] = useState('bookings')
-  const [sidebarOpen, setSidebarOpen] = useState(true)
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated)
 
   // Connect to NotificationHub for real-time notifications
@@ -33,10 +31,6 @@ function App() {
 
   const handleNavigate = (itemId) => {
     setActiveItem(itemId)
-  }
-
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen)
   }
 
   // If not authenticated, show login/register pages
@@ -57,35 +51,28 @@ function App() {
   return (
     <BrowserRouter>
       <div className="App">
-        <div className="app-container">
-          {sidebarOpen && (
-            <Sidebar 
-              activeItem={activeItem} 
-              onNavigate={handleNavigate}
-            />
-          )}
-          <div className="main-content">
-            <Header onMenuClick={toggleSidebar} />
-            <MainContent>
-              <Routes>
-                <Route path="/" element={<Bookings />} />
-                <Route path="/doctors" element={<DoctorList />} />
-                <Route path="/chat" element={<Chat />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/doctor-profile" element={<DoctorProfile />} />
-                <Route path="/doctor-panel" element={<DoctorPanel />} />
-                <Route path="/doctor-panel/client/:clientId" element={<ClientDetail />} />
-                <Route path="/management" element={<ManagementPanel />} />
-                <Route path="/document-preview" element={<DocumentPreview />} />
-                <Route path="/notifications" element={<Notifications />} />
-                <Route path="/ai-assistant" element={<AIAssistant />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/admin" element={<AdminPanel />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </MainContent>
-          </div>
-        </div>
+        <Header 
+          activeItem={activeItem}
+          onNavigate={handleNavigate}
+        />
+        <MainContent>
+          <Routes>
+            <Route path="/" element={<Bookings />} />
+            <Route path="/doctors" element={<DoctorList />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/doctor-profile" element={<DoctorProfile />} />
+            <Route path="/doctor-panel" element={<DoctorPanel />} />
+            <Route path="/doctor-panel/client/:clientId" element={<ClientDetail />} />
+            <Route path="/management" element={<ManagementPanel />} />
+            <Route path="/document-preview" element={<DocumentPreview />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/ai-assistant" element={<AIAssistant />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </MainContent>
       </div>
     </BrowserRouter>
   )

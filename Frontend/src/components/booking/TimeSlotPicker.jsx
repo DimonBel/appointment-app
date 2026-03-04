@@ -1,6 +1,6 @@
 import React from 'react'
 
-export const TimeSlotPicker = ({ slots, selectedTime, onSelectTime, loading }) => {
+export const TimeSlotPicker = ({ slots, selectedTime, onSelectTime, loading, selectedDate }) => {
   const formatTimeLabel = (time) => {
     const [hourStr, minuteStr] = time.split(':')
     const hour = Number(hourStr)
@@ -9,6 +9,37 @@ export const TimeSlotPicker = ({ slots, selectedTime, onSelectTime, loading }) =
     const displayHour = hour % 12 || 12
     return `${displayHour}:${String(minute).padStart(2, '0')} ${period}`
   }
+
+  const isSlotInPast = (time, date) => {
+    if (!date) return false
+    
+    const now = new Date()
+    const slotDate = new Date(date)
+    
+    // Check if the slot date is today
+    const isToday = slotDate.toDateString() === now.toDateString()
+    
+    if (!isToday) return false
+    
+    // Parse the slot time
+    const [hourStr, minuteStr] = time.split(':')
+    const hour = Number(hourStr)
+    const minute = Number(minuteStr)
+    
+    // Set the slot datetime
+    slotDate.setHours(hour, minute, 0, 0)
+    
+    // Check if slot time is in the past
+    return slotDate < now
+  }
+
+  // Filter slots to show only 60-minute intervals (hourly slots)
+  const hourlySlots = slots.filter(slot => {
+    const [hourStr, minuteStr] = slot.time.split(':')
+    const minute = Number(minuteStr)
+    // Only show slots that start at :00 (hourly)
+    return minute === 0
+  })
 
   if (loading) {
     return (
@@ -21,7 +52,7 @@ export const TimeSlotPicker = ({ slots, selectedTime, onSelectTime, loading }) =
     )
   }
 
-  if (!slots || slots.length === 0) {
+  if (!hourlySlots || hourlySlots.length === 0) {
     return (
       <div className="bg-white rounded-3xl shadow-medium p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Hour</h3>
@@ -36,9 +67,11 @@ export const TimeSlotPicker = ({ slots, selectedTime, onSelectTime, loading }) =
     <div className="bg-white rounded-3xl shadow-medium p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Hour</h3>
       <div className="grid grid-cols-3 gap-3">
-        {slots.map((slot) => {
+        {hourlySlots.map((slot) => {
           const isSelected = selectedTime === slot.time
-          const isDisabled = !slot.isAvailable
+          const isNotAvailable = !slot.isAvailable
+          const isPastSlot = isSlotInPast(slot.time, selectedDate)
+          const isDisabled = isNotAvailable || isPastSlot
 
           return (
             <button
@@ -55,6 +88,7 @@ export const TimeSlotPicker = ({ slots, selectedTime, onSelectTime, loading }) =
                     : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:scale-105 border border-gray-200'
                 }
               `}
+              title={isPastSlot ? 'Past time' : isNotAvailable ? 'Unavailable' : 'Available'}
             >
               {formatTimeLabel(slot.time)}
             </button>
