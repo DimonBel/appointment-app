@@ -24,28 +24,6 @@ x-common-service-deps: &common-service-deps
   identity-service:
     condition: service_healthy
 
-x-smtp-env: &smtp-env
-  - Smtp__Host=${SMTP_HOST}
-  - Smtp__Port=${SMTP_PORT}
-  - Smtp__Username=${SMTP_USERNAME}
-  - Smtp__Password=${SMTP_PASSWORD}
-  - Smtp__FromEmail=${SMTP_FROM_EMAIL}
-  - Smtp__FromName=${SMTP_FROM_NAME}
-  - Smtp__SecureSocket=${SMTP_SECURE_SOCKET}
-  - Smtp__UseSsl=false
-  - Smtp__UseStartTls=true
-
-x-minio-env: &minio-env
-  - Minio__Endpoint=${MINIO_ENDPOINT}
-  - Minio__AccessKey=${MINIO_ROOT_USER}
-  - Minio__SecretKey=${MINIO_ROOT_PASSWORD}
-  - Minio__UseSSL=${MINIO_USE_SSL}
-
-x-jwt-env: &jwt-env
-  - Jwt__SecretKey=${JWT_SECRET_KEY}
-  - Jwt__Issuer=${JWT_ISSUER}
-  - Jwt__Audience=${JWT_AUDIENCE}
-
 services:
   # Ollama LLM Service for AI Assistant
   ollama:
@@ -164,16 +142,29 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5005
       - ConnectionStrings__DefaultConnection=Host=identity-db;Port=5432;Database=${IDENTITY_DB_NAME};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - Jwt__SecretKey=${JWT_SECRET_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
       - Jwt__AccessTokenExpirationMinutes=${JWT_ACCESS_EXPIRATION}
       - Jwt__RefreshTokenExpirationDays=${JWT_REFRESH_EXPIRATION}
       - NotificationService__BaseUrl=http://notification-service:5003
       - Frontend__PublicBaseUrl=${FRONTEND_PUBLIC_BASE_URL}
       - IdentityService__PublicBaseUrl=${IDENTITY_PUBLIC_BASE_URL}
+      - Minio__Endpoint=${MINIO_ENDPOINT}
+      - Minio__AccessKey=${MINIO_ROOT_USER}
+      - Minio__SecretKey=${MINIO_ROOT_PASSWORD}
       - Minio__Bucket=${MINIO_BUCKET}
+      - Minio__UseSsl=${MINIO_USE_SSL}
       - Minio__PublicBaseUrl=${MINIO_PUBLIC_BASE_URL}
-      - *jwt-env
-      - *minio-env
-      - *smtp-env
+      - Smtp__Host=${SMTP_HOST}
+      - Smtp__Port=${SMTP_PORT}
+      - Smtp__Username=${SMTP_USERNAME}
+      - Smtp__Password=${SMTP_PASSWORD}
+      - Smtp__FromEmail=${SMTP_FROM_EMAIL}
+      - Smtp__FromName=${SMTP_FROM_NAME}
+      - Smtp__SecureSocket=${SMTP_SECURE_SOCKET}
+      - Smtp__UseSsl=false
+      - Smtp__UseStartTls=true
       - SeedAdmin__Email=${SEED_ADMIN_EMAIL}
       - SeedAdmin__Password=${SEED_ADMIN_PASSWORD}
       - SeedAdmin__UserName=${SEED_ADMIN_USERNAME}
@@ -211,8 +202,10 @@ services:
       - DocumentService__BaseUrl=http://document-service:5004
       - DocumentService__PublicBaseUrl=${DOCUMENT_PUBLIC_BASE_URL}
       - InternalServiceKey=${INTERNAL_SERVICE_KEY}
+      - Jwt__SecretKey=${JWT_SECRET_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
       - Jwt__ExpirationMinutes=${JWT_ACCESS_EXPIRATION}
-      - *jwt-env
     ports:
       - "5001:5001"
     depends_on:
@@ -240,7 +233,9 @@ services:
       - ConnectionStrings__DefaultConnection=Host=chat-db;Port=5432;Database=${CHAT_DB_NAME};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - IdentityService__BaseUrl=http://identity-service:5005
       - NotificationService__BaseUrl=http://notification-service:5003
-      - *jwt-env
+      - Jwt__SecretKey=${JWT_SECRET_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
     ports:
       - "5002:5002"
     depends_on:
@@ -267,8 +262,18 @@ services:
       - ASPNETCORE_URLS=http://+:5003
       - ConnectionStrings__DefaultConnection=Host=notification-db;Port=5432;Database=${NOTIFICATION_DB_NAME};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - IdentityService__BaseUrl=http://identity-service:5005
-      - *jwt-env
-      - *smtp-env
+      - Jwt__SecretKey=${JWT_SECRET_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
+      - Smtp__Host=${SMTP_HOST}
+      - Smtp__Port=${SMTP_PORT}
+      - Smtp__Username=${SMTP_USERNAME}
+      - Smtp__Password=${SMTP_PASSWORD}
+      - Smtp__FromEmail=${SMTP_FROM_EMAIL}
+      - Smtp__FromName=${SMTP_FROM_NAME}
+      - Smtp__SecureSocket=${SMTP_SECURE_SOCKET}
+      - Smtp__UseSsl=false
+      - Smtp__UseStartTls=true
     ports:
       - "5003:5003"
     depends_on:
@@ -296,9 +301,22 @@ services:
       - ConnectionStrings__DefaultConnection=Host=document-db;Port=5432;Database=${DOCUMENT_DB_NAME};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - Minio__Bucket=${MINIO_BUCKET_DOCUMENTS}
       - InternalServiceKey=${INTERNAL_SERVICE_KEY}
-      - *jwt-env
-      - *minio-env
-      - *smtp-env
+      - Jwt__SecretKey=${JWT_SECRET_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
+      - Minio__Endpoint=${MINIO_ENDPOINT}
+      - Minio__AccessKey=${MINIO_ROOT_USER}
+      - Minio__SecretKey=${MINIO_ROOT_PASSWORD}
+      - Minio__UseSSL=${MINIO_USE_SSL}
+      - Smtp__Host=${SMTP_HOST}
+      - Smtp__Port=${SMTP_PORT}
+      - Smtp__Username=${SMTP_USERNAME}
+      - Smtp__Password=${SMTP_PASSWORD}
+      - Smtp__FromEmail=${SMTP_FROM_EMAIL}
+      - Smtp__FromName=${SMTP_FROM_NAME}
+      - Smtp__SecureSocket=${SMTP_SECURE_SOCKET}
+      - Smtp__UseSsl=false
+      - Smtp__UseStartTls=true
     ports:
       - "5004:5004"
     depends_on:
@@ -334,7 +352,9 @@ services:
       - Ollama__NumPredict=${OLLAMA_NUM_PREDICT}
       - Ollama__NumCtx=${OLLAMA_NUM_CTX}
       - Ollama__NumThread=${OLLAMA_NUM_THREAD}
-      - *jwt-env
+      - Jwt__SecretKey=${JWT_SECRET_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
     ports:
       - "5006:5006"
     depends_on:

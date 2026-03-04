@@ -9,7 +9,37 @@ import { BookingModal } from '../../components/booking/BookingModal'
 import { appointmentService } from '../../services/appointmentService'
 import { userService } from '../../services/userService'
 import documentService from '../../services/documentService'
+import { normalizeSpecialty, getSpecialtyIcon } from '../../utils/specialtyUtils'
+import { DOCTORS } from '../../data/doctors'
 import { Search, MapPin, Calendar, Briefcase, DollarSign } from 'lucide-react'
+
+// Map doctor names to professional images
+const getDoctorImage = (name, userId) => {
+  // Try to find matching doctor from our database
+  const doctor = DOCTORS.find(d => 
+    d.name.toLowerCase().includes(name.toLowerCase()) || 
+    name.toLowerCase().includes(d.name.toLowerCase())
+  )
+  
+  if (doctor) {
+    return doctor.image
+  }
+  
+  // Fallback to generate consistent image based on user ID
+  const imageMap = {
+    'dermatologist': 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face',
+    'cardiologist': 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face',
+    'pediatrician': 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face',
+    'neurologist': 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=400&fit=crop&crop=face',
+    'ophthalmologist': 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face',
+    'gynecologist': 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face',
+    'oncologist': 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face',
+    'orthopedic': 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=400&h=400&fit=crop&crop=face',
+    'general': 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face',
+  }
+  
+  return imageMap['general'] || `https://i.pravatar.cc/400?u=${userId}`
+}
 
 export const DoctorList = () => {
   const [doctors, setDoctors] = useState([])
@@ -98,7 +128,10 @@ export const DoctorList = () => {
     { value: 'all', label: 'All Specialties' },
     ...(Array.isArray(doctors) ? 
       Array.from(new Set(doctors.map(d => d.specialty).filter(Boolean)))
-        .map(specialty => ({ value: specialty, label: specialty })) : 
+        .map(specialty => ({ 
+          value: specialty, 
+          label: normalizeSpecialty(specialty) 
+        })) : 
       [])
   ]
 
@@ -107,9 +140,11 @@ export const DoctorList = () => {
       ? `${doctor.user.firstName} ${doctor.user.lastName}`.toLowerCase()
       : (doctor.user?.userName || '').toLowerCase()
     
+    const normalizedSpecialty = normalizeSpecialty(doctor.specialty).toLowerCase()
+    
     const matchesSearch = 
       fullName.includes(searchQuery.toLowerCase()) ||
-      (doctor.specialty?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      normalizedSpecialty.includes(searchQuery.toLowerCase()) ||
       (doctor.city?.toLowerCase() || '').includes(searchQuery.toLowerCase())
     
     const matchesSpecialty = selectedSpecialty === 'all' || doctor.specialty === selectedSpecialty
@@ -284,7 +319,7 @@ export const DoctorList = () => {
                 <CardContent className="p-6">
                   <div className="flex gap-4">
                     <Avatar 
-                      src={doctor.user?.avatarUrl}
+                      src={getDoctorImage(doctorName, doctor.user?.id || doctor.id)}
                       alt={doctorName}
                       size={64}
                     />
@@ -293,7 +328,7 @@ export const DoctorList = () => {
                       <h3 className="font-semibold text-text-primary text-lg mb-1">
                         Dr. {doctorName}
                       </h3>
-                      <p className="text-text-secondary text-sm mb-2">{doctor.specialty}</p>
+                      <p className="text-text-secondary text-sm mb-2">{normalizeSpecialty(doctor.specialty)}</p>
                       
                       {doctor.bio && (
                         <p className="text-sm text-text-muted mb-3 line-clamp-2">

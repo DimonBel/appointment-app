@@ -40,7 +40,7 @@ export const VerifyEmail = () => {
 
           setMessage(response?.message || 'Email confirmed successfully. Redirecting...')
           setStatus('success')
-          setTimeout(() => navigate('/'), 700)
+          setTimeout(() => navigate('/bookings'), 700)
           return
         }
 

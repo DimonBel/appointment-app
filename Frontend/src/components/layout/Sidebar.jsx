@@ -11,7 +11,7 @@ export const Sidebar = ({ activeItem, onNavigate, isOpen, onClose, onToggle }) =
   const isManagement = user?.roles?.includes('Management') || false
 
   const navItems = [
-    { id: 'bookings', label: 'My Bookings', Icon: Calendar, path: '/' },
+    { id: 'bookings', label: 'My Bookings', Icon: Calendar, path: '/bookings' },
     { id: 'doctors', label: 'Find Doctors', Icon: Users, path: '/doctors' },
     { id: 'chat', label: 'Messages', Icon: MessageCircle, path: '/chat' },
     { id: 'notifications', label: 'Notifications', Icon: Bell, path: '/notifications', badge: unreadCount > 0 ? unreadCount : null },
