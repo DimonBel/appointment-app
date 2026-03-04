@@ -17,7 +17,7 @@ class AppointmentService {
     return response.data
   }
 
-  async getAllOrdersForManagement(token, status = null, page = 1, pageSize = 100, sortBy = null, descending = false) {
+  async getAllOrdersForManagement(token, status = null, page = 1, pageSize = 100, sortBy = null, descending = false, startDate = null, endDate = null) {
     const response = await requestWithAuthRetry(
       {
         method: 'get',
@@ -28,6 +28,8 @@ class AppointmentService {
           pageSize,
           ...(sortBy ? { sortBy } : {}),
           descending,
+          ...(startDate ? { startDate: startDate.toISOString().split('T')[0] } : {}),
+          ...(endDate ? { endDate: endDate.toISOString().split('T')[0] } : {}),
         },
       },
       token

@@ -137,8 +137,14 @@ export const ManagementPanel = () => {
     setLoadError('')
 
     try {
+      // Only fetch orders for selected date +/- 2 days to reduce payload size
+      const startDate = new Date(selectedDate)
+      startDate.setDate(startDate.getDate() - 2)
+      const endDate = new Date(selectedDate)
+      endDate.setDate(endDate.getDate() + 2)
+
       const [allOrders, professionals, allAvailabilities, allUsers] = await Promise.all([
-        appointmentService.getAllOrdersForManagement(token, statusFilter, 1, 500, 'scheduledDate', true),
+        appointmentService.getAllOrdersForManagement(token, statusFilter, 1, 500, 'scheduledDate', true, startDate, endDate),
         appointmentService.getProfessionals(token),
         appointmentService.getAllAvailabilities(token),
         userService.getAllUsers(token),

@@ -108,14 +108,25 @@ export const DoctorPanel = () => {
     setScheduleLoading(true)
     try {
       const professionalId = getProfessionalId()
-      const allOrders = await appointmentService.getAllOrdersForManagement(token, null, 1, 1000, 'scheduledDate', true)
-      
-      // Filter orders for current doctor and within selected week
       const weekEnd = addDays(selectedWeekStart, 7)
+      
+      // Use date range filtering to fetch only orders for the selected week
+      // This significantly reduces the payload size from 1000+ orders to ~50-100 orders
+      const allOrders = await appointmentService.getAllOrdersForManagement(
+        token, 
+        null, 
+        1, 
+        500, 
+        'scheduledDate', 
+        true, 
+        selectedWeekStart, 
+        weekEnd
+      )
+      
+      // Filter orders for current doctor (now only filtering a much smaller dataset)
       const filteredOrders = Array.isArray(allOrders) ? allOrders.filter(order => {
         if (!order.scheduledDateTime) return false
         const orderDate = new Date(order.scheduledDateTime)
-        const orderDateKey = getDateKey(orderDate)
         
         // Check if order belongs to this doctor
         const orderUserId = String(order.professionalId || '').toLowerCase()
@@ -124,10 +135,7 @@ export const DoctorPanel = () => {
         
         const belongsToDoctor = orderUserId === doctorUserId || orderUserId === doctorProfessionalId
         
-        // Check if order is within the selected week
-        const isInWeek = orderDate >= selectedWeekStart && orderDate < weekEnd
-        
-        return belongsToDoctor && isInWeek
+        return belongsToDoctor
       }) : []
       
       setOrders(filteredOrders)

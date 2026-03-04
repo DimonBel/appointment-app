@@ -145,9 +145,9 @@ public class OrderService : IOrderService
     }
 
     /// <inheritdoc/>
-    public async Task<IEnumerable<Order>> GetAllOrdersAsync(OrderStatus? status = null, int page = 1, int pageSize = 100, string? sortBy = null, bool descending = false)
+    public async Task<IEnumerable<Order>> GetAllOrdersAsync(OrderStatus? status = null, int page = 1, int pageSize = 100, string? sortBy = null, bool descending = false, DateTime? startDate = null, DateTime? endDate = null)
     {
-        return await _orderRepository.GetAllAsync(status, page, pageSize, sortBy, descending);
+        return await _orderRepository.GetAllAsync(status, page, pageSize, sortBy, descending, startDate, endDate);
     }
 
     /// <inheritdoc/>

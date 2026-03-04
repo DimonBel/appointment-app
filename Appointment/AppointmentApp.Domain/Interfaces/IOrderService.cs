@@ -42,8 +42,10 @@ public interface IOrderService
     /// <param name="pageSize">Number of items per page</param>
     /// <param name="sortBy">Optional field to sort by</param>
     /// <param name="descending">Sort direction (true for descending)</param>
+    /// <param name="startDate">Optional start date for filtering orders</param>
+    /// <param name="endDate">Optional end date for filtering orders</param>
     /// <returns>Collection of orders</returns>
-    Task<IEnumerable<Order>> GetAllOrdersAsync(OrderStatus? status = null, int page = 1, int pageSize = 100, string? sortBy = null, bool descending = false);
+    Task<IEnumerable<Order>> GetAllOrdersAsync(OrderStatus? status = null, int page = 1, int pageSize = 100, string? sortBy = null, bool descending = false, DateTime? startDate = null, DateTime? endDate = null);
 
     /// <summary>
     /// Retrieves all orders for a specific client with optional filtering and pagination

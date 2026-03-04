@@ -26,7 +26,7 @@ public class OrderRepository : IOrderRepository
             .FirstOrDefaultAsync(o => o.Id == id);
     }
 
-    public async Task<IEnumerable<Order>> GetAllAsync(OrderStatus? status = null, int page = 1, int pageSize = 100, string? sortBy = null, bool descending = false)
+    public async Task<IEnumerable<Order>> GetAllAsync(OrderStatus? status = null, int page = 1, int pageSize = 100, string? sortBy = null, bool descending = false, DateTime? startDate = null, DateTime? endDate = null)
     {
         var query = _context.Orders
             .Include(o => o.Client)
@@ -37,6 +37,17 @@ public class OrderRepository : IOrderRepository
         if (status.HasValue)
         {
             query = query.Where(o => o.Status == status.Value);
+        }
+
+        // Add date range filtering for better performance
+        if (startDate.HasValue)
+        {
+            query = query.Where(o => o.ScheduledDateTime >= startDate.Value);
+        }
+
+        if (endDate.HasValue)
+        {
+            query = query.Where(o => o.ScheduledDateTime < endDate.Value.AddDays(1)); // Include the end date
         }
 
         query = sortBy?.ToLower() switch
