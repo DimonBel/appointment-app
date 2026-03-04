@@ -40,14 +40,25 @@ public class OrderRepository : IOrderRepository
         }
 
         // Add date range filtering for better performance
+        // Normalize dates to UTC to avoid PostgreSQL "Kind=Unspecified" error
         if (startDate.HasValue)
         {
-            query = query.Where(o => o.ScheduledDateTime >= startDate.Value);
+            var normalizedStart = startDate.Value.Kind == DateTimeKind.Utc
+                ? startDate.Value
+                : startDate.Value.Kind == DateTimeKind.Local
+                    ? startDate.Value.ToUniversalTime()
+                    : DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc);
+            query = query.Where(o => o.ScheduledDateTime >= normalizedStart);
         }
 
         if (endDate.HasValue)
         {
-            query = query.Where(o => o.ScheduledDateTime < endDate.Value.AddDays(1)); // Include the end date
+            var normalizedEnd = endDate.Value.Kind == DateTimeKind.Utc
+                ? endDate.Value
+                : endDate.Value.Kind == DateTimeKind.Local
+                    ? endDate.Value.ToUniversalTime()
+                    : DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc);
+            query = query.Where(o => o.ScheduledDateTime < normalizedEnd.AddDays(1)); // Include the end date
         }
 
         query = sortBy?.ToLower() switch
