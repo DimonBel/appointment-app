@@ -30,11 +30,9 @@ const STATUS_OPTIONS = [
   { value: 5, label: 'No-show' },
 ]
 
-// Time slots from 08:00 to 17:00 (working hours)
+// Time slots from 08:00 to 17:00 (working hours) - hourly intervals only
 const TIME_SLOTS = [
-  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-  '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
-  '16:00', '16:30', '17:00'
+  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'
 ]
 
 const ITEMS_PER_PAGE = 10
@@ -631,7 +629,7 @@ export const ManagementPanel = () => {
                                       </div>
                                     )}
                                     <div className="text-[10px] mt-1 opacity-75">
-                                      {cellData.durationMinutes} min
+                                      60 min
                                     </div>
                                   </div>
                                 </button>
@@ -918,7 +916,7 @@ export const ManagementPanel = () => {
 
                 <div>
                   <p className="text-sm text-text-secondary">Duration</p>
-                  <p className="font-medium text-text-primary">{selectedAppointment.durationMinutes} minutes</p>
+                  <p className="font-medium text-text-primary">60 minutes</p>
                 </div>
 
                 {selectedAppointment.shortMessage && (

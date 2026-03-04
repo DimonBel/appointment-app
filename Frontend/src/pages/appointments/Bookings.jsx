@@ -14,9 +14,14 @@ import { normalizeSpecialty } from '../../utils/specialtyUtils'
 import { DOCTORS } from '../../data/doctors'
 import { Calendar, Clock, MapPin, Phone, Paperclip, X } from 'lucide-react'
 
-// Map doctor names to professional images
-const getDoctorImage = (name, userId) => {
-  // Try to find matching doctor from our database
+// Map doctor names to professional images (fallback only)
+const getDoctorImage = (name, userId, userAvatarUrl) => {
+  // PRIORITY 1: Use the user's actual avatar from the database
+  if (userAvatarUrl && userAvatarUrl.trim() !== '') {
+    return userAvatarUrl
+  }
+  
+  // PRIORITY 2: Try to find matching doctor from our database (fallback)
   const doctor = DOCTORS.find(d => 
     d.name.toLowerCase().includes(name.toLowerCase()) || 
     name.toLowerCase().includes(d.name.toLowerCase())
@@ -26,7 +31,7 @@ const getDoctorImage = (name, userId) => {
     return doctor.image
   }
   
-  // Fallback to generate consistent image based on user ID
+  // PRIORITY 3: Fallback to generate consistent image based on user ID
   const imageMap = {
     'dermatologist': 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face',
     'cardiologist': 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face',
@@ -274,7 +279,7 @@ export const Bookings = () => {
             <Card key={appointment.id} hover className="transition-all">
               <CardContent className="flex items-start gap-4 p-6">
                 <Avatar 
-                  src={getDoctorImage(appointment.doctorName, appointment.id)}
+                  src={getDoctorImage(appointment.doctorName, appointment.id, appointment.doctorAvatar)}
                   alt={appointment.doctorName}
                   size={56}
                 />

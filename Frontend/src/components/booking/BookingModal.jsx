@@ -21,6 +21,9 @@ export const BookingModal = ({ isOpen, doctor, loading = false, onClose, onConfi
   const [loadingAvailability, setLoadingAvailability] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date())
 
+  // Fixed duration: always 60 minutes (1 hour)
+  const DURATION_MINUTES = 60
+
   useEffect(() => {
     if (isOpen) {
       setSelectedDate('')
@@ -192,7 +195,7 @@ export const BookingModal = ({ isOpen, doctor, loading = false, onClose, onConfi
 
     onConfirm({
       scheduledDateTime: `${selectedDate}T${selectedTime}:00`,
-      durationMinutes: 60,
+      durationMinutes: DURATION_MINUTES,
       notes,
       uploadedFile,
     })

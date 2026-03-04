@@ -12,11 +12,9 @@ import { Users, Search, ChevronLeft, ChevronRight, Eye, Stethoscope, AlertCircle
 
 const ITEMS_PER_PAGE = 10
 
-// Time slots from 08:00 to 17:00 (working hours)
+// Time slots from 08:00 to 17:00 (working hours) - hourly intervals only
 const TIME_SLOTS = [
-  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-  '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
-  '16:00', '16:30', '17:00'
+  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'
 ]
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
