@@ -11,7 +11,7 @@ import { userService } from '../../services/userService'
 import documentService from '../../services/documentService'
 import { normalizeSpecialty, getSpecialtyIcon } from '../../utils/specialtyUtils'
 import { DOCTORS } from '../../data/doctors'
-import { Search, MapPin, Calendar, Briefcase, DollarSign } from 'lucide-react'
+import { Search, MapPin, Calendar, Briefcase, DollarSign, Clock } from 'lucide-react'
 
 // Pool of professional medical doctor images from Unsplash (all unique)
 const MEDICAL_IMAGES = [
@@ -71,6 +71,71 @@ const getDoctorImage = (name, userId, userAvatarUrl, specialty) => {
   
   // PRIORITY 4: Fallback to first medical image
   return MEDICAL_IMAGES[0]
+}
+
+// Format working hours from availabilities
+const formatWorkingHours = (availabilities) => {
+  if (!availabilities || availabilities.length === 0) {
+    return null
+  }
+
+  // Group by time ranges
+  const dayMap = {}
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+  availabilities.forEach((avail) => {
+    // Accept both Daily (0) and Weekly (1) schedules
+    if (!avail.isActive || (avail.scheduleType !== 0 && avail.scheduleType !== 1)) return
+
+    const dayName = dayNames[avail.dayOfWeek]
+    const timeRange = `${formatTime(avail.startTime)}-${formatTime(avail.endTime)}`
+
+    if (!dayMap[timeRange]) {
+      dayMap[timeRange] = []
+    }
+    dayMap[timeRange].push(avail.dayOfWeek)
+  })
+
+  if (Object.keys(dayMap).length === 0) {
+    return null
+  }
+
+  // Format consecutive days
+  const result = []
+  for (const [timeRange, days] of Object.entries(dayMap)) {
+    days.sort((a, b) => a - b)
+    const dayRange = formatDayRange(days)
+    result.push(`${dayRange} ${timeRange}`)
+  }
+
+  return result.join(', ')
+}
+
+// Format time from TimeSpan (e.g., "09:00:00" -> "9:00 AM")
+const formatTime = (timeStr) => {
+  if (!timeStr) return ''
+  const [hours, minutes] = timeStr.split(':').map(Number)
+  const h = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours
+  const ampm = hours < 12 ? 'AM' : 'PM'
+  return `${h}:${minutes.toString().padStart(2, '0')} ${ampm}`
+}
+
+// Format day range (e.g., [1,2,3,4,5] -> "Mon-Fri")
+const formatDayRange = (days) => {
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  
+  if (days.length === 0) return ''
+  if (days.length === 1) return dayNames[days[0]]
+
+  // Check if days are consecutive
+  const isConsecutive = days.every((day, i) => i === 0 || day === days[i - 1] + 1)
+  
+  if (isConsecutive) {
+    return `${dayNames[days[0]]}-${dayNames[days[days.length - 1]]}`
+  }
+
+  // If not consecutive, show as comma-separated
+  return days.map(d => dayNames[d]).join(', ')
 }
 
 export const DoctorList = () => {
@@ -142,6 +207,8 @@ export const DoctorList = () => {
             country: null,
             address: null,
             isAvailableForAppointments: prof.isAvailable,
+            availabilities: prof.availabilities || [],
+            workingHours: formatWorkingHours(prof.availabilities || []),
           }
         })
       )
@@ -406,6 +473,13 @@ export const DoctorList = () => {
                               </span>
                             )}
                           </div>
+                        </div>
+                      )}
+
+                      {doctor.workingHours && (
+                        <div className="flex items-center gap-1 text-sm text-text-muted mb-3">
+                          <Clock size={14} />
+                          <span>{doctor.workingHours}</span>
                         </div>
                       )}
                       

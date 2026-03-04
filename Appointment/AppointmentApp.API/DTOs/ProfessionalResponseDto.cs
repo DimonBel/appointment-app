@@ -17,4 +17,5 @@ public class ProfessionalResponseDto
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public UserInfoDto? User { get; set; }
+    public List<AvailabilityResponseDto>? Availabilities { get; set; }
 }

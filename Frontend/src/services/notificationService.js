@@ -2,8 +2,26 @@ import { requestWithAuthRetry } from './httpClient'
 
 const API_URL = import.meta.env.VITE_NOTIFICATION_API_URL || '/api/notifications'
 
+// Request deduplication cache
+const pendingRequests = new Map()
+
+// Helper to deduplicate simultaneous requests
+const deduplicateRequest = async (key, requestFn) => {
+  if (pendingRequests.has(key)) {
+    return pendingRequests.get(key)
+  }
+
+  const promise = requestFn()
+    .finally(() => {
+      pendingRequests.delete(key)
+    })
+  
+  pendingRequests.set(key, promise)
+  return promise
+}
+
 class NotificationService {
-  async getNotifications(userId, token, page = 1, pageSize = 20) {
+  async getNotifications(userId, token, page = 1, pageSize = 50) {
     const response = await requestWithAuthRetry({
       method: 'get',
       url: `${API_URL}?userId=${encodeURIComponent(userId)}&page=${page}&pageSize=${pageSize}`,
@@ -11,15 +29,31 @@ class NotificationService {
     return response.data
   }
 
-  async getUnreadCount(userId, token) {
-    const response = await requestWithAuthRetry({
-      method: 'get',
-      url: `${API_URL}/unread-count?userId=${encodeURIComponent(userId)}`,
-    }, token)
-    return response.data
+  async getNotificationsWithCount(userId, token, page = 1, pageSize = 50) {
+    const cacheKey = `notifications-${userId}-${page}-${pageSize}`
+    
+    return deduplicateRequest(cacheKey, async () => {
+      const response = await requestWithAuthRetry({
+        method: 'get',
+        url: `${API_URL}/with-count?userId=${encodeURIComponent(userId)}&page=${page}&pageSize=${pageSize}`,
+      }, token)
+      return response.data
+    })
   }
 
-  async getUnreadNotifications(userId, token, page = 1, pageSize = 20) {
+  async getUnreadCount(userId, token) {
+    const cacheKey = `unread-count-${userId}`
+    
+    return deduplicateRequest(cacheKey, async () => {
+      const response = await requestWithAuthRetry({
+        method: 'get',
+        url: `${API_URL}/unread-count?userId=${encodeURIComponent(userId)}`,
+      }, token)
+      return response.data
+    })
+  }
+
+  async getUnreadNotifications(userId, token, page = 1, pageSize = 50) {
     const response = await requestWithAuthRetry({
       method: 'get',
       url: `${API_URL}/unread?userId=${encodeURIComponent(userId)}&page=${page}&pageSize=${pageSize}`,

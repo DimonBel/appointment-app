@@ -120,20 +120,22 @@ export const Notifications = () => {
 
   useEffect(() => {
     if (!token || !userId) return
-    loadNotifications()
-  }, [token, userId])
+    // Only load if notifications haven't been loaded yet (useNotificationHub handles regular polling)
+    if (notifications.length === 0 && !isLoading) {
+      loadNotifications()
+    }
+  }, [token, userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadNotifications = async () => {
     if (!token || !userId) return
 
     dispatch(setLoading(true))
     try {
-      const data = await notificationService.getNotifications(userId, token)
-      const normalized = (Array.isArray(data) ? data : []).map(normalizeNotification)
+      // Use combined endpoint for better performance (single request instead of two)
+      const data = await notificationService.getNotificationsWithCount(userId, token)
+      const normalized = (Array.isArray(data?.notifications) ? data.notifications : []).map(normalizeNotification)
       dispatch(setNotifications(normalized))
-
-      const countData = await notificationService.getUnreadCount(userId, token)
-      dispatch(setUnreadCount(typeof countData === 'number' ? countData : countData?.count || 0))
+      dispatch(setUnreadCount(typeof data?.unreadCount === 'number' ? data.unreadCount : 0))
     } catch (err) {
       console.error('Failed to load notifications:', err)
       dispatch(setNotifications([]))
@@ -268,38 +270,38 @@ export const Notifications = () => {
   }
 
   const handleApproveBookingRequest = async (notification) => {
-      const orderId = parseBookingRequestOrderId(notification)
-      if (!orderId) return
-  
-      setProcessingBookingRequest(notification.id)
-      setBookingRequestErrors(prev => ({ ...prev, [notification.id]: null }))
+    const orderId = parseBookingRequestOrderId(notification)
+    if (!orderId) return
+
+    setProcessingBookingRequest(notification.id)
+    setBookingRequestErrors(prev => ({ ...prev, [notification.id]: null }))
+    try {
+      // First, approve the booking
+      await appointmentService.approveOrder(orderId, null, token)
+      setBookingRequestResults(prev => ({ ...prev, [notification.id]: 'accepted' }))
+
+      // Then try to mark as read and delete (non-critical operations)
       try {
-        // First, approve the booking
-        await appointmentService.approveOrder(orderId, null, token)
-        setBookingRequestResults(prev => ({ ...prev, [notification.id]: 'accepted' }))
-  
-        // Then try to mark as read and delete (non-critical operations)
-        try {
-          if (notification.status !== 'Read') {
-            await notificationService.markAsRead(notification.id, token)
-            dispatch(markNotificationAsRead(notification.id))
-          }
-  
-          await notificationService.deleteNotification(notification.id, token)
-          dispatch(removeNotification(notification.id))
-  
-          await loadNotifications()
-        } catch (notificationErr) {
-          // Don't show error for notification operations since booking was already approved
-          console.error('Failed to update notification:', notificationErr)
+        if (notification.status !== 'Read') {
+          await notificationService.markAsRead(notification.id, token)
+          dispatch(markNotificationAsRead(notification.id))
         }
-      } catch (err) {
-        console.error('Failed to approve booking request:', err)
-        const apiMessage = err?.response?.data?.message || err?.response?.data?.title || 'Failed to accept request'
-        setBookingRequestErrors(prev => ({ ...prev, [notification.id]: apiMessage }))
-      } finally {
-        setProcessingBookingRequest(null)
+
+        await notificationService.deleteNotification(notification.id, token)
+        dispatch(removeNotification(notification.id))
+
+        await loadNotifications()
+      } catch (notificationErr) {
+        // Don't show error for notification operations since booking was already approved
+        console.error('Failed to update notification:', notificationErr)
       }
+    } catch (err) {
+      console.error('Failed to approve booking request:', err)
+      const apiMessage = err?.response?.data?.message || err?.response?.data?.title || 'Failed to accept request'
+      setBookingRequestErrors(prev => ({ ...prev, [notification.id]: apiMessage }))
+    } finally {
+      setProcessingBookingRequest(null)
+    }
   }
   const handleDeclineBookingRequest = async (notification) => {
     const orderId = parseBookingRequestOrderId(notification)
@@ -332,9 +334,9 @@ export const Notifications = () => {
   const filteredNotifications = notifications
     .map(normalizeNotification)
     .filter((n) => {
-    if (filter === 'unread') return n.status !== 'Read'
-    if (filter === 'read') return n.status === 'Read'
-    return true
+      if (filter === 'unread') return n.status !== 'Read'
+      if (filter === 'read') return n.status === 'Read'
+      return true
     })
 
   const formatDate = (dateStr) => {
@@ -378,11 +380,10 @@ export const Notifications = () => {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-3 py-1.5 text-sm rounded-lg capitalize transition-colors ${
-              filter === f
+            className={`px-3 py-1.5 text-sm rounded-lg capitalize transition-colors ${filter === f
                 ? 'bg-primary-dark text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+              }`}
           >
             {f}
           </button>
@@ -410,11 +411,10 @@ export const Notifications = () => {
             return (
               <div
                 key={notification.id}
-                className={`flex items-start gap-3 p-4 rounded-xl border transition-colors ${
-                  isUnread
+                className={`flex items-start gap-3 p-4 rounded-xl border transition-colors ${isUnread
                     ? 'bg-blue-50/50 border-blue-100'
                     : 'bg-white border-gray-100'
-                }`}
+                  }`}
               >
                 <div className={`mt-0.5 ${priorityColor}`}>
                   <IconComponent size={20} />
