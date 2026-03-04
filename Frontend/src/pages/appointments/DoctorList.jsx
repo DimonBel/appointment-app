@@ -13,37 +13,64 @@ import { normalizeSpecialty, getSpecialtyIcon } from '../../utils/specialtyUtils
 import { DOCTORS } from '../../data/doctors'
 import { Search, MapPin, Calendar, Briefcase, DollarSign } from 'lucide-react'
 
+// Pool of professional medical doctor images from Unsplash (all unique)
+const MEDICAL_IMAGES = [
+  'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1628151015968-3a44274e8d6f?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1587563871167-1ee9c731aef4?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1552058544-f2b08422138a?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop&crop=face',
+]
+
+// Better hash function that uses all characters and multiplies for better distribution
+const hashString = (str) => {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
+  }
+  return Math.abs(hash)
+}
+
 // Map doctor names to professional images (fallback only)
-const getDoctorImage = (name, userId, userAvatarUrl) => {
+const getDoctorImage = (name, userId, userAvatarUrl, specialty) => {
   // PRIORITY 1: Use the user's actual avatar from the database
   if (userAvatarUrl && userAvatarUrl.trim() !== '') {
     return userAvatarUrl
   }
   
-  // PRIORITY 2: Try to find matching doctor from our database (fallback)
-  const doctor = DOCTORS.find(d => 
-    d.name.toLowerCase().includes(name.toLowerCase()) || 
-    name.toLowerCase().includes(d.name.toLowerCase())
-  )
-  
-  if (doctor) {
-    return doctor.image
+  // PRIORITY 2: Assign unique medical image based on user ID (better hash)
+  if (userId) {
+    const hash = hashString(userId.toString())
+    const imageIndex = hash % MEDICAL_IMAGES.length
+    return MEDICAL_IMAGES[imageIndex]
   }
   
-  // PRIORITY 3: Fallback to generate consistent image based on user ID
-  const imageMap = {
-    'dermatologist': 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face',
-    'cardiologist': 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face',
-    'pediatrician': 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face',
-    'neurologist': 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=400&fit=crop&crop=face',
-    'ophthalmologist': 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face',
-    'gynecologist': 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face',
-    'oncologist': 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face',
-    'orthopedic': 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=400&h=400&fit=crop&crop=face',
-    'general': 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face',
+  // PRIORITY 3: Generate unique medical image based on doctor name hash
+  if (name) {
+    const hash = hashString(name)
+    const imageIndex = hash % MEDICAL_IMAGES.length
+    return MEDICAL_IMAGES[imageIndex]
   }
   
-  return imageMap['general'] || `https://i.pravatar.cc/400?u=${userId}`
+  // PRIORITY 4: Fallback to first medical image
+  return MEDICAL_IMAGES[0]
 }
 
 export const DoctorList = () => {
@@ -324,7 +351,7 @@ export const DoctorList = () => {
                 <CardContent className="p-6">
                   <div className="flex gap-4">
                     <Avatar 
-                      src={getDoctorImage(doctorName, doctor.user?.id || doctor.id, doctor.user?.avatarUrl)}
+                      src={getDoctorImage(doctorName, doctor.user?.id || doctor.id, doctor.user?.avatarUrl, doctor.specialty)}
                       alt={doctorName}
                       size={64}
                     />

@@ -15,7 +15,7 @@ import { DOCTORS } from '../../data/doctors'
 import { Calendar, Clock, MapPin, Phone, Paperclip, X } from 'lucide-react'
 
 // Map doctor names to professional images (fallback only)
-const getDoctorImage = (name, userId, userAvatarUrl) => {
+const getDoctorImage = (name, userId, userAvatarUrl, specialty) => {
   // PRIORITY 1: Use the user's actual avatar from the database
   if (userAvatarUrl && userAvatarUrl.trim() !== '') {
     return userAvatarUrl
@@ -31,7 +31,8 @@ const getDoctorImage = (name, userId, userAvatarUrl) => {
     return doctor.image
   }
   
-  // PRIORITY 3: Fallback to generate consistent image based on user ID
+  // PRIORITY 3: Fallback to specialty-based professional images (unique per specialty)
+  const normalizedSpecialty = specialty?.toLowerCase() || ''
   const imageMap = {
     'dermatologist': 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face',
     'cardiologist': 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face',
@@ -41,10 +42,24 @@ const getDoctorImage = (name, userId, userAvatarUrl) => {
     'gynecologist': 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face',
     'oncologist': 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face',
     'orthopedic': 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=400&h=400&fit=crop&crop=face',
-    'general': 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face',
+    'psychiatrist': 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face',
+    'psychologist': 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face',
   }
   
-  return imageMap['general'] || `https://i.pravatar.cc/400?u=${userId}`
+  // Try to match by specialty first
+  for (const [spec, imageUrl] of Object.entries(imageMap)) {
+    if (normalizedSpecialty.includes(spec)) {
+      return imageUrl
+    }
+  }
+  
+  // PRIORITY 4: Generate unique avatar based on user ID (last resort)
+  if (userId) {
+    return `https://i.pravatar.cc/400?u=${userId}`
+  }
+  
+  // PRIORITY 5: Final fallback to a general professional image
+  return 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face'
 }
 
 export const Bookings = () => {
@@ -279,7 +294,7 @@ export const Bookings = () => {
             <Card key={appointment.id} hover className="transition-all">
               <CardContent className="flex items-start gap-4 p-6">
                 <Avatar 
-                  src={getDoctorImage(appointment.doctorName, appointment.id, appointment.doctorAvatar)}
+                  src={getDoctorImage(appointment.doctorName, appointment.id, appointment.doctorAvatar, appointment.specialty)}
                   alt={appointment.doctorName}
                   size={56}
                 />

@@ -1,8 +1,13 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import { Button } from '../components/ui/Button'
+import { Avatar } from '../components/ui/Avatar'
+import { Loader } from '../components/ui/Loader'
 import { STANDARD_SPECIALTIES } from '../utils/specialtyUtils'
 import { DOCTORS } from '../data/doctors'
+import { appointmentService } from '../services/appointmentService'
+import { userService } from '../services/userService'
 import { 
   Calendar, 
   Shield, 
@@ -17,7 +22,140 @@ import {
   Briefcase
 } from 'lucide-react'
 
+// Pool of professional medical doctor images from Unsplash (all unique)
+const MEDICAL_IMAGES = [
+  'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1628151015968-3a44274e8d6f?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1587563871167-1ee9c731aef4?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1552058544-f2b08422138a?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop&crop=face',
+]
+
+// Better hash function that uses all characters and multiplies for better distribution
+const hashString = (str) => {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
+  }
+  return Math.abs(hash)
+}
+
+// Map doctor names to professional images (fallback only)
+const getDoctorImage = (name, userId, userAvatarUrl, specialty) => {
+  // PRIORITY 1: Use the user's actual avatar from the database
+  if (userAvatarUrl && userAvatarUrl.trim() !== '') {
+    return userAvatarUrl
+  }
+  
+  // PRIORITY 2: Assign unique medical image based on user ID (better hash)
+  if (userId) {
+    const hash = hashString(userId.toString())
+    const imageIndex = hash % MEDICAL_IMAGES.length
+    return MEDICAL_IMAGES[imageIndex]
+  }
+  
+  // PRIORITY 3: Generate unique medical image based on doctor name hash
+  if (name) {
+    const hash = hashString(name)
+    const imageIndex = hash % MEDICAL_IMAGES.length
+    return MEDICAL_IMAGES[imageIndex]
+  }
+  
+  // PRIORITY 4: Fallback to first medical image
+  return MEDICAL_IMAGES[0]
+}
+
 export const Landing = () => {
+  const [doctors, setDoctors] = useState([])
+  const [doctorsLoading, setDoctorsLoading] = useState(true)
+  const token = useSelector((state) => state.auth.token)
+
+  useEffect(() => {
+    fetchDoctors()
+  }, [])
+
+  const fetchDoctors = async () => {
+    setDoctorsLoading(true)
+    try {
+      // Get professionals from Appointment API
+      const professionals = await appointmentService.getProfessionals(token)
+      const professionalArray = Array.isArray(professionals) ? professionals : []
+
+      const doctors = await Promise.all(
+        professionalArray.map(async (prof) => {
+          const fallbackUser = {
+            id: prof.user?.id || prof.userId || null,
+            firstName: prof.user?.firstName || null,
+            lastName: prof.user?.lastName || null,
+            userName: prof.user?.userName || null,
+            email: prof.user?.email || null,
+            avatarUrl: prof.user?.avatarUrl || null,
+          }
+
+          let resolvedUser = fallbackUser
+          const userId = prof.userId || prof.user?.id
+
+          if (token && userId) {
+            try {
+              const identityUser = await userService.getUserById(userId, token)
+              if (identityUser) {
+                resolvedUser = {
+                  ...fallbackUser,
+                  id: identityUser.id || fallbackUser.id,
+                  firstName: identityUser.firstName || fallbackUser.firstName,
+                  lastName: identityUser.lastName || fallbackUser.lastName,
+                  userName: identityUser.userName || fallbackUser.userName,
+                  email: identityUser.email || fallbackUser.email,
+                  avatarUrl: identityUser.avatarUrl || fallbackUser.avatarUrl,
+                }
+              }
+            } catch {
+              // Keep fallbackUser when Identity lookup is unavailable
+            }
+          }
+
+          return {
+            id: prof.id,
+            user: resolvedUser,
+            specialty: prof.specialization,
+            bio: prof.bio,
+            qualifications: prof.qualifications,
+            yearsOfExperience: prof.experienceYears,
+            consultationFee: prof.hourlyRate,
+            languages: [],
+            city: null,
+            country: null,
+            address: null,
+            isAvailableForAppointments: prof.isAvailable,
+          }
+        })
+      )
+      
+      setDoctors(doctors)
+    } catch (error) {
+      console.error('Error fetching doctors:', error)
+      setDoctors([])
+    } finally {
+      setDoctorsLoading(false)
+    }
+  }
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
@@ -199,7 +337,7 @@ export const Landing = () => {
         </div>
       </section>
 
-      {/* Featured Doctors Section */}
+{/* Featured Doctors Section */}
       <section className="py-20 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
@@ -211,59 +349,83 @@ export const Landing = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {DOCTORS.slice(0, 8).map((doctor) => (
-              <Link
-                key={doctor.id}
-                to="/register"
-                className="group bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-xl hover:border-primary-accent/50 transition-all duration-300"
-              >
-                <div className="h-64 bg-gradient-to-br from-primary-accent/20 to-primary-dark/10 relative overflow-hidden">
-                  <img
-                    src={doctor.image}
-                    alt={doctor.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
-                    <span className="text-white text-sm font-medium bg-primary-accent/90 px-3 py-1 rounded-full">
-                      {doctor.initials}
-                    </span>
-                  </div>
-                </div>
-                <div className="p-5">
-                  <h3 className="font-semibold text-text-primary mb-1">{doctor.name}</h3>
-                  <p className="text-primary-accent text-sm font-medium mb-2">{doctor.specialty}</p>
-                  <p className="text-text-secondary text-sm line-clamp-2 mb-3">
-                    {doctor.description}
-                  </p>
-                  <div className="flex items-center gap-4 text-sm text-text-muted mb-3">
-                    <div className="flex items-center gap-1">
-                      <Briefcase size={14} />
-                      <span>{doctor.experience} years</span>
+          {doctorsLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader size="lg" />
+            </div>
+          ) : doctors.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-12">
+                <Users size={48} className="mx-auto text-text-muted mb-4" />
+                <p className="text-text-secondary">No doctors available at the moment</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {doctors.slice(0, 8).map((doctor) => {
+                const doctorName = doctor.user?.firstName && doctor.user?.lastName
+                  ? `${doctor.user.firstName} ${doctor.user.lastName}`
+                  : doctor.user?.userName || 'Doctor'
+                
+                return (
+                  <Link
+                    key={doctor.id}
+                    to={token ? '/doctors' : '/register'}
+                    className="group bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-xl hover:border-primary-accent/50 transition-all duration-300"
+                  >
+                    <div className="h-64 bg-gradient-to-br from-primary-accent/20 to-primary-dark/10 relative overflow-hidden">
+                      <img
+                        src={getDoctorImage(doctorName, doctor.user?.id || doctor.id, doctor.user?.avatarUrl, doctor.specialty)}
+                        alt={doctorName}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                        <span className="text-white text-sm font-medium bg-primary-accent/90 px-3 py-1 rounded-full">
+                          {doctor.user?.firstName?.[0]}{doctor.user?.lastName?.[0] || doctor.user?.userName?.[0]?.toUpperCase() || 'D'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <DollarSign size={14} />
-                      <span>${doctor.price}</span>
+                    <div className="p-5">
+                      <h3 className="font-semibold text-text-primary mb-1">Dr. {doctorName}</h3>
+                      <p className="text-primary-accent text-sm font-medium mb-2">{doctor.specialty}</p>
+                      
+                      {doctor.bio && (
+                        <p className="text-text-secondary text-sm line-clamp-2 mb-3">
+                          {doctor.bio}
+                        </p>
+                      )}
+                      
+                      <div className="flex items-center gap-4 text-sm text-text-muted mb-3">
+                        {doctor.yearsOfExperience > 0 && (
+                          <div className="flex items-center gap-1">
+                            <Briefcase size={14} />
+                            <span>{doctor.yearsOfExperience} years</span>
+                          </div>
+                        )}
+                        {doctor.consultationFee && (
+                          <div className="flex items-center gap-1">
+                            <DollarSign size={14} />
+                            <span>${doctor.consultationFee}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-primary-accent text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                          Book Now
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center text-yellow-500">
-                      <span>{'★'.repeat(Math.floor(doctor.rating))}</span>
-                      <span className="text-text-muted text-sm ml-2">{doctor.rating}</span>
-                    </div>
-                    <span className="text-primary-accent text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                      Book Now
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
 
           <div className="text-center mt-10">
-            <Link to="/register">
+            <Link to={token ? '/doctors' : '/register'}>
               <Button size="lg" variant="primary" className="px-8 py-3">
-                View All Doctors
+                {token ? 'View All Doctors' : 'Create Free Account'}
                 <ArrowRight size={18} className="ml-2" />
               </Button>
             </Link>

@@ -430,7 +430,7 @@ export const ManagementPanel = () => {
           return
         }
 
-        const durationSlots = Math.ceil(order.durationMinutes / 30)
+        const durationSlots = Math.ceil(order.durationMinutes / 60)
 
         for (let i = 0; i < durationSlots; i++) {
           if (slotIndex + i < TIME_SLOTS.length) {

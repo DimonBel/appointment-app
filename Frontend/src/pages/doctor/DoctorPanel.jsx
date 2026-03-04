@@ -338,7 +338,7 @@ export const DoctorPanel = () => {
       const slotIndex = TIME_SLOTS.indexOf(timeSlot)
       if (slotIndex < 0) return
       
-      const durationSlots = Math.ceil((order.durationMinutes || 30) / 30)
+      const durationSlots = Math.ceil((order.durationMinutes || 60) / 60)
       
       for (let i = 0; i < durationSlots; i++) {
                   if (slotIndex + i < TIME_SLOTS.length) {
