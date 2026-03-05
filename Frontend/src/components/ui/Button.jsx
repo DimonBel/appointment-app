@@ -19,6 +19,7 @@ export const Button = ({
     outline: 'border-2 border-primary-dark text-primary-dark hover:bg-primary-dark hover:text-white',
     ghost: 'text-primary-dark hover:bg-gray-100 active:scale-95',
     danger: 'bg-red-500 text-white hover:bg-red-600 active:scale-95',
+    success: 'bg-green-500 text-white hover:bg-green-600 active:scale-95',
   }
   
   const sizes = {

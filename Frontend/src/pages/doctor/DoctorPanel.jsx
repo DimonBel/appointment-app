@@ -8,7 +8,7 @@ import { Avatar } from '../../components/ui/Avatar'
 import { Loader } from '../../components/ui/Loader'
 import { appointmentService } from '../../services/appointmentService'
 import documentService from '../../services/documentService'
-import { Users, Search, ChevronLeft, ChevronRight, Eye, Stethoscope, AlertCircle, SortAsc, SortDesc, Grid3x3, Calendar, ChevronUp, ChevronDown, Phone, MapPin, Clock, X } from 'lucide-react'
+import { Users, Search, ChevronLeft, ChevronRight, Eye, Stethoscope, AlertCircle, SortAsc, SortDesc, Grid3x3, Calendar, ChevronUp, ChevronDown, Phone, MapPin, Clock, X, CheckCircle } from 'lucide-react'
 
 const ITEMS_PER_PAGE = 10
 
@@ -197,9 +197,11 @@ export const DoctorPanel = () => {
     }
   }
 
-  const handleCompleteBooking = async (orderId) => {
+  const handleCompleteBooking = async (orderId, notes = '') => {
     if (!orderId) return
-    const notes = prompt('Enter completion notes (optional):') || ''
+    if (!notes) {
+      notes = prompt('Enter completion notes (optional):') || ''
+    }
     if (!confirm('Mark this booking as completed?')) return
     try {
       setActionLoadingId(orderId)
@@ -819,7 +821,7 @@ const loadClients = async () => {
                           return (
                             <td key={`${day}-${slot}`} className={`py-1 px-1 min-w-[130px] ${isToday ? 'bg-blue-50/30' : ''}`}>
                               <div 
-                                className={`h-14 rounded p-2 border-l-4 ${statusInfo.borderColor} ${statusInfo.color} cursor-pointer hover:opacity-90 transition-opacity`}
+                                className={`h-14 rounded p-2 border-l-4 ${statusInfo.borderColor} ${statusInfo.color} cursor-pointer hover:opacity-90 transition-opacity relative group`}
                                 onClick={() => appointment && setSelectedBooking(appointment)}
                               >
                                 <div className="text-xs font-semibold text-text-primary truncate">
@@ -828,6 +830,25 @@ const loadClients = async () => {
                                 <div className="text-xs text-text-secondary mt-0.5">
                                   {statusInfo.text}
                                 </div>
+                                
+                                {/* Quick Complete Button for Approved bookings */}
+                                {status === 1 && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      if (appointment) {
+                                        const notes = prompt('Enter completion notes (optional):') || ''
+                                        if (confirm('Mark this booking as completed?')) {
+                                          handleCompleteBooking(appointment.id, notes)
+                                        }
+                                      }
+                                    }}
+                                    className="absolute top-1 right-1 bg-green-500 hover:bg-green-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                                    title="Complete Booking"
+                                  >
+                                    <CheckCircle size={14} />
+                                  </button>
+                                )}
                               </div>
                             </td>
                           )

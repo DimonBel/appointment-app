@@ -5,17 +5,26 @@ import { Card, CardContent } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Loader } from '../components/ui/Loader'
+import { Avatar } from '../components/ui/Avatar'
 import { doctorProfileService } from '../services/doctorProfileService'
 import { appointmentService } from '../services/appointmentService'
-import { Save, Trash2, Plus, X } from 'lucide-react'
+import { Save, Trash2, Plus, X, User, Stethoscope, Calendar, Clock, Mail, Phone, MapPin, Shield } from 'lucide-react'
 
 export const DoctorProfile = () => {
+  const [activeTab, setActiveTab] = useState('personal') // 'personal' or 'professional'
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [formData, setFormData] = useState({
+    // Personal profile fields
+    firstName: '',
+    lastName: '',
+    email: '',
+    phoneNumber: '',
+    
+    // Professional profile fields
     specialty: '',
     bio: '',
     qualifications: '',
@@ -75,9 +84,18 @@ export const DoctorProfile = () => {
     try {
       const data = await doctorProfileService.getMyProfile(token)
 
+      // Load user data for personal profile
+      const personalData = user ? {
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        phoneNumber: user.phoneNumber || '',
+      } : {}
+
       if (!data) {
         setProfile(null)
         setFormData({
+          ...personalData,
           specialty: '',
           bio: '',
           qualifications: '',
@@ -95,6 +113,7 @@ export const DoctorProfile = () => {
 
       setProfile(data)
       setFormData({
+        ...personalData,
         specialty: data.specialty || '',
         bio: data.bio || '',
         qualifications: data.qualifications || '',
@@ -319,21 +338,11 @@ export const DoctorProfile = () => {
     }
   }
 
-  if (loading) {
-    return (
-      <MainContent>
-        <div className="flex justify-center py-12">
-          <Loader size="lg" />
-        </div>
-      </MainContent>
-    )
-  }
-
   return (
     <MainContent>
       <SectionHeader
-        title="My Professional Profile"
-        subtitle="Manage your professional information and services"
+        title="My Profile"
+        subtitle="Manage your personal and professional information"
       />
 
       {error && (
@@ -348,359 +357,546 @@ export const DoctorProfile = () => {
         </div>
       )}
 
-      <Card>
-        <CardContent className="p-6">
-          <form onSubmit={handleSubmit}>
-            {/* Basic Information */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-text-primary mb-4">Basic Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
-                    Specialty <span className="text-red-500">*</span>
-                  </label>
-                  {specializationsLoading ? (
-                    <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
-                      Loading specialties...
-                    </div>
-                  ) : (
-                    <select
-                      name="specialty"
-                      value={formData.specialty}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-accent bg-white"
-                      required
-                    >
-                      <option value="">Select a specialty</option>
-                      {specializations.map((spec) => (
-                        <option key={spec} value={spec}>
-                          {spec}
-                        </option>
-                      ))}
-                    </select>
-                  )}
+      {/* Tab Navigation */}
+      <div className="mb-6 flex gap-2">
+        <Button
+          variant={activeTab === 'personal' ? 'primary' : 'outline'}
+          onClick={() => setActiveTab('personal')}
+          className="flex items-center gap-2"
+        >
+          <User size={20} />
+          Personal Profile
+        </Button>
+        <Button
+          variant={activeTab === 'professional' ? 'primary' : 'outline'}
+          onClick={() => setActiveTab('professional')}
+          className="flex items-center gap-2"
+        >
+          <Stethoscope size={20} />
+          Professional Profile
+        </Button>
+      </div>
+
+      {/* Personal Profile Section */}
+      {activeTab === 'personal' && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-start gap-6 mb-6">
+              <Avatar
+                src={user?.avatarUrl}
+                alt={user?.firstName || 'Profile'}
+                size={100}
+                className="ring-4 ring-gray-100"
+              />
+              <div className="flex-1">
+                <h3 className="text-2xl font-bold text-text-primary">
+                  {formData.firstName} {formData.lastName}
+                </h3>
+                <p className="text-text-secondary">{formData.email}</p>
+                <div className="flex items-center gap-4 mt-2 text-sm text-text-secondary">
+                  <div className="flex items-center gap-1">
+                    <Phone size={14} />
+                    {formData.phoneNumber || 'No phone number'}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Mail size={14} />
+                    {formData.email || 'No email'}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Shield size={14} />
+                    {user?.roles?.join(', ') || 'No roles assigned'}
+                  </div>
                 </div>
-                <Input
-                  label="Years of Experience"
-                  type="number"
-                  name="yearsOfExperience"
-                  value={formData.yearsOfExperience}
+              </div>
+            </div>
+
+            <form onSubmit={(e) => {
+              e.preventDefault()
+              handleSavePersonalProfile()
+            }}>
+              {/* Personal Information */}
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold text-text-primary mb-4">Personal Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-2">
+                      First Name
+                    </label>
+                    <Input
+                      name="firstName"
+                      value={formData.firstName}
+                      onChange={handleChange}
+                      placeholder="First name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-2">
+                      Last Name
+                    </label>
+                    <Input
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={handleChange}
+                      placeholder="Last name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-2">
+                      Email
+                    </label>
+                    <Input
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="email@example.com"
+                      disabled
+                      className="bg-gray-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-2">
+                      Phone Number
+                    </label>
+                    <Input
+                      name="phoneNumber"
+                      type="tel"
+                      value={formData.phoneNumber}
+                      onChange={handleChange}
+                      placeholder="+1 234 567 8900"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Account Information */}
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold text-text-primary mb-4">Account Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <div className="text-text-secondary mb-1">Account Created</div>
+                    <div className="font-medium text-text-primary">
+                      {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <div className="text-text-secondary mb-1">Last Login</div>
+                    <div className="font-medium text-text-primary">
+                      {user?.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never'}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <div className="text-text-secondary mb-1">Account Status</div>
+                    <div className="font-medium text-text-primary">
+                      {user?.isActive ? (
+                        <span className="text-green-600">Active</span>
+                      ) : (
+                        <span className="text-red-600">Inactive</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <div className="text-text-secondary mb-1">Online Status</div>
+                    <div className="font-medium text-text-primary">
+                      {user?.isOnline ? (
+                        <span className="text-green-600">Online</span>
+                      ) : (
+                        <span className="text-gray-500">Offline</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <Button type="submit" variant="primary" disabled={saving}>
+                  {saving ? (
+                    'Saving...'
+                  ) : (
+                    <>
+                      <Save size={20} className="mr-2" />
+                      Save Personal Information
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Professional Profile Section */}
+      {activeTab === 'professional' && (
+        <Card>
+          <CardContent className="p-6">
+            <form onSubmit={handleSubmit}>
+              {/* Basic Information */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-text-primary mb-4">Basic Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-2">
+                      Specialty
+                    </label>
+                    {specializationsLoading ? (
+                      <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+                        Loading specialties...
+                      </div>
+                    ) : (
+                      <select
+                        name="specialty"
+                        value={formData.specialty}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-accent bg-white"
+                        required
+                      >
+                        <option value="">Select a specialty</option>
+                        {specializations.map((spec) => (
+                          <option key={spec} value={spec}>
+                            {spec}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-2">
+                      Years of Experience
+                    </label>
+                    <Input
+                      type="number"
+                      name="yearsOfExperience"
+                      value={formData.yearsOfExperience}
+                      onChange={handleChange}
+                      min="0"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Bio */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-text-primary mb-2">
+                  Bio
+                </label>
+                <textarea
+                  name="bio"
+                  value={formData.bio}
                   onChange={handleChange}
-                  min="0"
+                  rows="4"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-accent"
+                  placeholder="Tell patients about yourself and your practice..."
                   required
                 />
               </div>
-            </div>
 
-            {/* Bio */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-text-primary mb-2">
-                Bio
-              </label>
-              <textarea
-                name="bio"
-                value={formData.bio}
-                onChange={handleChange}
-                rows="4"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-accent"
-                placeholder="Tell patients about yourself and your practice..."
-                required
-              />
-            </div>
-
-            {/* Qualifications */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-text-primary mb-2">
-                Qualifications
-              </label>
-              <textarea
-                name="qualifications"
-                value={formData.qualifications}
-                onChange={handleChange}
-                rows="3"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-accent"
-                placeholder="Your degrees, certifications, and professional qualifications..."
-              />
-            </div>
-
-            {/* Services */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-text-primary mb-4">Services Offered</h3>
-              <div className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  value={newService}
-                  onChange={(e) => setNewService(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddService())}
-                  placeholder="Add a service..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-accent"
-                />
-                <Button type="button" onClick={handleAddService} variant="secondary">
-                  <Plus size={20} />
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.services.map((service, index) => (
-                  <span
-                    key={index}
-                    className="inline-flex items-center gap-2 px-3 py-1 bg-primary-accent/10 text-primary-accent rounded-full text-sm"
-                  >
-                    {service}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveService(index)}
-                      className="hover:bg-primary-accent/20 rounded-full p-1"
-                    >
-                      <X size={14} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Languages */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-text-primary mb-4">Languages Spoken</h3>
-              <div className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  value={newLanguage}
-                  onChange={(e) => setNewLanguage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddLanguage())}
-                  placeholder="Add a language..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-accent"
-                />
-                <Button type="button" onClick={handleAddLanguage} variant="secondary">
-                  <Plus size={20} />
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.languages.map((language, index) => (
-                  <span
-                    key={index}
-                    className="inline-flex items-center gap-2 px-3 py-1 bg-primary-accent/10 text-primary-accent rounded-full text-sm"
-                  >
-                    {language}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveLanguage(index)}
-                      className="hover:bg-primary-accent/20 rounded-full p-1"
-                    >
-                      <X size={14} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Practice Details */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-text-primary mb-4">Practice Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Consultation Fee"
-                  type="number"
-                  name="consultationFee"
-                  value={formData.consultationFee}
+              {/* Qualifications */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-text-primary mb-2">
+                  Qualifications
+                </label>
+                <textarea
+                  name="qualifications"
+                  value={formData.qualifications}
                   onChange={handleChange}
-                  placeholder="0.00"
-                  step="0.01"
-                  min="0"
+                  rows="3"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-accent"
+                  placeholder="Your degrees, certifications, and professional qualifications..."
                 />
               </div>
-            </div>
 
-            {/* Location */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-text-primary mb-4">Location</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <Input
-                  label="City"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  placeholder="City"
-                />
-                <Input
-                  label="Country"
-                  name="country"
-                  value={formData.country}
-                  onChange={handleChange}
-                  placeholder="Country"
-                />
-              </div>
-              <Input
-                label="Address"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                placeholder="Full address"
-              />
-            </div>
-
-            {/* Availability */}
-            <div className="mb-6">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  name="isAvailableForAppointments"
-                  checked={formData.isAvailableForAppointments}
-                  onChange={handleChange}
-                  className="w-4 h-4 text-primary-accent border-gray-300 rounded focus:ring-primary-accent"
-                />
-                <span className="text-sm text-text-primary">Available for appointments</span>
-              </label>
-            </div>
-
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Weekly Schedule</h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Configure your weekly slot schedule. Patients can book appointments during these times.
-                  </p>
+              {/* Services */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-text-primary mb-4">Services Offered</h3>
+                <div className="flex gap-2 mb-3">
+                  <input
+                    type="text"
+                    value={newService}
+                    onChange={(e) => setNewService(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddService())}
+                    placeholder="Add a service..."
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-accent"
+                  />
+                  <Button type="button" onClick={handleAddService} variant="secondary">
+                    <Plus size={20} />
+                  </Button>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-full">
-                    Timezone: Local
-                  </div>
-                  {professionalEntity?.id && (
-                    <div className="text-xs text-green-600 bg-green-50 px-3 py-1.5 rounded-full flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      Professional Ready
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl shadow-medium p-6 mb-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Day of Week</label>
-                    <select
-                      name="dayOfWeek"
-                      value={availabilityForm.dayOfWeek}
-                      onChange={handleAvailabilityFieldChange}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-accent focus:border-transparent transition-all bg-gray-50 hover:bg-white"
+                <div className="flex flex-wrap gap-2">
+                  {formData.services.map((service, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center gap-2 px-3 py-1 bg-primary-accent/10 text-primary-accent rounded-full text-sm"
                     >
-                      {dayLabels.map((day, index) => (
-                        <option key={day} value={String(index)}>{day}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
-                    <input
-                      type="time"
-                      name="startTime"
-                      value={availabilityForm.startTime}
-                      onChange={handleAvailabilityFieldChange}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-accent focus:border-transparent transition-all bg-gray-50 hover:bg-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
-                    <input
-                      type="time"
-                      name="endTime"
-                      value={availabilityForm.endTime}
-                      onChange={handleAvailabilityFieldChange}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-accent focus:border-transparent transition-all bg-gray-50 hover:bg-white"
-                    />
-                  </div>
-
-                  <div className="flex items-end">
-                    <Button
-                      type="button"
-                      onClick={handleAddAvailability}
-                      disabled={addingAvailability || availabilityLoading}
-                      className="w-full h-11 rounded-xl bg-primary-dark hover:bg-primary-dark/90 text-white font-medium transition-all"
-                    >
-                      <Plus size={18} className="mr-2" />
-                      {addingAvailability ? 'Adding...' : 'Add Schedule'}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2 text-xs text-gray-500 bg-blue-50 p-3 rounded-xl">
-                  <svg className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                  <p>
-                    <span className="font-medium text-gray-700">Tip:</span> Add multiple schedules for different days. For example, you can set Monday-Friday 9AM-5PM and Saturday 10AM-2PM.
-                  </p>
-                </div>
-              </div>
-
-              {availabilityLoading ? (
-                <div className="flex items-center justify-center py-8 bg-white rounded-2xl shadow-medium">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-dark"></div>
-                  <span className="ml-3 text-sm text-gray-500">
-                    {!professionalEntity?.id ? 'Initializing professional profile...' : 'Loading schedules...'}
-                  </span>
-                </div>
-              ) : availabilityItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 bg-white rounded-2xl shadow-medium border-2 border-dashed border-gray-200">
-                  <svg className="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <p className="text-sm text-gray-500">No schedules configured yet</p>
-                  <p className="text-xs text-gray-400 mt-1">Add your first working schedule above</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-700 mb-3">Your Schedules</p>
-                  {availabilityItems.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-primary-accent/10 flex items-center justify-center">
-                          <svg className="w-5 h-5 text-primary-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {dayLabels[item.dayOfWeek] || 'Unknown day'}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {String(item.startTime).slice(0, 5)} - {String(item.endTime).slice(0, 5)}
-                          </p>
-                        </div>
-                      </div>
-                      <Button
+                      {service}
+                      <button
                         type="button"
-                        variant="ghost"
-                        onClick={() => handleDeleteAvailability(item.id)}
-                        className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                        onClick={() => handleRemoveService(index)}
+                        className="hover:bg-primary-accent/20 rounded-full p-1"
                       >
-                        <Trash2 size={16} className="text-red-500" />
-                      </Button>
-                    </div>
+                        <X size={14} />
+                      </button>
+                    </span>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* Submit */}
-            <div className="flex gap-4">
-              <Button type="submit" variant="primary" disabled={saving} className="flex-1">
-                {saving ? (
-                  'Saving...'
+              {/* Languages */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-text-primary mb-4">Languages Spoken</h3>
+                <div className="flex gap-2 mb-3">
+                  <input
+                    type="text"
+                    value={newLanguage}
+                    onChange={(e) => setNewLanguage(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddLanguage())}
+                    placeholder="Add a language..."
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-accent"
+                  />
+                  <Button type="button" onClick={handleAddLanguage} variant="secondary">
+                    <Plus size={20} />
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {formData.languages.map((language, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center gap-2 px-3 py-1 bg-primary-accent/10 text-primary-accent rounded-full text-sm"
+                    >
+                      {language}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveLanguage(index)}
+                        className="hover:bg-primary-accent/20 rounded-full p-1"
+                      >
+                        <X size={14} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Practice Details */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-text-primary mb-4">Practice Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-2">
+                      Consultation Fee
+                    </label>
+                    <Input
+                      type="number"
+                      name="consultationFee"
+                      value={formData.consultationFee}
+                      onChange={handleChange}
+                      placeholder="0.00"
+                      step="0.01"
+                      min="0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Location */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-text-primary mb-4">Location</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-2">
+                      City
+                    </label>
+                    <Input
+                      name="city"
+                      value={formData.city}
+                      onChange={handleChange}
+                      placeholder="City"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-2">
+                      Country
+                    </label>
+                    <Input
+                      name="country"
+                      value={formData.country}
+                      onChange={handleChange}
+                      placeholder="Country"
+                    />
+                  </div>
+                </div>
+                <Input
+                  label="Address"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="Full address"
+                />
+              </div>
+
+              {/* Availability */}
+              <div className="mb-6">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    name="isAvailableForAppointments"
+                    checked={formData.isAvailableForAppointments}
+                    onChange={handleChange}
+                    className="w-4 h-4 text-primary-accent border-gray-300 rounded focus:ring-primary-accent"
+                  />
+                  <span className="text-sm text-text-primary">Available for appointments</span>
+                </label>
+              </div>
+
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Weekly Schedule</h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Configure your weekly slot schedule. Patients can book appointments during these times.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-full">
+                      Timezone: Local
+                    </div>
+                    {professionalEntity?.id && (
+                      <div className="text-xs text-green-600 bg-green-50 px-3 py-1.5 rounded-full flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 00016zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        Professional Ready
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-medium p-6 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Day of Week</label>
+                      <select
+                        name="dayOfWeek"
+                        value={availabilityForm.dayOfWeek}
+                        onChange={handleAvailabilityFieldChange}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-accent focus:border-transparent transition-all bg-gray-50 hover:bg-white"
+                      >
+                        {dayLabels.map((day, index) => (
+                          <option key={day} value={String(index)}>{day}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                      <input
+                        type="time"
+                        name="startTime"
+                        value={availabilityForm.startTime}
+                        onChange={handleAvailabilityFieldChange}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-accent focus:border-transparent transition-all bg-gray-50 hover:bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+                      <input
+                        type="time"
+                        name="endTime"
+                        value={availabilityForm.endTime}
+                        onChange={handleAvailabilityFieldChange}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-accent focus:border-transparent transition-all bg-gray-50 hover:bg-white"
+                      />
+                    </div>
+
+                    <div className="flex items-end">
+                      <Button
+                        type="button"
+                        onClick={handleAddAvailability}
+                        disabled={addingAvailability || availabilityLoading}
+                        className="w-full h-11 rounded-xl bg-primary-dark hover:bg-primary-dark/90 text-white font-medium transition-all"
+                      >
+                        <Plus size={18} className="mr-2" />
+                        {addingAvailability ? 'Adding...' : 'Add Schedule'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2 text-xs text-gray-500 bg-blue-50 p-3 rounded-xl">
+                    <svg className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                    <p>
+                      <span className="font-medium text-gray-700">Tip:</span> Add multiple schedules for different days. For example, you can set Monday-Friday 9AM-5PM and Saturday 10AM-2PM.
+                    </p>
+                  </div>
+                </div>
+
+                {availabilityLoading ? (
+                  <div className="flex items-center justify-center py-8 bg-white rounded-2xl shadow-medium">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-dark"></div>
+                    <span className="ml-3 text-sm text-gray-500">
+                      {!professionalEntity?.id ? 'Initializing professional profile...' : 'Loading schedules...'}
+                    </span>
+                  </div>
+                ) : availabilityItems.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 bg-white rounded-2xl shadow-medium border-2 border-dashed border-gray-200">
+                    <svg className="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2h10M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2h10M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2h10M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2h10" />
+                    </svg>
+                    <p className="text-sm text-gray-500">No schedules configured yet</p>
+                    <p className="text-xs text-gray-400 mt-1">Add your first working schedule above</p>
+                  </div>
                 ) : (
-                  <>
-                    <Save size={20} className="mr-2" />
-                    {profile ? 'Update Profile' : 'Create Profile'}
-                  </>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-700 mb-3">Your Schedules</p>
+                    {availabilityItems.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-primary-accent/10 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-primary-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {dayLabels[item.dayOfWeek] || 'Unknown day'}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {String(item.startTime).slice(0, 5)} - {String(item.endTime).slice(0, 5)}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => handleDeleteAvailability(item.id)}
+                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={16} className="text-red-500" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+              </div>
+
+              {/* Submit */}
+              <div className="flex gap-4">
+                <Button type="submit" variant="primary" disabled={saving} className="flex-1">
+                  {saving ? (
+                    'Saving...'
+                  ) : (
+                    <>
+                      <Save size={20} className="mr-2" />
+                      {profile ? 'Update Professional Profile' : 'Create Professional Profile'}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
     </MainContent>
   )
 }

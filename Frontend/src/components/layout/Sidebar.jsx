@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { Calendar, Users, MessageCircle, User, Settings, Stethoscope, Bell, Shield, Briefcase, Bot, Users2, ChevronRight, ChevronLeft } from 'lucide-react'
+import { Calendar, Users, MessageCircle, Settings, Stethoscope, Bell, Shield, Briefcase, Bot, Users2, ChevronRight, ChevronLeft } from 'lucide-react'
 
 export const Sidebar = ({ activeItem, onNavigate, isOpen, onClose, onToggle }) => {
   const user = useSelector((state) => state.auth.user)
@@ -11,17 +11,23 @@ export const Sidebar = ({ activeItem, onNavigate, isOpen, onClose, onToggle }) =
   const isManagement = user?.roles?.includes('Management') || false
 
   const navItems = [
-    { id: 'bookings', label: 'My Bookings', Icon: Calendar, path: '/bookings' },
-    { id: 'doctors', label: 'Find Doctors', Icon: Users, path: '/doctors' },
+    // Client-only features - hidden for professionals
+    ...(!isProfessional ? [
+      { id: 'bookings', label: 'My Bookings', Icon: Calendar, path: '/bookings' },
+      { id: 'doctors', label: 'Find Doctors', Icon: Users, path: '/doctors' },
+      { id: 'ai-assistant', label: 'AI Assistant', Icon: Bot, path: '/ai-assistant' },
+      { id: 'client-panel', label: 'My Schedule', Icon: Users2, path: '/client-panel' },
+    ] : []),
+    // Features available to all users
     { id: 'chat', label: 'Messages', Icon: MessageCircle, path: '/chat' },
     { id: 'notifications', label: 'Notifications', Icon: Bell, path: '/notifications', badge: unreadCount > 0 ? unreadCount : null },
-    { id: 'ai-assistant', label: 'AI Assistant', Icon: Bot, path: '/ai-assistant' },
-    { id: 'profile', label: 'Profile', Icon: User, path: '/profile' },
-    { id: 'client-panel', label: 'My Schedule', Icon: Users2, path: '/client-panel' },
+    // Professional-only features
     ...(isProfessional ? [{ id: 'doctor-profile', label: 'Professional Profile', Icon: Stethoscope, path: '/doctor-profile' }] : []),
     ...(isProfessional ? [{ id: 'doctor-panel', label: 'Doctor Panel', Icon: Users2, path: '/doctor-panel' }] : []),
+    // Management features
     ...(isManagement || isAdmin ? [{ id: 'management', label: 'Management Panel', Icon: Briefcase, path: '/management' }] : []),
     ...(isAdmin ? [{ id: 'admin', label: 'Admin Panel', Icon: Shield, path: '/admin' }] : []),
+    // Common features
     { id: 'settings', label: 'Settings', Icon: Settings, path: '/settings' }
   ]
 

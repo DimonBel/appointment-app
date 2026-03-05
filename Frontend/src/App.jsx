@@ -25,8 +25,12 @@ import { useNotificationHub } from './hooks/useNotificationHub'
 import './App.css'
 
 function App() {
-  const [activeItem, setActiveItem] = useState('bookings')
+  const user = useSelector((state) => state.auth.user)
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated)
+  const isProfessional = user?.roles?.includes('Professional') || user?.roles?.includes('Doctor') || false
+  const defaultPage = isProfessional ? 'doctor-panel' : 'bookings'
+  
+  const [activeItem, setActiveItem] = useState(defaultPage)
 
   // Connect to NotificationHub for real-time notifications
   // The hook handles authentication checks internally
@@ -76,7 +80,7 @@ function App() {
         </Route>
 
         {/* Redirect unknown routes */}
-        <Route path="*" element={<Navigate to={isAuthenticated ? "/bookings" : "/"} replace />} />
+        <Route path="*" element={<Navigate to={isAuthenticated ? (isProfessional ? "/doctor-panel" : "/bookings") : "/"} replace />} />
       </Routes>
     </BrowserRouter>
   )

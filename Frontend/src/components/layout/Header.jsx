@@ -20,7 +20,8 @@ export const Header = ({ activeItem, onNavigate, className = '' }) => {
   }
 
   const handleHomeClick = () => {
-    navigate(isAuthenticated ? '/bookings' : '/')
+    const isProfessional = user?.roles?.includes('Professional') || user?.roles?.includes('Doctor') || false
+    navigate(isAuthenticated ? (isProfessional ? '/doctor-panel' : '/bookings') : '/')
   }
 
   const toggleMenu = () => {
