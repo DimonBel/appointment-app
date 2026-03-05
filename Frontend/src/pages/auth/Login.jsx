@@ -39,7 +39,7 @@ export const Login = () => {
         refreshToken: response.refreshToken,
       }))
       
-      navigate('/')
+      navigate('/bookings')
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Login failed. Please check your credentials.'
       setLocalError(errorMessage)

@@ -38,6 +38,7 @@ public class NotificationDbContext : DbContext
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.CreatedAt);
             entity.HasIndex(e => new { e.UserId, e.Status });
+            entity.HasIndex(e => new { e.UserId, e.Channel, e.Status });
 
             entity.HasOne(e => e.Template)
                 .WithMany(t => t.Notifications)

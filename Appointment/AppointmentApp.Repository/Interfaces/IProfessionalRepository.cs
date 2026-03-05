@@ -11,4 +11,5 @@ public interface IProfessionalRepository
     Task<bool> DeleteAsync(Guid id);
     Task<IEnumerable<Professional>> GetAllAsync(bool onlyAvailable = true, int page = 1, int pageSize = 20);
     Task<bool> ExistsAsync(Guid id);
+    Task<IEnumerable<string>> GetAllSpecializationsAsync();
 }

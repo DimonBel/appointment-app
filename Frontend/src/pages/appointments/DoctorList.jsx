@@ -9,7 +9,134 @@ import { BookingModal } from '../../components/booking/BookingModal'
 import { appointmentService } from '../../services/appointmentService'
 import { userService } from '../../services/userService'
 import documentService from '../../services/documentService'
-import { Search, MapPin, Calendar, Briefcase, DollarSign } from 'lucide-react'
+import { normalizeSpecialty, getSpecialtyIcon } from '../../utils/specialtyUtils'
+import { DOCTORS } from '../../data/doctors'
+import { Search, MapPin, Calendar, Briefcase, DollarSign, Clock } from 'lucide-react'
+
+// Pool of professional medical doctor images from Unsplash (all unique)
+const MEDICAL_IMAGES = [
+  'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1628151015968-3a44274e8d6f?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1587563871167-1ee9c731aef4?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1552058544-f2b08422138a?w=400&h=400&fit=crop&crop=face',
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop&crop=face',
+]
+
+// Better hash function that uses all characters and multiplies for better distribution
+const hashString = (str) => {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
+  }
+  return Math.abs(hash)
+}
+
+// Map doctor names to professional images (fallback only)
+const getDoctorImage = (name, userId, userAvatarUrl, specialty) => {
+  // PRIORITY 1: Use the user's actual avatar from the database
+  if (userAvatarUrl && userAvatarUrl.trim() !== '') {
+    return userAvatarUrl
+  }
+  
+  // PRIORITY 2: Assign unique medical image based on user ID (better hash)
+  if (userId) {
+    const hash = hashString(userId.toString())
+    const imageIndex = hash % MEDICAL_IMAGES.length
+    return MEDICAL_IMAGES[imageIndex]
+  }
+  
+  // PRIORITY 3: Generate unique medical image based on doctor name hash
+  if (name) {
+    const hash = hashString(name)
+    const imageIndex = hash % MEDICAL_IMAGES.length
+    return MEDICAL_IMAGES[imageIndex]
+  }
+  
+  // PRIORITY 4: Fallback to first medical image
+  return MEDICAL_IMAGES[0]
+}
+
+// Format working hours from availabilities
+const formatWorkingHours = (availabilities) => {
+  if (!availabilities || availabilities.length === 0) {
+    return null
+  }
+
+  // Group by time ranges
+  const dayMap = {}
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+  availabilities.forEach((avail) => {
+    // Accept both Daily (0) and Weekly (1) schedules
+    if (!avail.isActive || (avail.scheduleType !== 0 && avail.scheduleType !== 1)) return
+
+    const dayName = dayNames[avail.dayOfWeek]
+    const timeRange = `${formatTime(avail.startTime)}-${formatTime(avail.endTime)}`
+
+    if (!dayMap[timeRange]) {
+      dayMap[timeRange] = []
+    }
+    dayMap[timeRange].push(avail.dayOfWeek)
+  })
+
+  if (Object.keys(dayMap).length === 0) {
+    return null
+  }
+
+  // Format consecutive days
+  const result = []
+  for (const [timeRange, days] of Object.entries(dayMap)) {
+    days.sort((a, b) => a - b)
+    const dayRange = formatDayRange(days)
+    result.push(`${dayRange} ${timeRange}`)
+  }
+
+  return result.join(', ')
+}
+
+// Format time from TimeSpan (e.g., "09:00:00" -> "9:00 AM")
+const formatTime = (timeStr) => {
+  if (!timeStr) return ''
+  const [hours, minutes] = timeStr.split(':').map(Number)
+  const h = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours
+  const ampm = hours < 12 ? 'AM' : 'PM'
+  return `${h}:${minutes.toString().padStart(2, '0')} ${ampm}`
+}
+
+// Format day range (e.g., [1,2,3,4,5] -> "Mon-Fri")
+const formatDayRange = (days) => {
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  
+  if (days.length === 0) return ''
+  if (days.length === 1) return dayNames[days[0]]
+
+  // Check if days are consecutive
+  const isConsecutive = days.every((day, i) => i === 0 || day === days[i - 1] + 1)
+  
+  if (isConsecutive) {
+    return `${dayNames[days[0]]}-${dayNames[days[days.length - 1]]}`
+  }
+
+  // If not consecutive, show as comma-separated
+  return days.map(d => dayNames[d]).join(', ')
+}
 
 export const DoctorList = () => {
   const [doctors, setDoctors] = useState([])
@@ -80,6 +207,8 @@ export const DoctorList = () => {
             country: null,
             address: null,
             isAvailableForAppointments: prof.isAvailable,
+            availabilities: prof.availabilities || [],
+            workingHours: formatWorkingHours(prof.availabilities || []),
           }
         })
       )
@@ -98,7 +227,10 @@ export const DoctorList = () => {
     { value: 'all', label: 'All Specialties' },
     ...(Array.isArray(doctors) ? 
       Array.from(new Set(doctors.map(d => d.specialty).filter(Boolean)))
-        .map(specialty => ({ value: specialty, label: specialty })) : 
+        .map(specialty => ({ 
+          value: specialty, 
+          label: normalizeSpecialty(specialty) 
+        })) : 
       [])
   ]
 
@@ -107,9 +239,11 @@ export const DoctorList = () => {
       ? `${doctor.user.firstName} ${doctor.user.lastName}`.toLowerCase()
       : (doctor.user?.userName || '').toLowerCase()
     
+    const normalizedSpecialty = normalizeSpecialty(doctor.specialty).toLowerCase()
+    
     const matchesSearch = 
       fullName.includes(searchQuery.toLowerCase()) ||
-      (doctor.specialty?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      normalizedSpecialty.includes(searchQuery.toLowerCase()) ||
       (doctor.city?.toLowerCase() || '').includes(searchQuery.toLowerCase())
     
     const matchesSpecialty = selectedSpecialty === 'all' || doctor.specialty === selectedSpecialty
@@ -284,7 +418,7 @@ export const DoctorList = () => {
                 <CardContent className="p-6">
                   <div className="flex gap-4">
                     <Avatar 
-                      src={doctor.user?.avatarUrl}
+                      src={getDoctorImage(doctorName, doctor.user?.id || doctor.id, doctor.user?.avatarUrl, doctor.specialty)}
                       alt={doctorName}
                       size={64}
                     />
@@ -293,7 +427,7 @@ export const DoctorList = () => {
                       <h3 className="font-semibold text-text-primary text-lg mb-1">
                         Dr. {doctorName}
                       </h3>
-                      <p className="text-text-secondary text-sm mb-2">{doctor.specialty}</p>
+                      <p className="text-text-secondary text-sm mb-2">{normalizeSpecialty(doctor.specialty)}</p>
                       
                       {doctor.bio && (
                         <p className="text-sm text-text-muted mb-3 line-clamp-2">
@@ -339,6 +473,13 @@ export const DoctorList = () => {
                               </span>
                             )}
                           </div>
+                        </div>
+                      )}
+
+                      {doctor.workingHours && (
+                        <div className="flex items-center gap-1 text-sm text-text-muted mb-3">
+                          <Clock size={14} />
+                          <span>{doctor.workingHours}</span>
                         </div>
                       )}
                       

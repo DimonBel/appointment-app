@@ -32,11 +32,13 @@ public static class OrderEndpoints
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 100,
             [FromQuery] string? sortBy = null,
-            [FromQuery] bool descending = false) =>
+            [FromQuery] bool descending = false,
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null) =>
         {
-            var orders = await orderService.GetAllOrdersAsync(status, page, pageSize, sortBy, descending);
+            var orders = await orderService.GetAllOrdersAsync(status, page, pageSize, sortBy, descending, startDate, endDate);
             
-            // Enrich orders with Identity service data
+            // Enrich orders with Identity service data using batched requests for better performance
             var accessToken = context.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
             var enrichedOrders = orders.Select(order =>
             {
@@ -57,19 +59,47 @@ public static class OrderEndpoints
                     ["professional"] = null
                 };
 
-                if (!string.IsNullOrWhiteSpace(accessToken))
-                {
-                    var identityClient = identityServiceClient.GetUserByIdAsync(order.ClientId, accessToken);
-                    var identityProfessional = identityServiceClient.GetUserByIdAsync(order.ProfessionalId, accessToken);
-                    
-                    Task.WaitAll(identityClient, identityProfessional);
-                    
-                    orderDict["client"] = identityClient.Result;
-                    orderDict["professional"] = identityProfessional.Result;
-                }
-
                 return orderDict;
             }).ToList();
+
+            // Batch fetch user data to avoid N+1 query problem
+            if (!string.IsNullOrWhiteSpace(accessToken) && orders.Any())
+            {
+                // Collect all unique user IDs
+                var userIds = new HashSet<Guid>();
+                foreach (var order in orders)
+                {
+                    userIds.Add(order.ClientId);
+                    userIds.Add(order.ProfessionalId);
+                }
+
+                // Batch fetch all users from Identity Service
+                var userTasks = userIds.Select(userId => identityServiceClient.GetUserByIdAsync(userId, accessToken)).ToArray();
+                await Task.WhenAll(userTasks);
+
+                // Create a lookup dictionary for O(1) access
+                var userLookup = new Dictionary<Guid, object?>();
+                for (int i = 0; i < userIds.Count; i++)
+                {
+                    userLookup[userIds.ElementAt(i)] = userTasks[i].Result;
+                }
+
+                // Enrich orders with fetched user data
+                foreach (var orderDict in enrichedOrders)
+                {
+                    var clientId = (Guid)orderDict["clientId"]!;
+                    var professionalId = (Guid)orderDict["professionalId"]!;
+                    
+                    if (userLookup.TryGetValue(clientId, out var clientData))
+                    {
+                        orderDict["client"] = clientData;
+                    }
+                    if (userLookup.TryGetValue(professionalId, out var professionalData))
+                    {
+                        orderDict["professional"] = professionalData;
+                    }
+                }
+            }
             
             return Results.Ok(enrichedOrders);
         })
@@ -458,6 +488,17 @@ public static class OrderEndpoints
             return Results.Ok(enrichedClients);
         })
         .WithName("GetClientsByProfessional")
+        .WithOpenApi();
+
+        // Get professional statistics (for doctor panel)
+        group.MapGet("/professional/{professionalId}/statistics", async (
+            Guid professionalId,
+            [FromServices] IOrderService orderService) =>
+        {
+            var statistics = await orderService.GetProfessionalStatisticsAsync(professionalId);
+            return Results.Ok(statistics);
+        })
+        .WithName("GetProfessionalStatistics")
         .WithOpenApi();
 
         // Update order

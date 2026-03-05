@@ -30,11 +30,9 @@ const STATUS_OPTIONS = [
   { value: 5, label: 'No-show' },
 ]
 
-// Time slots from 08:00 to 17:00 (working hours)
+// Time slots from 08:00 to 17:00 (working hours) - hourly intervals only
 const TIME_SLOTS = [
-  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-  '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
-  '16:00', '16:30', '17:00'
+  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'
 ]
 
 const ITEMS_PER_PAGE = 10
@@ -139,8 +137,14 @@ export const ManagementPanel = () => {
     setLoadError('')
 
     try {
+      // Only fetch orders for selected date +/- 2 days to reduce payload size
+      const startDate = new Date(selectedDate)
+      startDate.setDate(startDate.getDate() - 2)
+      const endDate = new Date(selectedDate)
+      endDate.setDate(endDate.getDate() + 2)
+
       const [allOrders, professionals, allAvailabilities, allUsers] = await Promise.all([
-        appointmentService.getAllOrdersForManagement(token, statusFilter, 1, 500, 'scheduledDate', true),
+        appointmentService.getAllOrdersForManagement(token, statusFilter, 1, 500, 'scheduledDate', true, startDate, endDate),
         appointmentService.getProfessionals(token),
         appointmentService.getAllAvailabilities(token),
         userService.getAllUsers(token),
@@ -384,7 +388,7 @@ export const ManagementPanel = () => {
   }
 
   // Filter orders: only show Pending, Approved, Completed (not Cancelled, Declined, No-show)
-  const activeStatuses = [0, 1, 4] // Pending, Approved, Completed
+  const activeStatuses = [0, 1, 2, 3, 4] // Pending, Approved, Declined, Cancelled, Completed
   const filteredOrders = clientOrders.filter((order) => activeStatuses.includes(order.status))
 
   const getScheduleMatrix = () => {
@@ -432,7 +436,7 @@ export const ManagementPanel = () => {
           return
         }
 
-        const durationSlots = Math.ceil(order.durationMinutes / 30)
+        const durationSlots = Math.ceil(order.durationMinutes / 60)
 
         for (let i = 0; i < durationSlots; i++) {
           if (slotIndex + i < TIME_SLOTS.length) {
@@ -631,7 +635,7 @@ export const ManagementPanel = () => {
                                       </div>
                                     )}
                                     <div className="text-[10px] mt-1 opacity-75">
-                                      {cellData.durationMinutes} min
+                                      60 min
                                     </div>
                                   </div>
                                 </button>
@@ -918,7 +922,7 @@ export const ManagementPanel = () => {
 
                 <div>
                   <p className="text-sm text-text-secondary">Duration</p>
-                  <p className="font-medium text-text-primary">{selectedAppointment.durationMinutes} minutes</p>
+                  <p className="font-medium text-text-primary">60 minutes</p>
                 </div>
 
                 {selectedAppointment.shortMessage && (

@@ -25,7 +25,6 @@ public class NotificationRepository : INotificationRepository
     public async Task<Notification?> GetByIdAsync(Guid id)
     {
         return await _context.Notifications
-            .Include(n => n.Template)
             .FirstOrDefaultAsync(n => n.Id == id);
     }
 
@@ -36,7 +35,6 @@ public class NotificationRepository : INotificationRepository
             .OrderByDescending(n => n.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Include(n => n.Template)
             .ToListAsync();
     }
 
@@ -53,7 +51,6 @@ public class NotificationRepository : INotificationRepository
             .OrderByDescending(n => n.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Include(n => n.Template)
             .ToListAsync();
     }
 

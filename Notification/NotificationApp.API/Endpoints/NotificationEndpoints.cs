@@ -28,6 +28,31 @@ public static class NotificationEndpoints
             return Results.Ok(dtos);
         }).WithName("GetNotifications");
 
+        // GET /api/notifications/with-count?userId={userId}&page=1&pageSize=20
+        // Optimized endpoint that returns notifications and unread count in single request
+        group.MapGet("/with-count", async (
+            Guid? userId,
+            HttpContext httpContext,
+            INotificationService service,
+            int page = 1,
+            int pageSize = 20) =>
+        {
+            var resolvedUserId = ResolveUserId(httpContext, userId);
+            if (!resolvedUserId.HasValue) return Results.BadRequest(new { error = "userId is required." });
+
+            // Execute queries sequentially to avoid DbContext concurrency issues
+            var notifications = await service.GetByUserIdAsync(resolvedUserId.Value, page, pageSize);
+            var unreadCount = await service.GetUnreadCountAsync(resolvedUserId.Value);
+
+            return Results.Ok(new
+            {
+                notifications = notifications.Select(MapToDto),
+                unreadCount,
+                page,
+                pageSize
+            });
+        }).WithName("GetNotificationsWithCount");
+
         // GET /api/notifications/{id}
         group.MapGet("/{id:guid}", async (Guid id, INotificationService service) =>
         {

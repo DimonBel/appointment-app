@@ -72,4 +72,11 @@ public interface IProfessionalService
     /// <param name="professionalId">ID of the professional to delete</param>
     /// <returns>True if deleted successfully, false otherwise</returns>
     Task<bool> DeleteProfessionalAsync(Guid professionalId);
+
+    /// <summary>
+    /// Retrieves all unique specializations from the database
+    /// Used for populating dropdown selectors in the UI
+    /// </summary>
+    /// <returns>List of unique specializations</returns>
+    Task<IEnumerable<string>> GetAllSpecializationsAsync();
 }

@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
-import { useSelector, useDispatch } from 'react-redux'
+import { useSelector, useDispatch, useStore } from 'react-redux'
 import { notificationHubService } from '../services/signalRService'
 import {
   addNotification,
+  setNotifications,
   setUnreadCount,
 } from '../store/slices/notificationsSlice'
 import { addFriendId } from '../store/slices/friendsSlice'
@@ -15,10 +16,10 @@ import { notificationService } from '../services/notificationService'
  */
 export function useNotificationHub() {
   const dispatch = useDispatch()
+  const store = useStore()
   const token = useSelector((state) => state.auth.token)
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated)
   const userId = useSelector((state) => state.auth.user?.id)
-  const notifications = useSelector((state) => state.notifications.notifications)
   const connectedRef = useRef(false)
   const toastTimeoutRef = useRef(null)
   const toastRef = useRef(null)
@@ -229,23 +230,8 @@ export function useNotificationHub() {
     }, 5000)
   }
 
-  // Load initial unread count when authenticated
-  useEffect(() => {
-    if (!isAuthenticated || !token || !userId) return
-
-    const loadInitialUnreadCount = async () => {
-      try {
-        const countData = await notificationService.getUnreadCount(userId, token)
-        const count = typeof countData === 'number' ? countData : countData?.count || 0
-        dispatch(setUnreadCount(count))
-        console.log('Initial unread count loaded:', count)
-      } catch (err) {
-        console.error('Failed to load initial unread count:', err)
-      }
-    }
-
-    loadInitialUnreadCount()
-  }, [isAuthenticated, token, userId, dispatch])
+  // Initial unread count is loaded by the polling effect below (after 2s delay)
+  // No separate effect needed to avoid duplicate requests
 
   useEffect(() => {
     if (!isAuthenticated || !token) return
@@ -335,37 +321,53 @@ export function useNotificationHub() {
     if (!isAuthenticated || !token || !userId) return
 
     let cancelled = false
+    let isInitialLoad = true
 
-    const pollMissedNotifications = async () => {
+    const fetchNotifications = async () => {
       try {
-        const unread = await notificationService.getUnreadNotifications(userId, token)
-        const unreadList = Array.isArray(unread) ? unread : []
-        const existingIds = new Set((Array.isArray(notifications) ? notifications : []).map((n) => n?.id))
+        const data = await notificationService.getNotificationsWithCount(userId, token)
+        if (cancelled) return
 
-        unreadList
-          .slice()
-          .sort((a, b) => new Date(a?.createdAt || 0).getTime() - new Date(b?.createdAt || 0).getTime())
-          .forEach((item) => {
-            if (!item?.id || existingIds.has(item.id)) return
-            // Add to processed IDs to track these notifications
-            processedNotificationIdsRef.current.add(item.id)
-            dispatch(addNotification(item))
+        const allNotifications = Array.isArray(data?.notifications) ? data.notifications : []
+        const unreadCount = typeof data?.unreadCount === 'number' ? data.unreadCount : 0
+
+        if (isInitialLoad) {
+          // First load: replace entire notification list
+          dispatch(setNotifications(allNotifications))
+          dispatch(setUnreadCount(unreadCount))
+          // Track all loaded notification IDs
+          allNotifications.forEach((n) => {
+            if (n?.id) processedNotificationIdsRef.current.add(n.id)
           })
+          isInitialLoad = false
+        } else {
+          // Subsequent polls: only add new notifications not already in store
+          const currentNotifications = store.getState().notifications.notifications
+          const existingIds = new Set((Array.isArray(currentNotifications) ? currentNotifications : []).map((n) => n?.id))
 
-        if (!cancelled) {
-          dispatch(setUnreadCount(unreadList.length))
+          allNotifications
+            .filter(n => n?.id && !existingIds.has(n.id) && n.status !== 'Read')
+            .sort((a, b) => new Date(a?.createdAt || 0).getTime() - new Date(b?.createdAt || 0).getTime())
+            .forEach((item) => {
+              processedNotificationIdsRef.current.add(item.id)
+              dispatch(addNotification(item))
+            })
+
+          dispatch(setUnreadCount(unreadCount))
         }
       } catch {
         // Ignore polling errors; SignalR still handles realtime path
       }
     }
 
-    pollMissedNotifications()
-    const intervalId = setInterval(pollMissedNotifications, 12000)
+    // Initial load immediately
+    fetchNotifications()
+    // Then poll every 30 seconds for missed notifications
+    const intervalId = setInterval(fetchNotifications, 30000)
 
     return () => {
       cancelled = true
       clearInterval(intervalId)
     }
-  }, [isAuthenticated, token, userId, notifications, dispatch])
+  }, [isAuthenticated, token, userId, dispatch, store])
 }

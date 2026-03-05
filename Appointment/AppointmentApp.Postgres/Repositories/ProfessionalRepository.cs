@@ -57,7 +57,8 @@ public class ProfessionalRepository : IProfessionalRepository
     public async Task<IEnumerable<Professional>> GetAllAsync(bool onlyAvailable = true, int page = 1, int pageSize = 20)
     {
         IQueryable<Professional> query = _context.Professionals
-            .Include(p => p.User);
+            .Include(p => p.User)
+            .Include(p => p.Availabilities);
 
         if (onlyAvailable)
         {
@@ -75,5 +76,15 @@ public class ProfessionalRepository : IProfessionalRepository
     public async Task<bool> ExistsAsync(Guid id)
     {
         return await _context.Professionals.AnyAsync(p => p.Id == id);
+    }
+
+    public async Task<IEnumerable<string>> GetAllSpecializationsAsync()
+    {
+        return await _context.Professionals
+            .Where(p => !string.IsNullOrWhiteSpace(p.Specialization))
+            .Select(p => p.Specialization!.Trim())
+            .Distinct()
+            .OrderBy(s => s)
+            .ToListAsync();
     }
 }

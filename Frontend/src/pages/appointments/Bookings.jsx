@@ -10,7 +10,57 @@ import FileUpload from '../../components/ui/FileUpload'
 import { appointmentService } from '../../services/appointmentService'
 import { userService } from '../../services/userService'
 import documentService from '../../services/documentService'
+import { normalizeSpecialty } from '../../utils/specialtyUtils'
+import { DOCTORS } from '../../data/doctors'
 import { Calendar, Clock, MapPin, Phone, Paperclip, X } from 'lucide-react'
+
+// Map doctor names to professional images (fallback only)
+const getDoctorImage = (name, userId, userAvatarUrl, specialty) => {
+  // PRIORITY 1: Use the user's actual avatar from the database
+  if (userAvatarUrl && userAvatarUrl.trim() !== '') {
+    return userAvatarUrl
+  }
+  
+  // PRIORITY 2: Try to find matching doctor from our database (fallback)
+  const doctor = DOCTORS.find(d => 
+    d.name.toLowerCase().includes(name.toLowerCase()) || 
+    name.toLowerCase().includes(d.name.toLowerCase())
+  )
+  
+  if (doctor) {
+    return doctor.image
+  }
+  
+  // PRIORITY 3: Fallback to specialty-based professional images (unique per specialty)
+  const normalizedSpecialty = specialty?.toLowerCase() || ''
+  const imageMap = {
+    'dermatologist': 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face',
+    'cardiologist': 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face',
+    'pediatrician': 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face',
+    'neurologist': 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=400&fit=crop&crop=face',
+    'ophthalmologist': 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face',
+    'gynecologist': 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face',
+    'oncologist': 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face',
+    'orthopedic': 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=400&h=400&fit=crop&crop=face',
+    'psychiatrist': 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face',
+    'psychologist': 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face',
+  }
+  
+  // Try to match by specialty first
+  for (const [spec, imageUrl] of Object.entries(imageMap)) {
+    if (normalizedSpecialty.includes(spec)) {
+      return imageUrl
+    }
+  }
+  
+  // PRIORITY 4: Generate unique avatar based on user ID (last resort)
+  if (userId) {
+    return `https://i.pravatar.cc/400?u=${userId}`
+  }
+  
+  // PRIORITY 5: Final fallback to a general professional image
+  return 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face'
+}
 
 export const Bookings = () => {
   const [activeTab, setActiveTab] = useState('upcoming')
@@ -244,7 +294,7 @@ export const Bookings = () => {
             <Card key={appointment.id} hover className="transition-all">
               <CardContent className="flex items-start gap-4 p-6">
                 <Avatar 
-                  src={appointment.doctorAvatar}
+                  src={getDoctorImage(appointment.doctorName, appointment.id, appointment.doctorAvatar, appointment.specialty)}
                   alt={appointment.doctorName}
                   size={56}
                 />

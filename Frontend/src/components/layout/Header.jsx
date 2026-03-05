@@ -8,6 +8,7 @@ import { Sidebar } from './Sidebar'
 
 export const Header = ({ activeItem, onNavigate, className = '' }) => {
   const user = useSelector((state) => state.auth.user)
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated)
   const unreadCount = useSelector((state) => state.notifications?.unreadCount || 0)
   const dispatch = useDispatch()
   const navigate = useNavigate()
@@ -15,7 +16,11 @@ export const Header = ({ activeItem, onNavigate, className = '' }) => {
 
   const handleLogout = () => {
     dispatch(logout())
-    navigate('/login')
+    navigate('/')
+  }
+
+  const handleHomeClick = () => {
+    navigate(isAuthenticated ? '/bookings' : '/')
   }
 
   const toggleMenu = () => {
@@ -31,7 +36,7 @@ export const Header = ({ activeItem, onNavigate, className = '' }) => {
       <header className={`${className} bg-primary-dark text-white px-6 py-4 flex items-center justify-between sticky top-0 z-50`}>
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/')}
+            onClick={handleHomeClick}
             className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors duration-200"
             title="Go Home"
           >

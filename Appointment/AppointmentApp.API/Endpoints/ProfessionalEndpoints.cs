@@ -102,6 +102,16 @@ public static class ProfessionalEndpoints
         .WithName("GetAllProfessionals")
         .WithOpenApi();
 
+        // Get all unique specializations
+        group.MapGet("/specializations", async (
+            [FromServices] IProfessionalService professionalService) =>
+        {
+            var specializations = await professionalService.GetAllSpecializationsAsync();
+            return Results.Ok(specializations);
+        })
+        .WithName("GetAllSpecializations")
+        .WithOpenApi();
+
         // Update professional
         group.MapPut("/{id}", async (
             Guid id,
@@ -178,7 +188,20 @@ public static class ProfessionalEndpoints
                 LastName = professional.User.LastName,
                 Email = professional.User.Email,
                 AvatarUrl = null // AvatarUrl is stored in a different service
-            } : null
+            } : null,
+            Availabilities = professional.Availabilities?.Select(a => new AvailabilityResponseDto
+            {
+                Id = a.Id,
+                ProfessionalId = a.ProfessionalId,
+                DayOfWeek = (int)a.DayOfWeek,
+                StartTime = a.StartTime.ToString(@"hh\:mm\:ss"),
+                EndTime = a.EndTime.ToString(@"hh\:mm\:ss"),
+                ScheduleType = (int)a.ScheduleType,
+                StartDate = a.StartDate,
+                EndDate = a.EndDate,
+                IsActive = a.IsActive,
+                CreatedAt = a.CreatedAt
+            }).ToList() ?? new List<AvailabilityResponseDto>()
         };
     }
 }

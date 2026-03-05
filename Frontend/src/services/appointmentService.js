@@ -17,7 +17,7 @@ class AppointmentService {
     return response.data
   }
 
-  async getAllOrdersForManagement(token, status = null, page = 1, pageSize = 100, sortBy = null, descending = false) {
+  async getAllOrdersForManagement(token, status = null, page = 1, pageSize = 100, sortBy = null, descending = false, startDate = null, endDate = null) {
     const response = await requestWithAuthRetry(
       {
         method: 'get',
@@ -28,6 +28,8 @@ class AppointmentService {
           pageSize,
           ...(sortBy ? { sortBy } : {}),
           descending,
+          ...(startDate ? { startDate: startDate.toISOString().split('T')[0] } : {}),
+          ...(endDate ? { endDate: endDate.toISOString().split('T')[0] } : {}),
         },
       },
       token
@@ -57,6 +59,17 @@ class AppointmentService {
       {
         method: 'get',
         url: `${API_URL}/orders/professional/${professionalId}/clients`,
+      },
+      token
+    )
+    return response.data
+  }
+
+  async getProfessionalStatistics(professionalId, token) {
+    const response = await requestWithAuthRetry(
+      {
+        method: 'get',
+        url: `${API_URL}/orders/professional/${professionalId}/statistics`,
       },
       token
     )
@@ -202,6 +215,17 @@ class AppointmentService {
       {
         method: 'get',
         url: `${PROFESSIONALS_API_URL}`,
+      },
+      token
+    )
+    return response.data
+  }
+
+  async getAllSpecializations(token) {
+    const response = await requestWithAuthRetry(
+      {
+        method: 'get',
+        url: `${PROFESSIONALS_API_URL}/specializations`,
       },
       token
     )
