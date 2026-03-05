@@ -102,6 +102,16 @@ public static class ProfessionalEndpoints
         .WithName("GetAllProfessionals")
         .WithOpenApi();
 
+        // Get all unique specializations
+        group.MapGet("/specializations", async (
+            [FromServices] IProfessionalService professionalService) =>
+        {
+            var specializations = await professionalService.GetAllSpecializationsAsync();
+            return Results.Ok(specializations);
+        })
+        .WithName("GetAllSpecializations")
+        .WithOpenApi();
+
         // Update professional
         group.MapPut("/{id}", async (
             Guid id,

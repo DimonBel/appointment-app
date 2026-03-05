@@ -10,17 +10,49 @@ public class ProfessionalService : IProfessionalService
     private readonly IProfessionalRepository _professionalRepository;
     private readonly UserManager<AppIdentityUser> _userManager;
 
+    // Standardized specialty names
+    private static readonly HashSet<string> StandardSpecialties = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "General Practitioner",
+        "Cardiologist",
+        "Dermatologist",
+        "Pediatrician",
+        "Orthopedic Surgeon",
+        "Psychiatrist",
+        "Gynecologist",
+        "Neurologist",
+        "Oncologist",
+        "Ophthalmologist"
+    };
+
     public ProfessionalService(
         IProfessionalRepository professionalRepository,
         UserManager<AppIdentityUser> userManager)
     {
         _professionalRepository = professionalRepository;
-        _userManager = userManager;
+        _userManager = _userManager;
+    }
+
+    private void ValidateSpecialization(string? specialization)
+    {
+        if (!string.IsNullOrWhiteSpace(specialization))
+        {
+            var trimmed = specialization.Trim();
+            if (!StandardSpecialties.Contains(trimmed))
+            {
+                throw new ArgumentException(
+                    $"Invalid specialization '{specialization}'. Please use one of the standard specialties: {string.Join(", ", StandardSpecialties.OrderBy(s => s))}",
+                    nameof(specialization));
+            }
+        }
     }
 
     /// <inheritdoc/>
     public async Task<Professional> CreateProfessionalAsync(Guid userId, string? title = null, string? qualifications = null, string? specialization = null)
     {
+        // Validate specialization
+        ValidateSpecialization(specialization);
+
         var existingProfessional = await _professionalRepository.GetByUserIdAsync(userId);
         if (existingProfessional != null)
         {
@@ -86,6 +118,9 @@ public class ProfessionalService : IProfessionalService
     /// <inheritdoc/>
     public async Task<Professional> UpdateProfessionalAsync(Guid professionalId, string? title = null, string? qualifications = null, string? specialization = null, decimal? hourlyRate = null, int? experienceYears = null, string? bio = null)
     {
+        // Validate specialization if provided
+        ValidateSpecialization(specialization);
+
         var professional = await _professionalRepository.GetByIdAsync(professionalId);
         if (professional == null)
         {
@@ -123,5 +158,11 @@ public class ProfessionalService : IProfessionalService
     public async Task<bool> DeleteProfessionalAsync(Guid professionalId)
     {
         return await _professionalRepository.DeleteAsync(professionalId);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IEnumerable<string>> GetAllSpecializationsAsync()
+    {
+        return await _professionalRepository.GetAllSpecializationsAsync();
     }
 }

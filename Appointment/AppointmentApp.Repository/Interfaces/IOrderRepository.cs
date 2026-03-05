@@ -14,4 +14,5 @@ public interface IOrderRepository
     Task<IEnumerable<Order>> GetByProfessionalAsync(Guid professionalId, OrderStatus? status = null, int page = 1, int pageSize = 20);
     Task<IEnumerable<AppIdentityUser>> GetClientsByProfessionalAsync(Guid professionalId);
     Task<bool> ExistsAsync(Guid id);
+    Task<Dictionary<string, int>> GetProfessionalStatisticsAsync(Guid professionalId);
 }

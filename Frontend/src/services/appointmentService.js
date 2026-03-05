@@ -65,6 +65,17 @@ class AppointmentService {
     return response.data
   }
 
+  async getProfessionalStatistics(professionalId, token) {
+    const response = await requestWithAuthRetry(
+      {
+        method: 'get',
+        url: `${API_URL}/orders/professional/${professionalId}/statistics`,
+      },
+      token
+    )
+    return response.data
+  }
+
   async getProfessionalByUserId(userId, token) {
     try {
       const response = await requestWithAuthRetry(
@@ -204,6 +215,17 @@ class AppointmentService {
       {
         method: 'get',
         url: `${PROFESSIONALS_API_URL}`,
+      },
+      token
+    )
+    return response.data
+  }
+
+  async getAllSpecializations(token) {
+    const response = await requestWithAuthRetry(
+      {
+        method: 'get',
+        url: `${PROFESSIONALS_API_URL}/specializations`,
       },
       token
     )

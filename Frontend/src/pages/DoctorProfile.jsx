@@ -39,6 +39,8 @@ export const DoctorProfile = () => {
     startTime: '09:00',
     endTime: '17:00',
   })
+  const [specializations, setSpecializations] = useState([])
+  const [specializationsLoading, setSpecializationsLoading] = useState(false)
 
   const token = useSelector((state) => state.auth.token)
   const user = useSelector((state) => state.auth.user)
@@ -47,11 +49,25 @@ export const DoctorProfile = () => {
     if (token) {
       fetchProfile()
       fetchProfessionalAvailability()
+      fetchSpecializations()
     } else {
       setLoading(false)
       setError('Please login to manage your professional profile')
     }
   }, [token, user?.id])
+
+  const fetchSpecializations = async () => {
+    setSpecializationsLoading(true)
+    try {
+      const data = await appointmentService.getAllSpecializations(token)
+      setSpecializations(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.error('Failed to fetch specializations:', err)
+      setSpecializations([])
+    } finally {
+      setSpecializationsLoading(false)
+    }
+  }
 
   const fetchProfile = async () => {
     setLoading(true)
@@ -339,14 +355,31 @@ export const DoctorProfile = () => {
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-text-primary mb-4">Basic Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Specialty"
-                  name="specialty"
-                  value={formData.specialty}
-                  onChange={handleChange}
-                  placeholder="e.g., Cardiology, Dermatology"
-                  required
-                />
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-2">
+                    Specialty <span className="text-red-500">*</span>
+                  </label>
+                  {specializationsLoading ? (
+                    <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+                      Loading specialties...
+                    </div>
+                  ) : (
+                    <select
+                      name="specialty"
+                      value={formData.specialty}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-accent bg-white"
+                      required
+                    >
+                      <option value="">Select a specialty</option>
+                      {specializations.map((spec) => (
+                        <option key={spec} value={spec}>
+                          {spec}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
                 <Input
                   label="Years of Experience"
                   type="number"

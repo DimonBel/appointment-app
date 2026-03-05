@@ -75,6 +75,13 @@ public interface IOrderService
     Task<IEnumerable<AppIdentityUser>> GetClientsByProfessionalAsync(Guid professionalId);
 
     /// <summary>
+    /// Retrieves statistics for a specific professional
+    /// </summary>
+    /// <param name="professionalId">ID of the professional</param>
+    /// <returns>Dictionary containing various statistics</returns>
+    Task<Dictionary<string, int>> GetProfessionalStatisticsAsync(Guid professionalId);
+
+    /// <summary>
     /// Updates order details (title, description, notes)
     /// Cannot modify scheduled date/time or participants - use RescheduleOrderAsync for that
     /// </summary>

@@ -77,4 +77,14 @@ public class ProfessionalRepository : IProfessionalRepository
     {
         return await _context.Professionals.AnyAsync(p => p.Id == id);
     }
+
+    public async Task<IEnumerable<string>> GetAllSpecializationsAsync()
+    {
+        return await _context.Professionals
+            .Where(p => !string.IsNullOrWhiteSpace(p.Specialization))
+            .Select(p => p.Specialization!.Trim())
+            .Distinct()
+            .OrderBy(s => s)
+            .ToListAsync();
+    }
 }

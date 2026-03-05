@@ -10,9 +10,38 @@ public class DoctorProfileService : IDoctorProfileService
 {
     private readonly IDoctorProfileRepository _profileRepository;
 
+    // Standardized specialty names
+    private static readonly HashSet<string> StandardSpecialties = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "General Practitioner",
+        "Cardiologist",
+        "Dermatologist",
+        "Pediatrician",
+        "Orthopedic Surgeon",
+        "Psychiatrist",
+        "Gynecologist",
+        "Neurologist",
+        "Oncologist",
+        "Ophthalmologist"
+    };
+
     public DoctorProfileService(IDoctorProfileRepository profileRepository)
     {
         _profileRepository = profileRepository;
+    }
+
+    private void ValidateSpecialty(string? specialty)
+    {
+        if (!string.IsNullOrWhiteSpace(specialty))
+        {
+            var trimmed = specialty.Trim();
+            if (!StandardSpecialties.Contains(trimmed))
+            {
+                throw new ArgumentException(
+                    $"Invalid specialty '{specialty}'. Please use one of the standard specialties: {string.Join(", ", StandardSpecialties.OrderBy(s => s))}",
+                    nameof(specialty));
+            }
+        }
     }
 
     /// <inheritdoc/>
@@ -66,6 +95,9 @@ public class DoctorProfileService : IDoctorProfileService
     /// <inheritdoc/>
     public async Task<(bool Success, string Message, DoctorProfileDto? Profile)> CreateProfileAsync(Guid userId, CreateDoctorProfileDto dto)
     {
+        // Validate specialty
+        ValidateSpecialty(dto.Specialty);
+
         // Check if profile already exists
         var existing = await _profileRepository.GetByUserIdAsync(userId);
         if (existing != null)
@@ -97,6 +129,9 @@ public class DoctorProfileService : IDoctorProfileService
     /// <inheritdoc/>
     public async Task<(bool Success, string Message, DoctorProfileDto? Profile)> UpdateProfileAsync(Guid userId, UpdateDoctorProfileDto dto)
     {
+        // Validate specialty if provided
+        ValidateSpecialty(dto.Specialty);
+
         var profile = await _profileRepository.GetByUserIdAsync(userId);
         if (profile == null)
         {

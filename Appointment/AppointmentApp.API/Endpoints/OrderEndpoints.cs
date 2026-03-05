@@ -490,6 +490,17 @@ public static class OrderEndpoints
         .WithName("GetClientsByProfessional")
         .WithOpenApi();
 
+        // Get professional statistics (for doctor panel)
+        group.MapGet("/professional/{professionalId}/statistics", async (
+            Guid professionalId,
+            [FromServices] IOrderService orderService) =>
+        {
+            var statistics = await orderService.GetProfessionalStatisticsAsync(professionalId);
+            return Results.Ok(statistics);
+        })
+        .WithName("GetProfessionalStatistics")
+        .WithOpenApi();
+
         // Update order
         group.MapPut("/{id}", async (
             Guid id,

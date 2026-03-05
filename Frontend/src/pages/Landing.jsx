@@ -228,8 +228,8 @@ export const Landing = () => {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-primary-dark via-primary-dark to-primary-accent text-white py-20 px-6">
-        <div className="max-w-6xl mx-auto">
+      <section className="relative bg-gradient-to-br from-primary-dark via-primary-dark to-primary-accent text-white py-20 px-6 overflow-hidden">
+        <div className="max-w-6xl mx-auto relative z-10">
           <div className="max-w-3xl">
             <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
               Your Health,<br />Our Priority
@@ -237,14 +237,14 @@ export const Landing = () => {
             <p className="text-xl md:text-2xl mb-8 text-white/90 leading-relaxed">
               Book appointments with top healthcare professionals across all specialties. Simple, fast, and reliable.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link to="/register">
+            <div className="flex flex-col sm:flex-row gap-4 relative z-20">
+              <Link to="/register" className="relative z-20">
                 <Button size="lg" variant="secondary" className="w-full sm:w-auto px-8 py-4 text-base">
                   Get Started
                   <ArrowRight size={20} className="ml-2" />
                 </Button>
               </Link>
-              <Link to="/login">
+              <Link to="/login" className="relative z-20">
                 <Button size="lg" variant="outline" className="w-full sm:w-auto px-8 py-4 text-base border-white text-white hover:bg-white/10">
                   Login
                 </Button>
@@ -253,9 +253,9 @@ export const Landing = () => {
           </div>
         </div>
 
-        {/* Decorative Elements */}
-        <div className="absolute top-20 right-10 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-10 left-10 w-96 h-96 bg-primary-accent/20 rounded-full blur-3xl" />
+        {/* Decorative Elements - positioned behind content */}
+        <div className="absolute top-20 right-10 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none z-0" />
+        <div className="absolute bottom-10 left-10 w-96 h-96 bg-primary-accent/20 rounded-full blur-3xl pointer-events-none z-0" />
       </section>
 
       {/* Specialties Section */}

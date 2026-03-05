@@ -388,7 +388,7 @@ export const ManagementPanel = () => {
   }
 
   // Filter orders: only show Pending, Approved, Completed (not Cancelled, Declined, No-show)
-  const activeStatuses = [0, 1, 4] // Pending, Approved, Completed
+  const activeStatuses = [0, 1, 2, 3, 4] // Pending, Approved, Declined, Cancelled, Completed
   const filteredOrders = clientOrders.filter((order) => activeStatuses.includes(order.status))
 
   const getScheduleMatrix = () => {

@@ -37,6 +37,7 @@ export const DoctorPanel = () => {
   const [loading, setLoading] = useState(true)
   const [clients, setClients] = useState([])
   const [clientAppointments, setClientAppointments] = useState({}) // Store appointment counts per client
+  const [statistics, setStatistics] = useState(null) // Professional statistics
   const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState('')
   const [loadError, setLoadError] = useState('')
@@ -228,43 +229,40 @@ export const DoctorPanel = () => {
     }
   }
 
-  const loadClients = async () => {
+const loadClients = async () => {
     setLoading(true)
     setLoadError('')
     try {
-      const data = await appointmentService.getClientsByProfessional(currentUser.id, token)
+      const [data, statsData] = await Promise.all([
+        appointmentService.getClientsByProfessional(currentUser.id, token),
+        appointmentService.getProfessionalStatistics(currentUser.id, token)
+      ])
+
       const clientsList = Array.isArray(data) ? data : []
       setClients(clientsList)
+      setStatistics(statsData && typeof statsData === 'object' ? statsData : null)
 
       // Load appointment counts for all clients in parallel
       const appointmentPromises = clientsList.map(async (client) => {
         try {
-          const orders = await appointmentService.getOrdersByClient(client.id, token, null, 1, 100, currentUser.id)
-          return {
-            clientId: client.id,
-            data: {
-              total: Array.isArray(orders) ? orders.length : 0,
-              upcoming: Array.isArray(orders) ? orders.filter(o => new Date(o.scheduledDateTime) > new Date()).length : 0
-            }
-          }
-        } catch (err) {
-          console.error(`Failed to load appointments for client ${client.id}:`, err)
-          return {
-            clientId: client.id,
-            data: { total: 0, upcoming: 0 }
-          }
+          const orders = await appointmentService.getOrdersByClient(client.id, token)
+          return { clientId: client.id, count: Array.isArray(orders) ? orders.length : 0 }
+        } catch (error) {
+          console.error(`Failed to load appointments for client ${client.id}:`, error)
+          return { clientId: client.id, count: 0 }
         }
       })
 
-      const appointmentResults = await Promise.all(appointmentPromises)
-      const appointmentCounts = {}
-      appointmentResults.forEach(({ clientId, data }) => {
-        appointmentCounts[clientId] = data
+      const appointmentCounts = await Promise.all(appointmentPromises)
+      const countsMap = {}
+      appointmentCounts.forEach(item => {
+        countsMap[item.clientId] = item.count
       })
-      setClientAppointments(appointmentCounts)
+      setClientAppointments(countsMap)
     } catch (error) {
       console.error('Failed to load clients:', error)
       setClients([])
+      setStatistics(null)
       setLoadError(error?.response?.data?.message || error?.message || 'Failed to load clients')
     } finally {
       setLoading(false)
@@ -437,6 +435,114 @@ export const DoctorPanel = () => {
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center gap-3">
           <AlertCircle size={18} />
           {loadError}
+        </div>
+      )}
+
+      {/* Statistics Cards */}
+      {statistics && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-text-secondary">Total Clients</p>
+                  <p className="text-2xl font-bold text-text-primary mt-1">{statistics.totalClients || 0}</p>
+                </div>
+                <div className="bg-blue-100 p-3 rounded-full">
+                  <Users size={24} className="text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-text-secondary">Total Appointments</p>
+                  <p className="text-2xl font-bold text-text-primary mt-1">{statistics.totalAppointments || 0}</p>
+                </div>
+                <div className="bg-purple-100 p-3 rounded-full">
+                  <Calendar size={24} className="text-purple-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-text-secondary">Pending Requests</p>
+                  <p className="text-2xl font-bold text-text-primary mt-1">{statistics.pendingAppointments || 0}</p>
+                </div>
+                <div className="bg-yellow-100 p-3 rounded-full">
+                  <Clock size={24} className="text-yellow-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-text-secondary">Completed</p>
+                  <p className="text-2xl font-bold text-text-primary mt-1">{statistics.completedAppointments || 0}</p>
+                </div>
+                <div className="bg-green-100 p-3 rounded-full">
+                  <Stethoscope size={24} className="text-green-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Secondary Statistics */}
+      {statistics && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-text-secondary">This Month</p>
+                  <p className="text-lg font-bold text-text-primary mt-1">{statistics.appointmentsThisMonth || 0}</p>
+                </div>
+                <div className="bg-indigo-100 p-2 rounded-full">
+                  <Calendar size={20} className="text-indigo-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-text-secondary">This Week</p>
+                  <p className="text-lg font-bold text-text-primary mt-1">{statistics.appointmentsThisWeek || 0}</p>
+                </div>
+                <div className="bg-teal-100 p-2 rounded-full">
+                  <Calendar size={20} className="text-teal-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-text-secondary">Cancelled</p>
+                  <p className="text-lg font-bold text-text-primary mt-1">{statistics.cancelledAppointments || 0}</p>
+                </div>
+                <div className="bg-red-100 p-2 rounded-full">
+                  <X size={20} className="text-red-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 

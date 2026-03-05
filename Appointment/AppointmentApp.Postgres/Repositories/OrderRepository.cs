@@ -155,4 +155,54 @@ public class OrderRepository : IOrderRepository
             .Where(u => clientIds.Contains(u.Id))
             .ToListAsync();
     }
+
+    public async Task<Dictionary<string, int>> GetProfessionalStatisticsAsync(Guid professionalId)
+    {
+        var statistics = new Dictionary<string, int>();
+
+        // Total clients
+        var totalClients = await _context.Orders
+            .Where(o => o.ProfessionalId == professionalId)
+            .Select(o => o.ClientId)
+            .Distinct()
+            .CountAsync();
+        statistics["totalClients"] = totalClients;
+
+        // Total appointments
+        var totalAppointments = await _context.Orders
+            .CountAsync(o => o.ProfessionalId == professionalId);
+        statistics["totalAppointments"] = totalAppointments;
+
+        // Appointments by status
+        var pendingAppointments = await _context.Orders
+            .CountAsync(o => o.ProfessionalId == professionalId && o.Status == OrderStatus.Requested);
+        statistics["pendingAppointments"] = pendingAppointments;
+
+        var approvedAppointments = await _context.Orders
+            .CountAsync(o => o.ProfessionalId == professionalId && o.Status == OrderStatus.Approved);
+        statistics["approvedAppointments"] = approvedAppointments;
+
+        var completedAppointments = await _context.Orders
+            .CountAsync(o => o.ProfessionalId == professionalId && o.Status == OrderStatus.Completed);
+        statistics["completedAppointments"] = completedAppointments;
+
+        var cancelledAppointments = await _context.Orders
+            .CountAsync(o => o.ProfessionalId == professionalId && o.Status == OrderStatus.Cancelled);
+        statistics["cancelledAppointments"] = cancelledAppointments;
+
+        // Appointments this month
+        var now = DateTime.UtcNow;
+        var startOfMonth = DateTime.SpecifyKind(new DateTime(now.Year, now.Month, 1), DateTimeKind.Utc);
+        var appointmentsThisMonth = await _context.Orders
+            .CountAsync(o => o.ProfessionalId == professionalId && o.ScheduledDateTime >= startOfMonth);
+        statistics["appointmentsThisMonth"] = appointmentsThisMonth;
+
+        // Appointments this week
+        var startOfWeek = DateTime.SpecifyKind(now.AddDays(-(int)now.DayOfWeek), DateTimeKind.Utc);
+        var appointmentsThisWeek = await _context.Orders
+            .CountAsync(o => o.ProfessionalId == professionalId && o.ScheduledDateTime >= startOfWeek);
+        statistics["appointmentsThisWeek"] = appointmentsThisWeek;
+
+        return statistics;
+    }
 }

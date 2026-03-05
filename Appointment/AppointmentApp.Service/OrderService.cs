@@ -169,6 +169,12 @@ public class OrderService : IOrderService
     }
 
     /// <inheritdoc/>
+    public async Task<Dictionary<string, int>> GetProfessionalStatisticsAsync(Guid professionalId)
+    {
+        return await _orderRepository.GetProfessionalStatisticsAsync(professionalId);
+    }
+
+    /// <inheritdoc/>
     public async Task<Order> UpdateOrderAsync(Guid orderId, string? title = null, string? description = null, string? notes = null)
     {
         var order = await _orderRepository.GetByIdAsync(orderId);
